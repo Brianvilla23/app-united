@@ -67,6 +67,15 @@ export const MODOS_FALLA: ModoFalla[] = [
   { codigo: 'MF5', nombre: 'Otro (cargar desde catálogo real)', materiales: [] },
 ]
 
+export type TablaOutbox = 'avisos' | 'andamios' | 'marcas_upsert' | 'marcas_delete'
+
+export interface OutboxItem {
+  id: string
+  tabla: TablaOutbox
+  payload: Record<string, unknown>
+  createdAt: number
+}
+
 export interface MarcaFuga {
   id: string
   vasija: string

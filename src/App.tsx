@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
+import { iniciarSync } from './sync'
 import AvisoForm from './AvisoForm'
 import AndamioForm from './AndamioForm'
 import Guardados from './Guardados'
@@ -24,7 +25,13 @@ function OfflineDot() {
     window.addEventListener('offline', off)
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
   }, [])
-  return <span className={'net ' + (online ? 'on' : 'off')}>{online ? '● en línea' : '● offline'}</span>
+  const pendientes = useLiveQuery(() => db.outbox.count(), []) ?? 0
+  return (
+    <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      {pendientes > 0 && <span className="net off">↑ {pendientes} por subir</span>}
+      <span className={'net ' + (online ? 'on' : 'off')}>{online ? '● en línea' : '● offline'}</span>
+    </span>
+  )
 }
 
 function Menu({ go }: { go: (v: Vista) => void }) {
@@ -74,6 +81,7 @@ function Menu({ go }: { go: (v: Vista) => void }) {
 
 export default function App() {
   const [vista, setVista] = useState<Vista>('menu')
+  useEffect(() => { iniciarSync() }, [])
   return (
     <div className="app">
       <header className="topbar">

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { uuid } from './util'
+import { encolar } from './sync'
 import {
   CELDAS, FILAS, COMPONENTES, CELL, MX, MY, cx, cy, ANCHO, ALTO,
   runsPara, POSTE1_X, POSTE2_X, POSTE_W,
@@ -40,8 +41,14 @@ export default function Fugas() {
 
   const toggle = async (vasija: string, componente: ComponenteFuga) => {
     const existe = await db.marcas.where('[vasija+componente]').equals([vasija, componente]).first()
-    if (existe) await db.marcas.delete(existe.id)
-    else await db.marcas.add({ id: uuid(), vasija, componente, creadoPor: CREADO_POR, createdAt: Date.now(), sincronizado: false })
+    if (existe) {
+      await db.marcas.delete(existe.id)
+      await encolar('marcas_delete', { vasija, componente })
+    } else {
+      const creado = Date.now()
+      await db.marcas.add({ id: uuid(), vasija, componente, creadoPor: CREADO_POR, createdAt: creado, sincronizado: false })
+      await encolar('marcas_upsert', { vasija, componente, creado_por: CREADO_POR, created_at: new Date(creado).toISOString() })
+    }
   }
 
   const selSet = sel ? porVasija.get(sel) ?? new Set<ComponenteFuga>() : new Set<ComponenteFuga>()

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { db, generarFolio } from './db'
 import { generarPDF } from './pdf'
+import { encolar, avisoARow } from './sync'
 import { ZONAS, TIPOS_AVISO, PRIORIDADES, MODOS_FALLA } from './types'
 import type { Aviso, MaterialItem, Prioridad } from './types'
 
@@ -123,6 +124,7 @@ export default function AvisoForm({ onSaved }: { onSaved: () => void }) {
       sincronizado: false,
     }
     await db.avisos.add(aviso)
+    await encolar('avisos', avisoARow(aviso))
     if (generar) generarPDF(aviso)
     setF({ ...vacio, fechaTrabajo: hoyISO() })
     setMateriales([]); setFotos([]); setErrores([])

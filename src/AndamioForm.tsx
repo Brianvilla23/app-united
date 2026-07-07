@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { db, generarFolioAndamio } from './db'
 import { generarPDFAndamio } from './pdfAndamio'
+import { encolar, andamioARow } from './sync'
 import { ZONAS } from './types'
 import type { Andamio, EstadoTarjeta } from './types'
 import { uuid, fileToJpeg, hoyISO } from './util'
@@ -57,6 +58,7 @@ export default function AndamioForm({ onSaved, onCrearSubsecuente }: { onSaved: 
       sincronizado: false,
     }
     await db.andamios.add(andamio)
+    await encolar('andamios', andamioARow(andamio))
     if (generar) generarPDFAndamio(andamio)
     setF({ ...vacio, fechaConstruccion: hoyISO() })
     setFotosAndamio([]); setFotosTarjeta([]); setErrores([])
