@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
-import { uuid } from './util'
 import { encolar } from './sync'
 import {
-  CELDAS, FILAS, COMPONENTES, CELL, MX, MY, cx, cy, ANCHO, ALTO,
+  CELDAS, FILAS, COMPONENTES, CELL, MX, MY, cx, cy, ALTO,
   runsPara, POSTE1_X, POSTE2_X, POSTE_W,
+  RACKS, enVista, viewBoxPara,
   MARCA, MARCA_BORDE, PLOMO, PLOMO_BORDE,
-  type ComponenteFuga,
+  type ComponenteFuga, type Vista,
 } from './rackLayout'
 
 const CREADO_POR = 'B. Villalobos'
@@ -17,7 +17,6 @@ const AZUL = '#38bdf8'
 const GRIS = '#c3cad3'
 const GRIS_BORDE = '#9aa5b1'
 
-// posición del cople victaulic de una vasija hacia un lado (N = derecha, S = izquierda)
 function copleX(fila: string, col: number, lado: 'N' | 'S'): number {
   const run = runsPara(fila).find((r) => r.includes(col))!
   const i = run.indexOf(col)
@@ -30,52 +29,77 @@ function copleX(fila: string, col: number, lado: 'N' | 'S'): number {
 }
 
 export default function Fugas() {
+  const [rack, setRack] = useState(1)
+  const [vista, setVista] = useState<Vista>('A')
   const [sel, setSel] = useState<string | null>(null)
-  const marcas = useLiveQuery(() => db.marcas.toArray(), []) ?? []
+  const todas = useLiveQuery(() => db.marcas.toArray(), []) ?? []
 
+  const marcas = todas.filter((m) => m.rack === rack)
   const porVasija = new Map<string, Set<ComponenteFuga>>()
   for (const m of marcas) {
     if (!porVasija.has(m.vasija)) porVasija.set(m.vasija, new Set())
     porVasija.get(m.vasija)!.add(m.componente)
   }
 
+  // racks que ya tienen alguna marca (para el punto en el selector)
+  const racksConMarcas = new Set(todas.map((m) => m.rack))
+
   const toggle = async (vasija: string, componente: ComponenteFuga) => {
-    const existe = await db.marcas.where('[vasija+componente]').equals([vasija, componente]).first()
+    const id = `${rack}-${vasija}-${componente}`
+    const existe = await db.marcas.get(id)
     if (existe) {
-      await db.marcas.delete(existe.id)
-      await encolar('marcas_delete', { vasija, componente })
+      await db.marcas.delete(id)
+      await encolar('marcas_delete', { rack, vasija, componente })
     } else {
       const creado = Date.now()
-      await db.marcas.add({ id: uuid(), vasija, componente, creadoPor: CREADO_POR, createdAt: creado, sincronizado: false })
-      await encolar('marcas_upsert', { vasija, componente, creado_por: CREADO_POR, created_at: new Date(creado).toISOString() })
+      await db.marcas.add({ id, rack, vasija, componente, creadoPor: CREADO_POR, createdAt: creado, sincronizado: false })
+      await encolar('marcas_upsert', { rack, vasija, componente, creado_por: CREADO_POR, created_at: new Date(creado).toISOString() })
     }
   }
 
   const selSet = sel ? porVasija.get(sel) ?? new Set<ComponenteFuga>() : new Set<ComponenteFuga>()
   const marcada = (c: ComponenteFuga) => selSet.has(c)
 
+  const vb = viewBoxPara(vista)
+  const celdasVista = CELDAS.filter((c) => enVista(vista, c.col))
+
   return (
     <div>
+      {/* selector de rack */}
+      <div className="rack-tabs">
+        {RACKS.map((r) => (
+          <button key={r} className={'rack-tab' + (r === rack ? ' on' : '')} onClick={() => setRack(r)}>
+            R{r}
+            {racksConMarcas.has(r) && <span className="rack-dot" />}
+          </button>
+        ))}
+      </div>
+
+      {/* selector de vista (semi rack) */}
+      <div className="vista-seg">
+        <button className={vista === 'A' ? 'on' : ''} onClick={() => setVista('A')}>Semi Rack A</button>
+        <button className={vista === 'B' ? 'on' : ''} onClick={() => setVista('B')}>Semi Rack B</button>
+        <button className={vista === 'todo' ? 'on' : ''} onClick={() => setVista('todo')}>Todo</button>
+      </div>
+
       <div className="leyenda">
         <span className="leg-item" style={{ fontWeight: 800, color: '#8a6d03' }}>
           <span className="leg-dot" style={{ background: MARCA }} /> Amarillo = fuga
         </span>
-        {COMPONENTES.map((c) => {
-          const n = marcas.filter((m) => m.componente === c.codigo).length
-          return n > 0 ? (
-            <span key={c.codigo} className="leg-item">{c.nombre} ({c.posicion}) · {n}</span>
-          ) : null
-        })}
+        <span className="leg-item">Rack {rack} · {marcas.length} marcas</span>
       </div>
-      <p className="hint" style={{ margin: '0 2px 10px' }}>
-        Tocá una vasija para marcar el componente con fuga. {marcas.length} marcas en total.
-      </p>
 
-      <div className="fugas-scroll">
-        <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} width={ANCHO} style={{ display: 'block' }}>
-          <text x={ANCHO / 2} y={16} textAnchor="middle" fontSize={14} fontWeight={800} fill="#0f172a" letterSpacing={0.5}>LADO ALIMENTACIÓN</text>
-          <text x={MX + (8 * CELL + 18) / 2} y={38} textAnchor="middle" fontSize={13} fontWeight={800} fill="#0f172a">SEMI RACK A</text>
-          <text x={(cx(9) + cx(16)) / 2} y={38} textAnchor="middle" fontSize={13} fontWeight={800} fill="#0f172a">SEMI RACK B</text>
+      <div className={'fugas-scroll' + (vista === 'todo' ? ' scrollx' : '')}>
+        <svg
+          viewBox={`${vb.x} 0 ${vb.w} ${ALTO}`}
+          style={{ display: 'block', width: vista === 'todo' ? vb.w : '100%', maxWidth: '100%', height: 'auto', margin: '0 auto' }}
+        >
+          {vista !== 'B' && (
+            <text x={MX + (8 * CELL + 18) / 2} y={30} textAnchor="middle" fontSize={13} fontWeight={800} fill="#0f172a">SEMI RACK A</text>
+          )}
+          {vista !== 'A' && (
+            <text x={(cx(9) + cx(16)) / 2} y={30} textAnchor="middle" fontSize={13} fontWeight={800} fill="#0f172a">SEMI RACK B</text>
+          )}
 
           {/* barra inferior del bastidor */}
           <rect x={POSTE1_X - 30} y={MY + FILAS.length * CELL + 8} width={POSTE2_X - POSTE1_X + POSTE_W + 60} height={15} rx={7.5} fill={GRIS} stroke={GRIS_BORDE} strokeWidth={0.8} />
@@ -90,12 +114,12 @@ export default function Fugas() {
 
           {/* letras de fila */}
           {FILAS.map((f, i) => (
-            <text key={f} x={9} y={cy(i) + 4} fontSize={11} fontWeight={700} fill="#64748b">{f}</text>
+            <text key={f} x={vb.letrasX} y={cy(i) + 4} fontSize={11} fontWeight={700} fill="#64748b">{f}</text>
           ))}
 
           {/* cañerías azules + victaulic plomo */}
           {FILAS.map((f, i) =>
-            runsPara(f).map((run) => {
+            runsPara(f).filter((run) => enVista(vista, run[0])).map((run) => {
               const y = cy(i)
               const x0 = cx(run[0]) - CELL / 2 - 7
               const x1 = cx(run[run.length - 1]) + CELL / 2 + 7
@@ -113,8 +137,8 @@ export default function Fugas() {
             }),
           )}
 
-          {/* vasijas — la marca amarilla pinta la pieza real, igual que en el detalle */}
-          {CELDAS.map((celda) => {
+          {/* vasijas */}
+          {celdasVista.map((celda) => {
             const i = FILAS.indexOf(celda.fila as typeof FILAS[number])
             const x = cx(celda.col), y = cy(i)
             const set = porVasija.get(celda.id)
@@ -124,18 +148,10 @@ export default function Fugas() {
                 {set?.has('C') && <circle cx={x} cy={y} r={13} fill="none" stroke={MARCA} strokeWidth={4} />}
                 {set?.has('T') && <circle cx={x} cy={y} r={9.5} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
                 <text x={x} y={y + 4} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#0f172a">{celda.id}</text>
-                {set?.has('SN') && (
-                  <rect x={x + 17} y={y - 10} width={5.5} height={20} rx={2} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1.2} />
-                )}
-                {set?.has('SS') && (
-                  <rect x={x - 22.5} y={y - 10} width={5.5} height={20} rx={2} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1.2} />
-                )}
-                {set?.has('UN') && (
-                  <rect x={copleX(celda.fila, celda.col, 'N') - 4} y={y - 9} width={8} height={18} rx={2} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1.2} />
-                )}
-                {set?.has('US') && (
-                  <rect x={copleX(celda.fila, celda.col, 'S') - 4} y={y - 9} width={8} height={18} rx={2} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1.2} />
-                )}
+                {set?.has('SN') && <rect x={x + 17} y={y - 10} width={5.5} height={20} rx={2} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1.2} />}
+                {set?.has('SS') && <rect x={x - 22.5} y={y - 10} width={5.5} height={20} rx={2} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1.2} />}
+                {set?.has('UN') && <rect x={copleX(celda.fila, celda.col, 'N') - 4} y={y - 9} width={8} height={18} rx={2} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1.2} />}
+                {set?.has('US') && <rect x={copleX(celda.fila, celda.col, 'S') - 4} y={y - 9} width={8} height={18} rx={2} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1.2} />}
               </g>
             )
           })}
@@ -146,16 +162,14 @@ export default function Fugas() {
         <div className="modal-overlay" onClick={() => setSel(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
-              <b>Vasija {sel}</b>
+              <b>Rack {rack} · Vasija {sel}</b>
               <button className="modal-x" onClick={() => setSel(null)}>✕</button>
             </div>
             <p className="hint" style={{ margin: '0 0 8px' }}>Tocá el componente con fuga · se pinta amarillo</p>
 
-            <svg viewBox="0 0 320 235" style={{ width: '100%', display: 'block' }}>
-              {/* cañería azul de alimentación */}
+            <svg viewBox="0 0 320 235" style={{ width: '100%', maxWidth: 360, display: 'block', margin: '0 auto' }}>
               <rect x={0} y={106} width={320} height={9} fill={AZUL} />
 
-              {/* victaulic SUR (cople izquierdo) */}
               <g onClick={() => toggle(sel, 'US')} style={{ cursor: 'pointer' }}>
                 <rect x={43} y={100} width={26} height={6} rx={2} fill={marcada('US') ? MARCA : PLOMO} stroke={marcada('US') ? MARCA_BORDE : PLOMO_BORDE} strokeWidth={1} />
                 <rect x={43} y={116} width={26} height={6} rx={2} fill={marcada('US') ? MARCA : PLOMO} stroke={marcada('US') ? MARCA_BORDE : PLOMO_BORDE} strokeWidth={1} />
@@ -164,14 +178,11 @@ export default function Fugas() {
                 <text x={56} y={161} textAnchor="middle" fontSize={11} fontWeight={800} fill="#334155">SUR</text>
               </g>
 
-              {/* sideport SUR (barra izquierda) */}
               <g onClick={() => toggle(sel, 'SS')} style={{ cursor: 'pointer' }}>
-                <rect x={85} y={88} width={10} height={46} rx={3}
-                  fill={marcada('SS') ? MARCA : '#eef2f7'} stroke={marcada('SS') ? MARCA_BORDE : '#94a3b8'} strokeWidth={2} />
+                <rect x={85} y={88} width={10} height={46} rx={3} fill={marcada('SS') ? MARCA : '#eef2f7'} stroke={marcada('SS') ? MARCA_BORDE : '#94a3b8'} strokeWidth={2} />
                 <text x={90} y={148} textAnchor="middle" fontSize={9} fontWeight={700} fill="#64748b">sideport</text>
               </g>
 
-              {/* victaulic NORTE (cople derecho) */}
               <g onClick={() => toggle(sel, 'UN')} style={{ cursor: 'pointer' }}>
                 <rect x={251} y={100} width={26} height={6} rx={2} fill={marcada('UN') ? MARCA : PLOMO} stroke={marcada('UN') ? MARCA_BORDE : PLOMO_BORDE} strokeWidth={1} />
                 <rect x={251} y={116} width={26} height={6} rx={2} fill={marcada('UN') ? MARCA : PLOMO} stroke={marcada('UN') ? MARCA_BORDE : PLOMO_BORDE} strokeWidth={1} />
@@ -180,32 +191,26 @@ export default function Fugas() {
                 <text x={264} y={161} textAnchor="middle" fontSize={11} fontWeight={800} fill="#334155">NORTE</text>
               </g>
 
-              {/* sideport NORTE (barra derecha) */}
               <g onClick={() => toggle(sel, 'SN')} style={{ cursor: 'pointer' }}>
-                <rect x={225} y={88} width={10} height={46} rx={3}
-                  fill={marcada('SN') ? MARCA : '#eef2f7'} stroke={marcada('SN') ? MARCA_BORDE : '#94a3b8'} strokeWidth={2} />
+                <rect x={225} y={88} width={10} height={46} rx={3} fill={marcada('SN') ? MARCA : '#eef2f7'} stroke={marcada('SN') ? MARCA_BORDE : '#94a3b8'} strokeWidth={2} />
                 <text x={230} y={148} textAnchor="middle" fontSize={9} fontWeight={700} fill="#64748b">sideport</text>
               </g>
 
-              {/* vasija: anillo verde como el plano */}
               <circle cx={160} cy={110} r={64} fill="#fff" stroke="#2e6da4" strokeWidth={2.5} />
               <circle cx={160} cy={110} r={60} fill="#fff" stroke={VERDE} strokeWidth={9} />
 
-              {/* canastillo (anillo interior) */}
               <g onClick={() => toggle(sel, 'C')} style={{ cursor: 'pointer' }}>
                 <circle cx={160} cy={110} r={42} fill="#fff" stroke={marcada('C') ? MARCA : '#e8edf3'} strokeWidth={11} />
                 <text x={160} y={62} textAnchor="middle" fontSize={11} fontWeight={800} fill={marcada('C') ? '#8a6d03' : '#94a3b8'}>canastillo</text>
               </g>
 
-              {/* tapón: círculo al centro */}
               <g onClick={() => toggle(sel, 'T')} style={{ cursor: 'pointer' }}>
-                <circle cx={160} cy={110} r={25}
-                  fill={marcada('T') ? MARCA : '#f8fafc'} stroke={marcada('T') ? MARCA_BORDE : '#94a3b8'} strokeWidth={2.5} />
+                <circle cx={160} cy={110} r={25} fill={marcada('T') ? MARCA : '#f8fafc'} stroke={marcada('T') ? MARCA_BORDE : '#94a3b8'} strokeWidth={2.5} />
                 <text x={160} y={107} textAnchor="middle" fontSize={13} fontWeight={800} fill="#334155">T</text>
                 <text x={160} y={120} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#64748b">tapón</text>
               </g>
 
-              <text x={160} y={218} textAnchor="middle" fontSize={11} fill="#64748b">Vista lado alimentación · {sel}</text>
+              <text x={160} y={220} textAnchor="middle" fontSize={11} fill="#64748b">Lado alimentación · Rack {rack} · {sel}</text>
             </svg>
 
             <div className="comp-list">

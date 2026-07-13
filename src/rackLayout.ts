@@ -63,3 +63,22 @@ export const ALTO = MY + FILAS.length * CELL + 36
 export const POSTE1_X = MX + 4 * CELL + 1
 export const POSTE2_X = MX + 12 * CELL + 18 + 30 + 1
 export const POSTE_W = 16
+
+// --- 12 racks + vista por semi rack (para responsive móvil) ---
+export const RACKS = Array.from({ length: 12 }, (_, i) => i + 1)
+export type Vista = 'A' | 'B' | 'todo'
+
+export function enVista(vista: Vista, col: number): boolean {
+  if (vista === 'A') return col <= 8
+  if (vista === 'B') return col >= 9
+  return true
+}
+
+export function viewBoxPara(vista: Vista): { x: number; w: number; letrasX: number } {
+  if (vista === 'A') return { x: 0, w: cx(8) + CELL / 2 + 14, letrasX: 9 }
+  if (vista === 'B') {
+    const x0 = cx(9) - CELL / 2 - 22
+    return { x: x0, w: cx(16) + CELL / 2 + 14 - x0, letrasX: x0 + 4 }
+  }
+  return { x: 0, w: ANCHO, letrasX: 9 }
+}

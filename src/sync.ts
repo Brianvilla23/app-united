@@ -55,7 +55,7 @@ export async function drenar(): Promise<void> {
         ({ error } = await supabase.from('marcas_fuga').upsert(it.payload))
       } else if (it.tabla === 'marcas_delete') {
         ({ error } = await supabase.from('marcas_fuga').delete()
-          .match({ vasija: it.payload.vasija, componente: it.payload.componente }))
+          .match({ rack: it.payload.rack, vasija: it.payload.vasija, componente: it.payload.componente }))
       }
       if (error) break // sin señal o error del servidor: reintenta en el próximo ciclo
       await db.outbox.delete(it.id)
@@ -76,7 +76,8 @@ export async function pullMarcas(): Promise<void> {
   await db.transaction('rw', db.marcas, async () => {
     await db.marcas.clear()
     await db.marcas.bulkAdd(data.map((r) => ({
-      id: `${r.vasija}-${r.componente}`,
+      id: `${r.rack}-${r.vasija}-${r.componente}`,
+      rack: r.rack,
       vasija: r.vasija,
       componente: r.componente,
       creadoPor: r.creado_por ?? '',

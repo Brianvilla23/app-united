@@ -78,6 +78,7 @@ export interface OutboxItem {
 
 export interface MarcaFuga {
   id: string
+  rack: number
   vasija: string
   componente: import('./rackLayout').ComponenteFuga
   creadoPor: string
