@@ -4,7 +4,7 @@ import { db } from './db'
 import { encolar } from './sync'
 import {
   CELDAS, FILAS, COMPONENTES, CELL, MY, R, cx, cy, ALTO,
-  runsPara, POSTE1_X, POSTE2_X, POSTE_W,
+  runsPara, colsPara, POSTE1_X, POSTE2_X, POSTE_W,
   RACKS, enVista, viewBoxPara,
   MARCA, MARCA_BORDE, PLOMO, PLOMO_BORDE,
   type ComponenteFuga, type Vista,
@@ -25,6 +25,18 @@ function cpl(key: string, x: number, y: number, on: boolean) {
       <line x1={x + 3} y1={y - 6} x2={x + 3} y2={y + 6} stroke={on ? MARCA_BORDE : PLOMO_BORDE} strokeWidth={0.7} />
     </g>
   )
+}
+
+// posición del cople victaulic de una vasija hacia un lado (N = derecha, S = izquierda)
+function copleX(fila: string, col: number, lado: 'N' | 'S'): number {
+  const run = runsPara(fila).find((r) => r.includes(col))!
+  const i = run.indexOf(col)
+  if (lado === 'N') {
+    const next = run[i + 1]
+    return next !== undefined ? (cx(col) + cx(next)) / 2 : cx(col) + R + 6
+  }
+  const prev = run[i - 1]
+  return prev !== undefined ? (cx(col) + cx(prev)) / 2 : cx(col) - R - 6
 }
 
 export default function Fugas() {
@@ -107,34 +119,33 @@ export default function Fugas() {
             <text key={f} x={vb.letrasX} y={cy(i) + 4} fontSize={11} fontWeight={700} fill="#64748b">{f}</text>
           ))}
 
-          {/* SPOOLS: entre cada par de vasijas va tubo azul + cople victaulic a cada lado */}
+          {/* cañería del tramo + coples victaulic entre vasijas */}
           {FILAS.map((f, i) =>
             runsPara(f).filter((run) => enVista(vista, run[0])).map((run) => {
               const y = cy(i)
               return (
-                <g key={f + run[0]}>
-                  {/* stubs a los extremos del tramo (hacia manifold) */}
-                  <rect x={cx(run[0]) - R - 16} y={y - 3.5} width={10} height={7} rx={2} fill={AZUL} />
-                  <rect x={cx(run[run.length - 1]) + R + 6} y={y - 3.5} width={10} height={7} rx={2} fill={AZUL} />
-                  {/* tubo del spool entre vasija y vasija */}
-                  {run.slice(0, -1).map((c, k) => {
-                    const c2 = run[k + 1]
-                    return <rect key={c} x={cx(c) + R + 7} y={y - 3.5} width={cx(c2) - R - 7 - (cx(c) + R + 7)} height={7} rx={2} fill={AZUL} />
-                  })}
-                  {/* coples victaulic (norte y sur de cada vasija) */}
-                  {run.map((c) => {
-                    const set = porVasija.get(`${f}${c}`)
-                    return (
-                      <g key={'k' + c}>
-                        {cpl(`s${c}`, cx(c) - R - 6, y, !!set?.has('US'))}
-                        {cpl(`n${c}`, cx(c) + R, y, !!set?.has('UN'))}
-                      </g>
-                    )
-                  })}
+                <g key={'run' + f + run[0]}>
+                  <rect x={cx(run[0]) - R - 5} y={y - 3.5} width={cx(run[run.length - 1]) + R + 5 - (cx(run[0]) - R - 5)} height={7} rx={3.5} fill={AZUL} />
+                  {run.slice(0, -1).map((c, k) => cpl(`m${f}${c}`, (cx(c) + cx(run[k + 1])) / 2 - 3, y, false))}
                 </g>
               )
             }),
           )}
+
+          {/* SPOOL: solo en el manifold central de cada semi rack (postes 4|5 y 12|13) */}
+          {FILAS.map((f, i) => {
+            const y = cy(i)
+            const cols = colsPara(f)
+            return ([[4, 5], [12, 13]] as [number, number][]).map(([a, b]) =>
+              cols.includes(a) && cols.includes(b) && enVista(vista, a) && enVista(vista, b) ? (
+                <g key={`sp${f}${a}`}>
+                  <rect x={cx(a) + R + 4} y={y - 5} width={cx(b) - R - 4 - (cx(a) + R + 4)} height={10} rx={3} fill="#7dd3fc" stroke="#0284c7" strokeWidth={1} />
+                  {cpl(`spa${f}${a}`, cx(a) + R - 1, y, false)}
+                  {cpl(`spb${f}${a}`, cx(b) - R - 5, y, false)}
+                </g>
+              ) : null,
+            )
+          })}
 
           {/* vasijas */}
           {celdasVista.map((celda) => {
@@ -147,6 +158,9 @@ export default function Fugas() {
                 {set?.has('C') && <circle cx={x} cy={y} r={13} fill="none" stroke={MARCA} strokeWidth={4} />}
                 {set?.has('T') && <circle cx={x} cy={y} r={9.5} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
                 <text x={x} y={y + 4} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#0f172a">{celda.id}</text>
+                {/* victaulic marcada = cople amarillo al costado */}
+                {set?.has('UN') && cpl(`un${celda.id}`, copleX(celda.fila, celda.col, 'N') - 3, y, true)}
+                {set?.has('US') && cpl(`us${celda.id}`, copleX(celda.fila, celda.col, 'S') - 3, y, true)}
                 {/* sideport = punto amarillo sobre el anillo (norte=der, sur=izq) */}
                 {set?.has('SN') && <circle cx={x + R} cy={y} r={4.6} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
                 {set?.has('SS') && <circle cx={x - R} cy={y} r={4.6} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
