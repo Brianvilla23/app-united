@@ -46,23 +46,30 @@ export function runsPara(fila: string): number[][] {
 }
 
 // --- geometría del diagrama ---
-export const CELL = 48
-export const MX = 26   // margen izq (letras de fila)
-export const MY = 52   // margen sup (título + semi racks)
+export const CELL = 48     // paso vertical (filas)
+export const CELLX = 66    // paso horizontal — más ancho: entre vasijas va un SPOOL
+export const R = 19        // radio de la vasija
+export const MX = 26       // margen izq (letras de fila)
+export const MY = 52       // margen sup (título + semi racks)
+const GAP_POSTE = 20       // hueco del poste (col 4|5 y 12|13)
+const GAP_SEMI = 30        // separación entre semi rack A y B (col 8|9)
 
 export function extraX(col: number): number {
-  return (col > 4 ? 18 : 0) + (col > 8 ? 30 : 0) + (col > 12 ? 18 : 0)
+  let e = 0
+  if (col > 4) e += GAP_POSTE
+  if (col > 8) e += GAP_SEMI
+  if (col > 12) e += GAP_POSTE
+  return e
 }
-export function cx(col: number): number { return MX + (col - 1) * CELL + extraX(col) + CELL / 2 }
+export function cx(col: number): number { return MX + (col - 1) * CELLX + extraX(col) + CELLX / 2 }
 export function cy(filaIdx: number): number { return MY + filaIdx * CELL + CELL / 2 }
 
-export const ANCHO = MX + 16 * CELL + 18 + 30 + 18 + 10
-export const ALTO = MY + FILAS.length * CELL + 36
+export const ANCHO = MX + 16 * CELLX + 2 * GAP_POSTE + GAP_SEMI + 14
+export const ALTO = MY + FILAS.length * CELL + 34
 
-// postes (centros de las bandas entre columnas)
-export const POSTE1_X = MX + 4 * CELL + 1
-export const POSTE2_X = MX + 12 * CELL + 18 + 30 + 1
 export const POSTE_W = 16
+export const POSTE1_X = MX + 4 * CELLX + GAP_POSTE / 2 - POSTE_W / 2
+export const POSTE2_X = MX + 12 * CELLX + 1.5 * GAP_POSTE + GAP_SEMI - POSTE_W / 2
 
 // --- 12 racks + vista por semi rack (para responsive móvil) ---
 export const RACKS = Array.from({ length: 12 }, (_, i) => i + 1)
@@ -75,10 +82,10 @@ export function enVista(vista: Vista, col: number): boolean {
 }
 
 export function viewBoxPara(vista: Vista): { x: number; w: number; letrasX: number } {
-  if (vista === 'A') return { x: 0, w: cx(8) + CELL / 2 + 14, letrasX: 9 }
+  if (vista === 'A') return { x: 0, w: cx(8) + R + 16, letrasX: 9 }
   if (vista === 'B') {
-    const x0 = cx(9) - CELL / 2 - 22
-    return { x: x0, w: cx(16) + CELL / 2 + 14 - x0, letrasX: x0 + 4 }
+    const x0 = cx(9) - R - 30
+    return { x: x0, w: cx(16) + R + 16 - x0, letrasX: x0 + 4 }
   }
   return { x: 0, w: ANCHO, letrasX: 9 }
 }
