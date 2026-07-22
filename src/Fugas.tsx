@@ -4,7 +4,7 @@ import { db } from './db'
 import { encolar } from './sync'
 import {
   CELDAS, FILAS, COMPONENTES, CELL, MY, R, cx, cy, ALTO,
-  runsPara, colsPara, POSTE1_X, POSTE2_X, POSTE_W,
+  runsPara, POSTE1_X, POSTE2_X, POSTE_W,
   RACKS, enVista, viewBoxPara,
   MARCA, MARCA_BORDE, PLOMO, PLOMO_BORDE,
   type ComponenteFuga, type Vista,
@@ -33,10 +33,10 @@ function copleX(fila: string, col: number, lado: 'N' | 'S'): number {
   const i = run.indexOf(col)
   if (lado === 'N') {
     const next = run[i + 1]
-    return next !== undefined ? (cx(col) + cx(next)) / 2 : cx(col) + R + 6
+    return next !== undefined ? (cx(col) + cx(next)) / 2 : cx(col) + R + 9
   }
   const prev = run[i - 1]
-  return prev !== undefined ? (cx(col) + cx(prev)) / 2 : cx(col) - R - 6
+  return prev !== undefined ? (cx(col) + cx(prev)) / 2 : cx(col) - R - 9
 }
 
 export default function Fugas() {
@@ -119,33 +119,31 @@ export default function Fugas() {
             <text key={f} x={vb.letrasX} y={cy(i) + 4} fontSize={11} fontWeight={700} fill="#64748b">{f}</text>
           ))}
 
-          {/* cañería del tramo + coples victaulic entre vasijas */}
+          {/* cañería + coples victaulic + SPOOL contra el manifold (nada cruza el poste) */}
           {FILAS.map((f, i) =>
             runsPara(f).filter((run) => enVista(vista, run[0])).map((run) => {
               const y = cy(i)
+              const first = run[0], last = run[run.length - 1]
+              const manifoldDer = last === 4 || last === 12
+              const posteX = first <= 8 ? POSTE1_X : POSTE2_X
+              const x0 = manifoldDer ? cx(first) - R - 12 : posteX + POSTE_W
+              const x1 = manifoldDer ? posteX : cx(last) + R + 12
               return (
-                <g key={'run' + f + run[0]}>
-                  <rect x={cx(run[0]) - R - 5} y={y - 3.5} width={cx(run[run.length - 1]) + R + 5 - (cx(run[0]) - R - 5)} height={7} rx={3.5} fill={AZUL} />
+                <g key={'run' + f + first}>
+                  {/* cañería del tramo: se corta contra el manifold */}
+                  <rect x={x0} y={y - 3.5} width={x1 - x0} height={7} rx={3.5} fill={AZUL} />
+                  {/* una victaulic entre vasijas contiguas */}
                   {run.slice(0, -1).map((c, k) => cpl(`m${f}${c}`, (cx(c) + cx(run[k + 1])) / 2 - 3, y, false))}
+                  {/* victaulic del extremo exterior */}
+                  {cpl(`ext${f}${first}`, manifoldDer ? cx(first) - R - 12 : cx(last) + R + 6, y, false)}
+                  {/* SPOOL al manifold: victaulic en AMBOS extremos, con tubo entremedio */}
+                  {manifoldDer
+                    ? [cpl(`spa${f}${first}`, cx(last) + R + 6, y, false), cpl(`spb${f}${first}`, posteX - 10, y, false)]
+                    : [cpl(`spa${f}${first}`, posteX + POSTE_W + 4, y, false), cpl(`spb${f}${first}`, cx(first) - R - 12, y, false)]}
                 </g>
               )
             }),
           )}
-
-          {/* SPOOL: solo en el manifold central de cada semi rack (postes 4|5 y 12|13) */}
-          {FILAS.map((f, i) => {
-            const y = cy(i)
-            const cols = colsPara(f)
-            return ([[4, 5], [12, 13]] as [number, number][]).map(([a, b]) =>
-              cols.includes(a) && cols.includes(b) && enVista(vista, a) && enVista(vista, b) ? (
-                <g key={`sp${f}${a}`}>
-                  <rect x={cx(a) + R + 4} y={y - 5} width={cx(b) - R - 4 - (cx(a) + R + 4)} height={10} rx={3} fill="#7dd3fc" stroke="#0284c7" strokeWidth={1} />
-                  {cpl(`spa${f}${a}`, cx(a) + R - 1, y, false)}
-                  {cpl(`spb${f}${a}`, cx(b) - R - 5, y, false)}
-                </g>
-              ) : null,
-            )
-          })}
 
           {/* vasijas */}
           {celdasVista.map((celda) => {

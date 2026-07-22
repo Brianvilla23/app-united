@@ -47,11 +47,11 @@ export function runsPara(fila: string): number[][] {
 
 // --- geometría del diagrama ---
 export const CELL = 48     // paso vertical (filas)
-export const CELLX = 66    // paso horizontal — más ancho: entre vasijas va un SPOOL
+export const CELLX = 78    // paso horizontal — vasijas separadas + spool en el manifold
 export const R = 19        // radio de la vasija
 export const MX = 26       // margen izq (letras de fila)
 export const MY = 52       // margen sup (título + semi racks)
-const GAP_POSTE = 20       // hueco del poste (col 4|5 y 12|13)
+const GAP_POSTE = 60       // hueco del poste: entra el SPOOL completo a cada lado del manifold
 const GAP_SEMI = 30        // separación entre semi rack A y B (col 8|9)
 
 export function extraX(col: number): number {
