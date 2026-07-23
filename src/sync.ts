@@ -56,6 +56,12 @@ export async function drenar(): Promise<void> {
       } else if (it.tabla === 'marcas_delete') {
         ({ error } = await supabase.from('marcas_fuga').delete()
           .match({ rack: it.payload.rack, vasija: it.payload.vasija, componente: it.payload.componente }))
+      } else if (it.tabla === 'tapas_upsert') {
+        ({ error } = await supabase.from('estado_tapas').upsert(it.payload))
+        if (!error) await db.tapas.update(`${it.payload.rack}-${it.payload.vasija}`, { sincronizado: true })
+      } else if (it.tabla === 'tapas_delete') {
+        ({ error } = await supabase.from('estado_tapas').delete()
+          .match({ rack: it.payload.rack, vasija: it.payload.vasija }))
       }
       if (error) break // sin señal o error del servidor: reintenta en el próximo ciclo
       await db.outbox.delete(it.id)
@@ -87,14 +93,38 @@ export async function pullMarcas(): Promise<void> {
   })
 }
 
+export async function pullTapas(): Promise<void> {
+  if (!navigator.onLine) return
+  const pend = await db.outbox.where('tabla').anyOf(['tapas_upsert', 'tapas_delete']).count()
+  if (pend > 0) return
+  const { data, error } = await supabase.from('estado_tapas').select('*')
+  if (error || !data || data.length === 0) return // no pisar la data local con una tabla vacía
+  await db.transaction('rw', db.tapas, async () => {
+    await db.tapas.clear()
+    await db.tapas.bulkAdd(data.map((r) => ({
+      id: `${r.rack}-${r.vasija}`,
+      rack: r.rack,
+      vasija: r.vasija,
+      estado: r.estado,
+      creadoPor: r.creado_por ?? '',
+      createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
+      sincronizado: true,
+    })))
+  })
+}
+
 // ---------- ciclo de sincronización ----------
 
 let iniciado = false
 
+function ciclo(): void {
+  void drenar().then(() => { void pullMarcas(); void pullTapas() })
+}
+
 export function iniciarSync(): void {
   if (iniciado) return
   iniciado = true
-  void drenar().then(pullMarcas)
-  window.addEventListener('online', () => { void drenar().then(pullMarcas) })
-  setInterval(() => { void drenar().then(pullMarcas) }, 45_000)
+  ciclo()
+  window.addEventListener('online', ciclo)
+  setInterval(ciclo, 45_000)
 }

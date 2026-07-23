@@ -67,7 +67,7 @@ export const MODOS_FALLA: ModoFalla[] = [
   { codigo: 'MF5', nombre: 'Otro (cargar desde catálogo real)', materiales: [] },
 ]
 
-export type TablaOutbox = 'avisos' | 'andamios' | 'marcas_upsert' | 'marcas_delete'
+export type TablaOutbox = 'avisos' | 'andamios' | 'marcas_upsert' | 'marcas_delete' | 'tapas_upsert' | 'tapas_delete'
 
 export interface OutboxItem {
   id: string
@@ -81,6 +81,29 @@ export interface MarcaFuga {
   rack: number
   vasija: string
   componente: import('./rackLayout').ComponenteFuga
+  creadoPor: string
+  createdAt: number
+  sincronizado: boolean
+}
+
+// --- Estado de tapas del rack ---
+export type EstadoTapa = 'sin_problema' | 'pernos_rodados' | 'normalizada' | 'agripada' | 'aislada'
+
+export interface EstadoTapaDef { codigo: EstadoTapa; nombre: string; color: string; texto: string }
+
+export const ESTADOS_TAPA: EstadoTapaDef[] = [
+  { codigo: 'agripada', nombre: 'Agripada', color: '#e11d1d', texto: '#ffffff' },
+  { codigo: 'pernos_rodados', nombre: 'Pernos rodados', color: '#22c55e', texto: '#0a3d17' },
+  { codigo: 'normalizada', nombre: 'Normalizada', color: '#9a9a4e', texto: '#2b2b12' },
+  { codigo: 'aislada', nombre: 'Aislada', color: '#d946ef', texto: '#ffffff' },
+  { codigo: 'sin_problema', nombre: 'Sin problema', color: '#dbeafe', texto: '#1e3a8a' },
+]
+
+export interface TapaEstado {
+  id: string
+  rack: number
+  vasija: string
+  estado: EstadoTapa
   creadoPor: string
   createdAt: number
   sincronizado: boolean

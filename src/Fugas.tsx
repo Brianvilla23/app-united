@@ -9,6 +9,7 @@ import {
   MARCA, MARCA_BORDE, PLOMO, PLOMO_BORDE,
   type ComponenteFuga, type Vista,
 } from './rackLayout'
+import { ESTADOS_TAPA, type EstadoTapa } from './types'
 
 const CREADO_POR = 'B. Villalobos'
 
@@ -39,11 +40,14 @@ function copleX(fila: string, col: number, lado: 'N' | 'S'): number {
   return prev !== undefined ? (cx(col) + cx(prev)) / 2 : cx(col) - R - 9
 }
 
-export default function Fugas() {
-  const [rack, setRack] = useState(1)
+export default function Fugas({ modoInicial = 'fugas' }: { modoInicial?: 'fugas' | 'tapas' }) {
+  const [modo, setModo] = useState<'fugas' | 'tapas'>(modoInicial)
+  const [rack, setRack] = useState(modoInicial === 'tapas' ? 12 : 1)
   const [vista, setVista] = useState<Vista>('A')
   const [sel, setSel] = useState<string | null>(null)
+  const [selTapa, setSelTapa] = useState<string | null>(null)
   const todas = useLiveQuery(() => db.marcas.toArray(), []) ?? []
+  const todasTapas = useLiveQuery(() => db.tapas.toArray(), []) ?? []
 
   const marcas = todas.filter((m) => m.rack === rack)
   const porVasija = new Map<string, Set<ComponenteFuga>>()
@@ -52,6 +56,21 @@ export default function Fugas() {
     porVasija.get(m.vasija)!.add(m.componente)
   }
   const racksConMarcas = new Set(todas.map((m) => m.rack))
+
+  const tapaDe = new Map<string, EstadoTapa>()
+  for (const t of todasTapas) if (t.rack === rack) tapaDe.set(t.vasija, t.estado)
+  const racksConTapas = new Set(todasTapas.map((t) => t.rack))
+
+  const setTapa = async (vasija: string, estado: EstadoTapa | null) => {
+    const id = `${rack}-${vasija}`
+    if (estado === null) {
+      await db.tapas.delete(id)
+      await encolar('tapas_delete', { rack, vasija })
+    } else {
+      await db.tapas.put({ id, rack, vasija, estado, creadoPor: CREADO_POR, createdAt: Date.now(), sincronizado: false })
+      await encolar('tapas_upsert', { rack, vasija, estado, creado_por: CREADO_POR })
+    }
+  }
 
   const toggle = async (vasija: string, componente: ComponenteFuga) => {
     const id = `${rack}-${vasija}-${componente}`
@@ -74,10 +93,15 @@ export default function Fugas() {
 
   return (
     <div>
+      <div className="vista-seg" style={{ marginBottom: 10 }}>
+        <button className={modo === 'fugas' ? 'on' : ''} onClick={() => setModo('fugas')}>Fugas</button>
+        <button className={modo === 'tapas' ? 'on' : ''} onClick={() => setModo('tapas')}>Estado de tapas</button>
+      </div>
+
       <div className="rack-tabs">
         {RACKS.map((r) => (
           <button key={r} className={'rack-tab' + (r === rack ? ' on' : '')} onClick={() => setRack(r)}>
-            R{r}{racksConMarcas.has(r) && <span className="rack-dot" />}
+            R{r}{(modo === 'fugas' ? racksConMarcas : racksConTapas).has(r) && <span className="rack-dot" />}
           </button>
         ))}
       </div>
@@ -89,10 +113,21 @@ export default function Fugas() {
       </div>
 
       <div className="leyenda">
-        <span className="leg-item" style={{ fontWeight: 800, color: '#8a6d03' }}>
-          <span className="leg-dot" style={{ background: MARCA }} /> Amarillo = fuga
-        </span>
-        <span className="leg-item">Rack {rack} · {marcas.length} marcas</span>
+        {modo === 'fugas' ? (
+          <>
+            <span className="leg-item" style={{ fontWeight: 800, color: '#8a6d03' }}>
+              <span className="leg-dot" style={{ background: MARCA }} /> Amarillo = fuga
+            </span>
+            <span className="leg-item">Rack {rack} · {marcas.length} marcas</span>
+          </>
+        ) : (
+          <>
+            {ESTADOS_TAPA.map((e) => (
+              <span key={e.codigo} className="leg-item"><span className="leg-dot" style={{ background: e.color }} /> {e.nombre}</span>
+            ))}
+            <span className="leg-item">Rack {rack} · {tapaDe.size} tapas</span>
+          </>
+        )}
       </div>
 
       <div className={'fugas-scroll' + (vista === 'todo' ? ' scrollx' : '')}>
@@ -150,18 +185,17 @@ export default function Fugas() {
             const i = FILAS.indexOf(celda.fila as typeof FILAS[number])
             const x = cx(celda.col), y = cy(i)
             const set = porVasija.get(celda.id)
+            const tc = modo === 'tapas' ? ESTADOS_TAPA.find((e) => e.codigo === tapaDe.get(celda.id)) : undefined
             return (
-              <g key={celda.id} onClick={() => setSel(celda.id)} style={{ cursor: 'pointer' }}>
-                <circle cx={x} cy={y} r={R} fill="#fff" stroke={VERDE} strokeWidth={4.2} />
-                {set?.has('C') && <circle cx={x} cy={y} r={13} fill="none" stroke={MARCA} strokeWidth={4} />}
-                {set?.has('T') && <circle cx={x} cy={y} r={9.5} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
-                <text x={x} y={y + 4} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#0f172a">{celda.id}</text>
-                {/* victaulic marcada = cople amarillo al costado */}
-                {set?.has('UN') && cpl(`un${celda.id}`, copleX(celda.fila, celda.col, 'N') - 3, y, true)}
-                {set?.has('US') && cpl(`us${celda.id}`, copleX(celda.fila, celda.col, 'S') - 3, y, true)}
-                {/* sideport = punto amarillo sobre el anillo (norte=der, sur=izq) */}
-                {set?.has('SN') && <circle cx={x + R} cy={y} r={4.6} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
-                {set?.has('SS') && <circle cx={x - R} cy={y} r={4.6} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
+              <g key={celda.id} onClick={() => (modo === 'fugas' ? setSel(celda.id) : setSelTapa(celda.id))} style={{ cursor: 'pointer' }}>
+                <circle cx={x} cy={y} r={R} fill={tc ? tc.color : '#fff'} stroke={VERDE} strokeWidth={4.2} />
+                {modo === 'fugas' && set?.has('C') && <circle cx={x} cy={y} r={13} fill="none" stroke={MARCA} strokeWidth={4} />}
+                {modo === 'fugas' && set?.has('T') && <circle cx={x} cy={y} r={9.5} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
+                <text x={x} y={y + 4} textAnchor="middle" fontSize={10.5} fontWeight={700} fill={tc ? tc.texto : '#0f172a'}>{celda.id}</text>
+                {modo === 'fugas' && set?.has('UN') && cpl(`un${celda.id}`, copleX(celda.fila, celda.col, 'N') - 3, y, true)}
+                {modo === 'fugas' && set?.has('US') && cpl(`us${celda.id}`, copleX(celda.fila, celda.col, 'S') - 3, y, true)}
+                {modo === 'fugas' && set?.has('SN') && <circle cx={x + R} cy={y} r={4.6} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
+                {modo === 'fugas' && set?.has('SS') && <circle cx={x - R} cy={y} r={4.6} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
               </g>
             )
           })}
@@ -245,6 +279,36 @@ export default function Fugas() {
                   </button>
                 )
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selTapa && (
+        <div className="modal-overlay" onClick={() => setSelTapa(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <b>Rack {rack} · Tapa {selTapa}</b>
+              <button className="modal-x" onClick={() => setSelTapa(null)}>✕</button>
+            </div>
+            <p className="hint" style={{ margin: '0 0 10px' }}>Estado de la tapa extraída</p>
+            <div className="comp-list">
+              {ESTADOS_TAPA.map((e) => {
+                const on = tapaDe.get(selTapa) === e.codigo
+                return (
+                  <button key={e.codigo} className={'comp-btn' + (on ? ' on' : '')}
+                    style={on ? { borderColor: e.color } : undefined}
+                    onClick={() => { void setTapa(selTapa, e.codigo); setSelTapa(null) }}>
+                    <span className="leg-dot" style={{ background: e.color }} />
+                    {e.nombre}
+                    <span className="comp-estado">{on ? 'marcada ✓' : ''}</span>
+                  </button>
+                )
+              })}
+              <button className="comp-btn" onClick={() => { void setTapa(selTapa, null); setSelTapa(null) }}>
+                <span className="leg-dot" style={{ background: '#e2e8f0' }} />
+                Sin marcar / limpiar
+              </button>
             </div>
           </div>
         </div>

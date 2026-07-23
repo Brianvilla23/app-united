@@ -1,10 +1,11 @@
 import Dexie, { type Table } from 'dexie'
-import type { Aviso, Andamio, MarcaFuga, OutboxItem } from './types'
+import type { Aviso, Andamio, MarcaFuga, TapaEstado, OutboxItem } from './types'
 
 export class UnitedDB extends Dexie {
   avisos!: Table<Aviso, string>
   andamios!: Table<Andamio, string>
   marcas!: Table<MarcaFuga, string>
+  tapas!: Table<TapaEstado, string>
   outbox!: Table<OutboxItem, string>
 
   constructor() {
@@ -33,6 +34,13 @@ export class UnitedDB extends Dexie {
       marcas: 'id, rack, vasija, componente, createdAt, [rack+vasija+componente]',
       outbox: 'id, createdAt, tabla',
     }).upgrade(async (tx) => { await tx.table('marcas').clear() })
+    this.version(6).stores({
+      avisos: 'id, folio, createdAt, estado, sincronizado',
+      andamios: 'id, folio, createdAt, sincronizado',
+      marcas: 'id, rack, vasija, componente, createdAt, [rack+vasija+componente]',
+      tapas: 'id, rack, vasija, estado, [rack+vasija]',
+      outbox: 'id, createdAt, tabla',
+    })
   }
 }
 

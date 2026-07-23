@@ -2,18 +2,20 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { iniciarSync } from './sync'
+import { seedTapasRack12 } from './seedTapas'
 import AvisoForm from './AvisoForm'
 import AndamioForm from './AndamioForm'
 import Guardados from './Guardados'
 import Fugas from './Fugas'
 
-type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'guardados'
+type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'guardados'
 
 const TITULOS: Record<Vista, string> = {
   menu: 'App United',
   aviso: 'Nuevo aviso',
   andamio: 'Levantamiento de andamio',
   fugas: 'Diagrama de fugas',
+  tapas: 'Estado de tapas',
   guardados: 'Guardados',
 }
 
@@ -62,6 +64,11 @@ function Menu({ go }: { go: (v: Vista) => void }) {
           <span className="mc-txt"><b>Diagrama de fugas</b><small>Marcá fugas por vasija · lado alimentación</small></span>
           <span className="mc-arrow">›</span>
         </button>
+        <button className="menu-card" onClick={() => go('tapas')}>
+          <span className="mc-ico" style={{ background: 'rgba(225,29,29,.1)' }}>🔩</span>
+          <span className="mc-txt"><b>Estado de tapas</b><small>Rack 12 · agripadas, pernos rodados, normalizadas</small></span>
+          <span className="mc-arrow">›</span>
+        </button>
         <button className="menu-card" onClick={() => go('guardados')}>
           <span className="mc-ico slate">🗂️</span>
           <span className="mc-txt"><b>Guardados</b><small>{nAvisos + nAndamios} registros · PDF y respaldo</small></span>
@@ -81,7 +88,7 @@ function Menu({ go }: { go: (v: Vista) => void }) {
 
 export default function App() {
   const [vista, setVista] = useState<Vista>('menu')
-  useEffect(() => { iniciarSync() }, [])
+  useEffect(() => { iniciarSync(); void seedTapasRack12() }, [])
   return (
     <div className="app">
       <header className="topbar">
@@ -100,6 +107,7 @@ export default function App() {
         {vista === 'aviso' && <AvisoForm onSaved={() => setVista('guardados')} />}
         {vista === 'andamio' && <AndamioForm onSaved={() => setVista('guardados')} onCrearSubsecuente={() => setVista('aviso')} />}
         {vista === 'fugas' && <Fugas />}
+        {vista === 'tapas' && <Fugas modoInicial="tapas" />}
         {vista === 'guardados' && <Guardados />}
       </main>
       <footer className="app-foot">App United v0.2 · uso interno</footer>
