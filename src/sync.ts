@@ -108,7 +108,6 @@ export async function pullTapas(): Promise<void> {
       tapaAgripada: !!r.tapa_agripada,
       segurosAgripados: (r.seguros_agripados as number[] | null) ?? [],
       pernosRodados: (r.pernos_rodados as number[] | null) ?? [],
-      marca: (r.marca as '' | 'normalizada' | 'aislada' | 'retirada' | null) ?? '',
       creadoPor: r.creado_por ?? '',
       createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
       sincronizado: true,

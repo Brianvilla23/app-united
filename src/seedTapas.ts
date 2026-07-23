@@ -4,12 +4,12 @@ import type { TapaEstado } from './types'
 
 // Snapshot del turno noche 21/07/2026 · OT 419375139 · Rack 12 (lado alimentación).
 const AUTOR = 'Turno noche 21/07'
-const FLAG = 'seed_tapas_r12_v3'
+const FLAG = 'seed_tapas_r12_v4'
 
 function rec(vasija: string, p: Partial<TapaEstado>): TapaEstado {
   return {
     id: `12-${vasija}`, rack: 12, vasija,
-    tapaAgripada: false, segurosAgripados: [], pernosRodados: [], marca: '',
+    tapaAgripada: false, segurosAgripados: [], pernosRodados: [],
     creadoPor: AUTOR, createdAt: Date.now(), sincronizado: false,
     ...p,
   }
@@ -34,14 +34,14 @@ export async function seedTapasRack12(): Promise<void> {
     const filas: TapaEstado[] = [
       ...AGRIPADAS.map((v) => rec(v, { tapaAgripada: true })),
       ...PERNOS.map((v) => rec(v, { pernosRodados: [0] })),
-      ...NORMALIZADAS.map((v) => rec(v, { marca: 'normalizada' })),
+      ...NORMALIZADAS.map((v) => rec(v, {})),
       ...SIN_PROBLEMA.map((v) => rec(v, {})),
     ]
     for (const f of filas) {
       await db.tapas.put(f)
       await encolar('tapas_upsert', {
         rack: 12, vasija: f.vasija, tapa_agripada: f.tapaAgripada, seguros_agripados: f.segurosAgripados,
-        pernos_rodados: f.pernosRodados, marca: f.marca, ot: '419375139', creado_por: AUTOR,
+        pernos_rodados: f.pernosRodados, ot: '419375139', creado_por: AUTOR,
       })
     }
   }

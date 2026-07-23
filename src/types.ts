@@ -87,18 +87,15 @@ export interface MarcaFuga {
 }
 
 // --- Estado de tapas del rack ---
-export type EstadoTapa = 'retirada' | 'pernos_rodados' | 'normalizada' | 'agripada' | 'aislada'
+export type EstadoTapa = 'agripada' | 'retirada'
 
 export interface EstadoTapaDef { codigo: EstadoTapa; nombre: string; color: string; texto: string }
 
-// El "rojo" de las fallas es color COBRE (pedido del user).
-export const COBRE = '#b5452c'
+// Falla (agripado o rodado) = ÁMBAR. Retirada = verde. (2 colores, pedido del user.)
+export const AMBAR = '#d97706'
 
 export const ESTADOS_TAPA: EstadoTapaDef[] = [
-  { codigo: 'agripada', nombre: 'Agripada', color: COBRE, texto: '#ffffff' },
-  { codigo: 'pernos_rodados', nombre: 'Pernos rodados', color: '#f59e0b', texto: '#4a2c00' },
-  { codigo: 'normalizada', nombre: 'Normalizada', color: '#9a9a4e', texto: '#2b2b12' },
-  { codigo: 'aislada', nombre: 'Aislada', color: '#d946ef', texto: '#ffffff' },
+  { codigo: 'agripada', nombre: 'Agripada / rodada', color: AMBAR, texto: '#ffffff' },
   { codigo: 'retirada', nombre: 'Retirada', color: '#86efac', texto: '#065f46' },
 ]
 
@@ -112,18 +109,14 @@ export interface TapaEstado {
   tapaAgripada: boolean
   segurosAgripados: number[]
   pernosRodados: number[]
-  marca: '' | 'normalizada' | 'aislada' | 'retirada'
   creadoPor: string
   createdAt: number
   sincronizado: boolean
 }
 
-// Color del rack = resumen de los hallazgos de la tapa.
-export function estadoTapaDe(t: Pick<TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados' | 'marca'>): EstadoTapa {
-  if (t.marca === 'aislada') return 'aislada'
-  if (t.tapaAgripada || t.segurosAgripados.length > 0) return 'agripada'
-  if (t.pernosRodados.length > 0) return 'pernos_rodados'
-  if (t.marca === 'normalizada') return 'normalizada'
+// Color del rack: cualquier falla (tapa/seguros/pernos) → ámbar; si no, retirada.
+export function estadoTapaDe(t: Pick<TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados'>): EstadoTapa {
+  if (t.tapaAgripada || t.segurosAgripados.length > 0 || t.pernosRodados.length > 0) return 'agripada'
   return 'retirada'
 }
 
