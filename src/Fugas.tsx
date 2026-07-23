@@ -9,7 +9,7 @@ import {
   MARCA, MARCA_BORDE, PLOMO, PLOMO_BORDE,
   type ComponenteFuga, type Vista,
 } from './rackLayout'
-import { ESTADOS_TAPA, type EstadoTapa } from './types'
+import { ESTADOS_TAPA, estadoTapaDe, PERNOS_POR_TAPA, type TapaEstado } from './types'
 
 const CREADO_POR = 'B. Villalobos'
 
@@ -57,19 +57,28 @@ export default function Fugas({ modoInicial = 'fugas' }: { modoInicial?: 'fugas'
   }
   const racksConMarcas = new Set(todas.map((m) => m.rack))
 
-  const tapaDe = new Map<string, EstadoTapa>()
-  for (const t of todasTapas) if (t.rack === rack) tapaDe.set(t.vasija, t.estado)
+  const tapaRec = new Map<string, TapaEstado>()
+  for (const t of todasTapas) if (t.rack === rack) tapaRec.set(t.vasija, t)
   const racksConTapas = new Set(todasTapas.map((t) => t.rack))
 
-  const setTapa = async (vasija: string, estado: EstadoTapa | null) => {
+  const updateTapa = async (vasija: string, patch: Partial<TapaEstado>) => {
     const id = `${rack}-${vasija}`
-    if (estado === null) {
-      await db.tapas.delete(id)
-      await encolar('tapas_delete', { rack, vasija })
-    } else {
-      await db.tapas.put({ id, rack, vasija, estado, creadoPor: CREADO_POR, createdAt: Date.now(), sincronizado: false })
-      await encolar('tapas_upsert', { rack, vasija, estado, creado_por: CREADO_POR })
-    }
+    const cur = todasTapas.find((t) => t.id === id)
+    const base: TapaEstado = cur ?? { id, rack, vasija, tapaAgripada: false, segurosAgripados: false, pernosRodados: [], marca: '', creadoPor: CREADO_POR, createdAt: Date.now(), sincronizado: false }
+    const next: TapaEstado = { ...base, ...patch, id, rack, vasija, sincronizado: false }
+    await db.tapas.put(next)
+    await encolar('tapas_upsert', { rack, vasija, tapa_agripada: next.tapaAgripada, seguros_agripados: next.segurosAgripados, pernos_rodados: next.pernosRodados, marca: next.marca, creado_por: CREADO_POR })
+  }
+
+  const togglePerno = (vasija: string, i: number) => {
+    const cur = tapaRec.get(vasija)?.pernosRodados ?? []
+    const next = cur.includes(i) ? cur.filter((p) => p !== i) : [...cur, i]
+    void updateTapa(vasija, { pernosRodados: next })
+  }
+
+  const limpiarTapa = async (vasija: string) => {
+    await db.tapas.delete(`${rack}-${vasija}`)
+    await encolar('tapas_delete', { rack, vasija })
   }
 
   const toggle = async (vasija: string, componente: ComponenteFuga) => {
@@ -125,7 +134,7 @@ export default function Fugas({ modoInicial = 'fugas' }: { modoInicial?: 'fugas'
             {ESTADOS_TAPA.map((e) => (
               <span key={e.codigo} className="leg-item"><span className="leg-dot" style={{ background: e.color }} /> {e.nombre}</span>
             ))}
-            <span className="leg-item">Rack {rack} · {tapaDe.size} tapas</span>
+            <span className="leg-item">Rack {rack} · {tapaRec.size} tapas</span>
           </>
         )}
       </div>
@@ -185,7 +194,8 @@ export default function Fugas({ modoInicial = 'fugas' }: { modoInicial?: 'fugas'
             const i = FILAS.indexOf(celda.fila as typeof FILAS[number])
             const x = cx(celda.col), y = cy(i)
             const set = porVasija.get(celda.id)
-            const tc = modo === 'tapas' ? ESTADOS_TAPA.find((e) => e.codigo === tapaDe.get(celda.id)) : undefined
+            const rec = tapaRec.get(celda.id)
+            const tc = modo === 'tapas' && rec ? ESTADOS_TAPA.find((e) => e.codigo === estadoTapaDe(rec)) : undefined
             return (
               <g key={celda.id} onClick={() => (modo === 'fugas' ? setSel(celda.id) : setSelTapa(celda.id))} style={{ cursor: 'pointer' }}>
                 <circle cx={x} cy={y} r={R} fill={tc ? tc.color : '#fff'} stroke={VERDE} strokeWidth={4.2} />
@@ -284,35 +294,65 @@ export default function Fugas({ modoInicial = 'fugas' }: { modoInicial?: 'fugas'
         </div>
       )}
 
-      {selTapa && (
-        <div className="modal-overlay" onClick={() => setSelTapa(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <b>Rack {rack} · Tapa {selTapa}</b>
-              <button className="modal-x" onClick={() => setSelTapa(null)}>✕</button>
-            </div>
-            <p className="hint" style={{ margin: '0 0 10px' }}>Estado de la tapa extraída</p>
-            <div className="comp-list">
-              {ESTADOS_TAPA.map((e) => {
-                const on = tapaDe.get(selTapa) === e.codigo
-                return (
-                  <button key={e.codigo} className={'comp-btn' + (on ? ' on' : '')}
-                    style={on ? { borderColor: e.color } : undefined}
-                    onClick={() => { void setTapa(selTapa, e.codigo); setSelTapa(null) }}>
-                    <span className="leg-dot" style={{ background: e.color }} />
-                    {e.nombre}
-                    <span className="comp-estado">{on ? 'marcada ✓' : ''}</span>
-                  </button>
-                )
-              })}
-              <button className="comp-btn" onClick={() => { void setTapa(selTapa, null); setSelTapa(null) }}>
-                <span className="leg-dot" style={{ background: '#e2e8f0' }} />
-                Sin marcar / limpiar
-              </button>
+      {selTapa && (() => {
+        const rec = tapaRec.get(selTapa)
+        const tapaAgr = rec?.tapaAgripada ?? false
+        const seg = rec?.segurosAgripados ?? false
+        const pernos = rec?.pernosRodados ?? []
+        const C = 130
+        return (
+          <div className="modal-overlay" onClick={() => setSelTapa(null)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-head">
+                <b>Rack {rack} · Tapa {selTapa}</b>
+                <button className="modal-x" onClick={() => setSelTapa(null)}>✕</button>
+              </div>
+              <p className="hint" style={{ margin: '0 0 8px' }}>Tocá los pernos rodados · marcá seguros y tapa abajo</p>
+
+              <svg viewBox="0 0 260 268" style={{ width: '100%', maxWidth: 320, display: 'block', margin: '0 auto' }}>
+                <circle cx={C} cy={C} r={104} fill={tapaAgr ? 'rgba(225,29,29,.13)' : '#eef1f4'} stroke={tapaAgr ? '#e11d1d' : '#b8bec4'} strokeWidth={tapaAgr ? 5 : 3} />
+                <circle cx={C} cy={C} r={95} fill="#f7f9fb" stroke="#cbd2d8" strokeWidth={1} />
+                {/* seguros triples: anillo interior */}
+                <circle cx={C} cy={C} r={56} fill="none" stroke={seg ? '#9a9a4e' : '#e5e9ee'} strokeWidth={13} onClick={() => void updateTapa(selTapa, { segurosAgripados: !seg })} style={{ cursor: 'pointer' }} />
+                {/* puerto de permeado (centro) */}
+                <circle cx={C} cy={C} r={26} fill="#2b2f33" />
+                <circle cx={C} cy={C} r={19} fill="none" stroke="#dc2626" strokeWidth={6} />
+                <circle cx={C} cy={C} r={9} fill="#0f172a" />
+                {/* pernos */}
+                {Array.from({ length: PERNOS_POR_TAPA }).map((_, i) => {
+                  const ang = ((i * 360) / PERNOS_POR_TAPA - 90) * Math.PI / 180
+                  const px = C + 80 * Math.cos(ang), py = C + 80 * Math.sin(ang)
+                  const on = pernos.includes(i)
+                  return (
+                    <g key={i} onClick={() => togglePerno(selTapa, i)} style={{ cursor: 'pointer' }}>
+                      <circle cx={px} cy={py} r={13} fill={on ? '#e11d1d' : '#c3c9cf'} stroke={on ? '#7f1010' : '#8a9199'} strokeWidth={2} />
+                      <text x={px} y={py + 3.5} textAnchor="middle" fontSize={10} fontWeight={700} fill={on ? '#fff' : '#4b5563'}>{i + 1}</text>
+                    </g>
+                  )
+                })}
+              </svg>
+              <p className="hint" style={{ textAlign: 'center', margin: '2px 0 6px' }}>Pernos rodados marcados: <b>{pernos.length}</b></p>
+
+              <label className="lab">Seguros triples agripados</label>
+              <div className="seg">
+                <button className={seg ? 'on' : ''} style={seg ? { borderColor: '#9a9a4e', color: '#5c5c22', background: 'rgba(154,154,78,.12)' } : undefined} onClick={() => void updateTapa(selTapa, { segurosAgripados: true })}>Sí</button>
+                <button className={!seg ? 'on' : ''} onClick={() => void updateTapa(selTapa, { segurosAgripados: false })}>No</button>
+              </div>
+              <label className="lab">Tapa completa agripada</label>
+              <div className="seg">
+                <button className={tapaAgr ? 'on' : ''} style={tapaAgr ? { borderColor: '#e11d1d', color: '#e11d1d', background: 'rgba(225,29,29,.08)' } : undefined} onClick={() => void updateTapa(selTapa, { tapaAgripada: true })}>Sí</button>
+                <button className={!tapaAgr ? 'on' : ''} onClick={() => void updateTapa(selTapa, { tapaAgripada: false })}>No</button>
+              </div>
+
+              <div className="row" style={{ marginTop: 14, gap: 8 }}>
+                <button className="btn" style={{ flex: 1 }} onClick={() => void updateTapa(selTapa, { tapaAgripada: false, segurosAgripados: false, pernosRodados: [], marca: 'normalizada' })}>Normalizada</button>
+                <button className="btn" style={{ flex: 1 }} onClick={() => void updateTapa(selTapa, { tapaAgripada: false, segurosAgripados: false, pernosRodados: [], marca: '' })}>Sin problema</button>
+                <button className="btn ghost" onClick={() => { void limpiarTapa(selTapa); setSelTapa(null) }}>Limpiar</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

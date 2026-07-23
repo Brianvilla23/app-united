@@ -99,14 +99,28 @@ export const ESTADOS_TAPA: EstadoTapaDef[] = [
   { codigo: 'sin_problema', nombre: 'Sin problema', color: '#dbeafe', texto: '#1e3a8a' },
 ]
 
+export const PERNOS_POR_TAPA = 6
+
 export interface TapaEstado {
   id: string
   rack: number
   vasija: string
-  estado: EstadoTapa
+  tapaAgripada: boolean
+  segurosAgripados: boolean
+  pernosRodados: number[]
+  marca: '' | 'normalizada' | 'aislada'
   creadoPor: string
   createdAt: number
   sincronizado: boolean
+}
+
+// Color del rack = resumen de los 3 hallazgos de la tapa.
+export function estadoTapaDe(t: Pick<TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados' | 'marca'>): EstadoTapa {
+  if (t.marca === 'aislada') return 'aislada'
+  if (t.tapaAgripada || t.segurosAgripados) return 'agripada'
+  if (t.pernosRodados.length > 0) return 'pernos_rodados'
+  if (t.marca === 'normalizada') return 'normalizada'
+  return 'sin_problema'
 }
 
 export type EstadoTarjeta = 'Verde' | 'Amarilla' | 'Roja'

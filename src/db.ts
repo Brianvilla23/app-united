@@ -41,6 +41,13 @@ export class UnitedDB extends Dexie {
       tapas: 'id, rack, vasija, estado, [rack+vasija]',
       outbox: 'id, createdAt, tabla',
     })
+    this.version(7).stores({
+      avisos: 'id, folio, createdAt, estado, sincronizado',
+      andamios: 'id, folio, createdAt, sincronizado',
+      marcas: 'id, rack, vasija, componente, createdAt, [rack+vasija+componente]',
+      tapas: 'id, rack, vasija, [rack+vasija]',
+      outbox: 'id, createdAt, tabla',
+    }).upgrade(async (tx) => { await tx.table('tapas').clear() })
   }
 }
 
