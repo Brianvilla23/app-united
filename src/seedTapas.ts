@@ -4,12 +4,12 @@ import type { TapaEstado } from './types'
 
 // Snapshot del turno noche 21/07/2026 · OT 419375139 · Rack 12 (lado alimentación).
 const AUTOR = 'Turno noche 21/07'
-const FLAG = 'seed_tapas_r12_v2'
+const FLAG = 'seed_tapas_r12_v3'
 
 function rec(vasija: string, p: Partial<TapaEstado>): TapaEstado {
   return {
     id: `12-${vasija}`, rack: 12, vasija,
-    tapaAgripada: false, segurosAgripados: false, pernosRodados: [], marca: '',
+    tapaAgripada: false, segurosAgripados: [], pernosRodados: [], marca: '',
     creadoPor: AUTOR, createdAt: Date.now(), sincronizado: false,
     ...p,
   }

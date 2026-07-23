@@ -87,40 +87,44 @@ export interface MarcaFuga {
 }
 
 // --- Estado de tapas del rack ---
-export type EstadoTapa = 'sin_problema' | 'pernos_rodados' | 'normalizada' | 'agripada' | 'aislada'
+export type EstadoTapa = 'retirada' | 'pernos_rodados' | 'normalizada' | 'agripada' | 'aislada'
 
 export interface EstadoTapaDef { codigo: EstadoTapa; nombre: string; color: string; texto: string }
 
+// El "rojo" de las fallas es color COBRE (pedido del user).
+export const COBRE = '#b5452c'
+
 export const ESTADOS_TAPA: EstadoTapaDef[] = [
-  { codigo: 'agripada', nombre: 'Agripada', color: '#e11d1d', texto: '#ffffff' },
-  { codigo: 'pernos_rodados', nombre: 'Pernos rodados', color: '#22c55e', texto: '#0a3d17' },
+  { codigo: 'agripada', nombre: 'Agripada', color: COBRE, texto: '#ffffff' },
+  { codigo: 'pernos_rodados', nombre: 'Pernos rodados', color: '#f59e0b', texto: '#4a2c00' },
   { codigo: 'normalizada', nombre: 'Normalizada', color: '#9a9a4e', texto: '#2b2b12' },
   { codigo: 'aislada', nombre: 'Aislada', color: '#d946ef', texto: '#ffffff' },
-  { codigo: 'sin_problema', nombre: 'Sin problema', color: '#dbeafe', texto: '#1e3a8a' },
+  { codigo: 'retirada', nombre: 'Retirada', color: '#86efac', texto: '#065f46' },
 ]
 
-export const PERNOS_POR_TAPA = 6
+export const PERNOS_POR_TAPA = 3
+export const SEGUROS_POR_TAPA = 3
 
 export interface TapaEstado {
   id: string
   rack: number
   vasija: string
   tapaAgripada: boolean
-  segurosAgripados: boolean
+  segurosAgripados: number[]
   pernosRodados: number[]
-  marca: '' | 'normalizada' | 'aislada'
+  marca: '' | 'normalizada' | 'aislada' | 'retirada'
   creadoPor: string
   createdAt: number
   sincronizado: boolean
 }
 
-// Color del rack = resumen de los 3 hallazgos de la tapa.
+// Color del rack = resumen de los hallazgos de la tapa.
 export function estadoTapaDe(t: Pick<TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados' | 'marca'>): EstadoTapa {
   if (t.marca === 'aislada') return 'aislada'
-  if (t.tapaAgripada || t.segurosAgripados) return 'agripada'
+  if (t.tapaAgripada || t.segurosAgripados.length > 0) return 'agripada'
   if (t.pernosRodados.length > 0) return 'pernos_rodados'
   if (t.marca === 'normalizada') return 'normalizada'
-  return 'sin_problema'
+  return 'retirada'
 }
 
 export type EstadoTarjeta = 'Verde' | 'Amarilla' | 'Roja'
