@@ -1,7 +1,27 @@
 import { db } from './db'
 import { supabase } from './supabase'
 import { uuid } from './util'
-import type { Aviso, Andamio, TablaOutbox } from './types'
+import { quienSoy } from './identidad'
+import { tapaId } from './types'
+import type { Aviso, Andamio, TablaOutbox, HistorialItem, LadoRack } from './types'
+
+// ---------- historial (trazabilidad) ----------
+
+/** Deja registro local + encola la subida. Nunca bloquea la acción del usuario. */
+export async function registrar(
+  tipo: HistorialItem['tipo'], lado: LadoRack, rack: number, vasija: string, accion: string, detalle = '',
+): Promise<void> {
+  const item: HistorialItem = {
+    id: uuid(), tipo, lado, rack, vasija, accion, detalle,
+    quien: quienSoy() || 'sin identificar', createdAt: Date.now(),
+  }
+  await db.historial.add(item)
+  await encolar('historial', {
+    id: item.id, tipo: item.tipo, lado: item.lado, rack: item.rack, vasija: item.vasija,
+    accion: item.accion, detalle: item.detalle, quien: item.quien,
+    created_at: new Date(item.createdAt).toISOString(),
+  })
+}
 
 // ---------- encolar operaciones (outbox) ----------
 
@@ -55,13 +75,19 @@ export async function drenar(): Promise<void> {
         ({ error } = await supabase.from('marcas_fuga').upsert(it.payload))
       } else if (it.tabla === 'marcas_delete') {
         ({ error } = await supabase.from('marcas_fuga').delete()
-          .match({ rack: it.payload.rack, vasija: it.payload.vasija, componente: it.payload.componente }))
+          .match({ lado: it.payload.lado ?? 'alimentacion', rack: it.payload.rack, vasija: it.payload.vasija, componente: it.payload.componente }))
       } else if (it.tabla === 'tapas_upsert') {
         ({ error } = await supabase.from('estado_tapas').upsert(it.payload))
-        if (!error) await db.tapas.update(`${it.payload.rack}-${it.payload.vasija}`, { sincronizado: true })
+        if (!error) {
+          const id = tapaId(it.payload.lado as LadoRack, Number(it.payload.rack), String(it.payload.vasija))
+          await db.tapas.update(id, { sincronizado: true })
+        }
       } else if (it.tabla === 'tapas_delete') {
         ({ error } = await supabase.from('estado_tapas').delete()
-          .match({ rack: it.payload.rack, vasija: it.payload.vasija }))
+          .match({ lado: it.payload.lado, rack: it.payload.rack, vasija: it.payload.vasija }))
+      } else if (it.tabla === 'historial') {
+        // upsert por id: si la respuesta se perdió, el reintento no duplica
+        ({ error } = await supabase.from('historial').upsert(it.payload))
       }
       if (error) break // sin señal o error del servidor: reintenta en el próximo ciclo
       await db.outbox.delete(it.id)
@@ -101,16 +127,43 @@ export async function pullTapas(): Promise<void> {
   if (error || !data || data.length === 0) return // no pisar la data local con una tabla vacía
   await db.transaction('rw', db.tapas, async () => {
     await db.tapas.clear()
-    await db.tapas.bulkAdd(data.map((r) => ({
-      id: `${r.rack}-${r.vasija}`,
+    await db.tapas.bulkAdd(data.map((r) => {
+      const lado = (r.lado as LadoRack | null) ?? 'alimentacion'
+      return {
+        id: tapaId(lado, r.rack, r.vasija),
+        lado,
+        rack: r.rack,
+        vasija: r.vasija,
+        tapaAgripada: !!r.tapa_agripada,
+        segurosAgripados: (r.seguros_agripados as number[] | null) ?? [],
+        pernosRodados: (r.pernos_rodados as number[] | null) ?? [],
+        aislada: !!r.aislada,
+        creadoPor: r.creado_por ?? '',
+        createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
+        sincronizado: true,
+      }
+    }))
+  })
+}
+
+export async function pullHistorial(): Promise<void> {
+  if (!navigator.onLine) return
+  if (await db.outbox.where('tabla').equals('historial').count() > 0) return
+  const { data, error } = await supabase.from('historial')
+    .select('*').order('created_at', { ascending: false }).limit(300)
+  if (error || !data || data.length === 0) return
+  await db.transaction('rw', db.historial, async () => {
+    await db.historial.clear()
+    await db.historial.bulkAdd(data.map((r) => ({
+      id: r.id,
+      tipo: r.tipo as HistorialItem['tipo'],
+      lado: (r.lado as LadoRack | null) ?? 'alimentacion',
       rack: r.rack,
       vasija: r.vasija,
-      tapaAgripada: !!r.tapa_agripada,
-      segurosAgripados: (r.seguros_agripados as number[] | null) ?? [],
-      pernosRodados: (r.pernos_rodados as number[] | null) ?? [],
-      creadoPor: r.creado_por ?? '',
+      accion: r.accion,
+      detalle: r.detalle ?? '',
+      quien: r.quien ?? '',
       createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
-      sincronizado: true,
     })))
   })
 }
@@ -120,7 +173,7 @@ export async function pullTapas(): Promise<void> {
 let iniciado = false
 
 function ciclo(): void {
-  void drenar().then(() => { void pullMarcas(); void pullTapas() })
+  void drenar().then(() => { void pullMarcas(); void pullTapas(); void pullHistorial() })
 }
 
 export function iniciarSync(): void {

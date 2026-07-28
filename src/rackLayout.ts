@@ -16,6 +16,48 @@ export const CELDAS: CeldaVasija[] = FILAS.flatMap((f) =>
   colsPara(f).map((c) => ({ fila: f, col: c, id: `${f}${c}` })),
 )
 
+export const TOTAL_VASIJAS = CELDAS.length // 295
+
+// --- lado descarga = espejo horizontal del plano de alimentación ---
+// Verificado contra "Vasijas lado Descarga enumeradas.pdf": las vasijas
+// conservan su nombre, pero las columnas corren 16→1 de izquierda a derecha,
+// así que el Semi Rack B queda a la izquierda. Las filas A-S no cambian.
+//
+// Los postes caen en 4|5, 8|9 y 12|13, que son posiciones simétricas, así que
+// el bastidor se dibuja igual en ambos lados: lo único que cambia es qué vasija
+// ocupa cada posición. Comprobado con la fila C (2-16 → dibuja 1-15).
+export const COLS_TOTAL = 16
+
+/** Celdas a dibujar: `col` es la POSICIÓN en el plano, `id` el nombre real de la vasija. */
+export function celdasPara(espejo: boolean): CeldaVasija[] {
+  if (!espejo) return CELDAS
+  return FILAS.flatMap((f) =>
+    colsPara(f).map((c) => ({ fila: f, col: COLS_TOTAL + 1 - c, id: `${f}${c}` })),
+  )
+}
+
+/** Tramos de cañería sobre las posiciones dibujadas (cortan en los postes). */
+export function runsDibujo(fila: string, espejo: boolean): number[][] {
+  if (!espejo) return runsPara(fila)
+  const cols = colsPara(fila).map((c) => COLS_TOTAL + 1 - c).sort((a, b) => a - b)
+  const rangos: [number, number][] = [[1, 4], [5, 8], [9, 12], [13, 16]]
+  return rangos
+    .map(([lo, hi]) => cols.filter((c) => c >= lo && c <= hi))
+    .filter((r) => r.length > 0)
+}
+
+/** En descarga, el Semi Rack A cae en la mitad derecha del plano. */
+export function vistaDibujo(vista: Vista, espejo: boolean): Vista {
+  if (!espejo || vista === 'todo') return vista
+  return vista === 'A' ? 'B' : 'A'
+}
+
+/** Rótulo del semi rack que va en cada mitad del plano dibujado. */
+export function semiRackEn(mitad: 'izq' | 'der', espejo: boolean): 'A' | 'B' {
+  if (mitad === 'izq') return espejo ? 'B' : 'A'
+  return espejo ? 'A' : 'B'
+}
+
 export type ComponenteFuga = 'UN' | 'US' | 'SN' | 'SS' | 'T' | 'C'
 
 // Un solo color de marca para TODO: amarillo = fuga (regla del user).
@@ -81,9 +123,10 @@ export function enVista(vista: Vista, col: number): boolean {
   return true
 }
 
-export function viewBoxPara(vista: Vista): { x: number; w: number; letrasX: number } {
-  if (vista === 'A') return { x: 0, w: cx(8) + R + 16, letrasX: 9 }
-  if (vista === 'B') {
+export function viewBoxPara(vista: Vista, espejo = false): { x: number; w: number; letrasX: number } {
+  const v = vistaDibujo(vista, espejo)
+  if (v === 'A') return { x: 0, w: cx(8) + R + 16, letrasX: 9 }
+  if (v === 'B') {
     const x0 = cx(9) - R - 30
     return { x: x0, w: cx(16) + R + 16 - x0, letrasX: x0 + 4 }
   }

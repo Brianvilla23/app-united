@@ -27,7 +27,7 @@ export default function Guardados() {
   ].sort((x, y) => y.createdAt - x.createdAt)
 
   if (items.length === 0)
-    return <div className="empty">Aún no hay registros guardados.<br />Creá el primero desde el menú.</div>
+    return <div className="empty">Aún no hay registros guardados.<br />Crea el primero desde el menú.</div>
 
   const pdf = (it: Item) => { if (it.kind === 'aviso' && it.aviso) generarPDF(it.aviso); if (it.kind === 'andamio' && it.andamio) generarPDFAndamio(it.andamio) }
   const borrar = (it: Item) => { if (it.kind === 'aviso') db.avisos.delete(it.id); else db.andamios.delete(it.id) }

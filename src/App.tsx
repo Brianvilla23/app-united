@@ -3,10 +3,12 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { iniciarSync } from './sync'
 import { seedTapasRack12 } from './seedTapas'
+import { quienSoy, guardarQuienSoy } from './identidad'
 import AvisoForm from './AvisoForm'
 import AndamioForm from './AndamioForm'
 import Guardados from './Guardados'
 import Fugas from './Fugas'
+import { fechaLarga } from './fecha'
 
 type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'guardados'
 
@@ -36,16 +38,41 @@ function OfflineDot() {
   )
 }
 
+function QuienEres({ inicial, onListo }: { inicial: string; onListo: (n: string) => void }) {
+  const [nombre, setNombre] = useState(inicial)
+  const valido = nombre.trim().length >= 3
+
+  return (
+    <div className="quien-eres">
+      <h2>¿Quién eres?</h2>
+      <p>
+        Tu nombre firma los avisos y actas que generes, y queda en el historial de cada
+        tapa o fuga que marques. Se pregunta una sola vez en este celular.
+      </p>
+      <input
+        autoFocus
+        value={nombre}
+        placeholder="Nombre y apellido"
+        onChange={(e) => setNombre(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && valido) onListo(nombre) }}
+      />
+      <button className="btn primary" disabled={!valido} onClick={() => onListo(nombre)}>
+        Continuar
+      </button>
+    </div>
+  )
+}
+
 function Menu({ go }: { go: (v: Vista) => void }) {
   const nAvisos = useLiveQuery(() => db.avisos.count(), []) ?? 0
   const nAndamios = useLiveQuery(() => db.andamios.count(), []) ?? 0
-  const fecha = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })
+  const fecha = fechaLarga()
 
   return (
     <div className="menu">
       <div className="hero">
         <div className="hero-date">{fecha}</div>
-        <h1>¿Qué necesitás<br />registrar hoy?</h1>
+        <h1>¿Qué necesitas<br />registrar hoy?</h1>
       </div>
 
       <div className="menu-grid">
@@ -61,7 +88,7 @@ function Menu({ go }: { go: (v: Vista) => void }) {
         </button>
         <button className="menu-card" onClick={() => go('fugas')}>
           <span className="mc-ico blue">💧</span>
-          <span className="mc-txt"><b>Diagrama de fugas</b><small>Marcá fugas por vasija · lado alimentación</small></span>
+          <span className="mc-txt"><b>Diagrama de fugas</b><small>Marca fugas por vasija · lado alimentación</small></span>
           <span className="mc-arrow">›</span>
         </button>
         <button className="menu-card" onClick={() => go('tapas')}>
@@ -88,7 +115,26 @@ function Menu({ go }: { go: (v: Vista) => void }) {
 
 export default function App() {
   const [vista, setVista] = useState<Vista>('menu')
+  const [yo, setYo] = useState(quienSoy())
+  const [editandoNombre, setEditandoNombre] = useState(false)
   useEffect(() => { iniciarSync(); void seedTapasRack12() }, [])
+
+  const confirmarNombre = (n: string) => { guardarQuienSoy(n); setYo(quienSoy()); setEditandoNombre(false) }
+
+  if (!yo || editandoNombre) {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <div className="brand">
+            <img src="./favicon.png" alt="" width={30} height={30} style={{ borderRadius: 8 }} />
+            <div><b>App United</b><small>Planta Desaladora · Coloso</small></div>
+          </div>
+        </header>
+        <main className="main"><QuienEres inicial={yo} onListo={confirmarNombre} /></main>
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <header className="topbar">
@@ -102,6 +148,10 @@ export default function App() {
         )}
         <OfflineDot />
       </header>
+      <div className="quien-bar">
+        <span>Registrando como <b>{yo}</b></span>
+        <button onClick={() => setEditandoNombre(true)}>cambiar</button>
+      </div>
       <main className="main">
         {vista === 'menu' && <Menu go={setVista} />}
         {vista === 'aviso' && <AvisoForm onSaved={() => setVista('guardados')} />}

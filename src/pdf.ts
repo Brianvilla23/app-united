@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { Aviso } from './types'
+import { fechaCorta } from './fecha'
 
 const CC_FIJO = 'brayan.villalobos.c@gmail.com'
 
@@ -22,7 +23,7 @@ export function generarPDF(a: Aviso): void {
   doc.setFontSize(12)
   doc.text(a.folio, W - M, y, { align: 'right' })
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(110)
-  doc.text(`Emitido: ${new Date().toLocaleDateString('es-CL')}`, W - M, y + 5, { align: 'right' })
+  doc.text(`Emitido: ${fechaCorta()}`, W - M, y + 5, { align: 'right' })
 
   y += 16
   doc.setDrawColor(30); doc.setLineWidth(0.5); doc.line(M, y, W - M, y)

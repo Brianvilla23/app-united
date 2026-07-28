@@ -67,7 +67,22 @@ export const MODOS_FALLA: ModoFalla[] = [
   { codigo: 'MF5', nombre: 'Otro (cargar desde catálogo real)', materiales: [] },
 ]
 
-export type TablaOutbox = 'avisos' | 'andamios' | 'marcas_upsert' | 'marcas_delete' | 'tapas_upsert' | 'tapas_delete'
+export type TablaOutbox =
+  | 'avisos' | 'andamios' | 'marcas_upsert' | 'marcas_delete'
+  | 'tapas_upsert' | 'tapas_delete' | 'historial'
+
+// Registro de quién tocó qué y cuándo (trazabilidad del rack compartido).
+export interface HistorialItem {
+  id: string
+  tipo: 'tapa' | 'fuga'
+  lado: LadoRack
+  rack: number
+  vasija: string
+  accion: string
+  detalle: string
+  quien: string
+  createdAt: number
+}
 
 export interface OutboxItem {
   id: string
@@ -87,16 +102,40 @@ export interface MarcaFuga {
 }
 
 // --- Estado de tapas del rack ---
-export type EstadoTapa = 'agripada' | 'retirada'
 
-export interface EstadoTapaDef { codigo: EstadoTapa; nombre: string; color: string; texto: string }
+// Cada vasija tiene una tapa en cada extremo: son piezas distintas y se
+// registran por separado. El plano de descarga es el espejo del de alimentación.
+export type LadoRack = 'alimentacion' | 'descarga'
 
-// Falla (agripado o rodado) = ÁMBAR. Retirada = verde. (2 colores, pedido del user.)
+export const LADOS: { codigo: LadoRack; nombre: string; corto: string }[] = [
+  { codigo: 'alimentacion', nombre: 'Lado alimentación', corto: 'Alimentación' },
+  { codigo: 'descarga', nombre: 'Lado descarga', corto: 'Descarga' },
+]
+
+// El rack de tapas es siempre el 12 (es el único en intervención).
+export const RACK_TAPAS = 12
+
+export type EstadoTapa = 'aislada' | 'agripada' | 'seguros' | 'pernos' | 'retirada'
+
+export interface EstadoTapaDef {
+  codigo: EstadoTapa
+  nombre: string
+  color: string
+  texto: string
+  descripcion: string
+}
+
 export const AMBAR = '#d97706'
 
+// Un color por tipo de falla. El orden del array ES el orden de prioridad:
+// si una tapa tiene varias fallas a la vez, manda la primera de la lista
+// (la más grave). El detalle completo se ve al abrir la tapa.
 export const ESTADOS_TAPA: EstadoTapaDef[] = [
-  { codigo: 'agripada', nombre: 'Agripada / rodada', color: AMBAR, texto: '#ffffff' },
-  { codigo: 'retirada', nombre: 'Retirada', color: '#86efac', texto: '#065f46' },
+  { codigo: 'aislada',  nombre: 'Aislada',          color: '#2563eb', texto: '#ffffff', descripcion: 'Vasija fuera de servicio' },
+  { codigo: 'agripada', nombre: 'Tapa agripada',    color: '#dc2626', texto: '#ffffff', descripcion: 'La tapa completa no sale' },
+  { codigo: 'seguros',  nombre: 'Seguros triples',  color: '#facc15', texto: '#422006', descripcion: 'Uno o más seguros agripados' },
+  { codigo: 'pernos',   nombre: 'Pernos rodados',   color: '#f59e0b', texto: '#ffffff', descripcion: 'Uno o más pernos parker rodados' },
+  { codigo: 'retirada', nombre: 'Retirada',         color: '#22c55e', texto: '#052e16', descripcion: 'Tapa extraída sin problema' },
 ]
 
 export const PERNOS_POR_TAPA = 3
@@ -104,20 +143,62 @@ export const SEGUROS_POR_TAPA = 3
 
 export interface TapaEstado {
   id: string
+  lado: LadoRack
   rack: number
   vasija: string
   tapaAgripada: boolean
   segurosAgripados: number[]
   pernosRodados: number[]
+  aislada: boolean
   creadoPor: string
   createdAt: number
   sincronizado: boolean
 }
 
-// Color del rack: cualquier falla (tapa/seguros/pernos) → ámbar; si no, retirada.
-export function estadoTapaDe(t: Pick<TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados'>): EstadoTapa {
-  if (t.tapaAgripada || t.segurosAgripados.length > 0 || t.pernosRodados.length > 0) return 'agripada'
+export function tapaId(lado: LadoRack, rack: number, vasija: string): string {
+  return `${lado}-${rack}-${vasija}`
+}
+
+export type FallaTapa = Pick<TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados' | 'aislada'>
+
+/** Estado que manda para el color, según la prioridad de ESTADOS_TAPA. */
+export function estadoTapaDe(t: FallaTapa): EstadoTapa {
+  if (t.aislada) return 'aislada'
+  if (t.tapaAgripada) return 'agripada'
+  if (t.segurosAgripados.length > 0) return 'seguros'
+  if (t.pernosRodados.length > 0) return 'pernos'
   return 'retirada'
+}
+
+export function defEstadoTapa(codigo: EstadoTapa): EstadoTapaDef {
+  return ESTADOS_TAPA.find((e) => e.codigo === codigo)!
+}
+
+/** Una tapa cuenta como extraída solo si salió limpia (sin falla y sin aislar). */
+export function estaExtraida(t: FallaTapa): boolean {
+  return estadoTapaDe(t) === 'retirada'
+}
+
+export interface ResumenTapas {
+  total: number
+  registradas: number
+  porEstado: Record<EstadoTapa, number>
+  extraidas: number
+  porcentaje: number
+}
+
+/** Avance = extraídas sobre el total de vasijas del rack (no sobre las registradas). */
+export function resumirTapas(tapas: FallaTapa[], totalVasijas: number): ResumenTapas {
+  const porEstado = { aislada: 0, agripada: 0, seguros: 0, pernos: 0, retirada: 0 } as Record<EstadoTapa, number>
+  for (const t of tapas) porEstado[estadoTapaDe(t)]++
+  const extraidas = porEstado.retirada
+  return {
+    total: totalVasijas,
+    registradas: tapas.length,
+    porEstado,
+    extraidas,
+    porcentaje: totalVasijas > 0 ? Math.round((extraidas / totalVasijas) * 1000) / 10 : 0,
+  }
 }
 
 export type EstadoTarjeta = 'Verde' | 'Amarilla' | 'Roja'

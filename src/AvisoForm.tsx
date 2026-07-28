@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { db, generarFolio } from './db'
 import { generarPDF } from './pdf'
 import { encolar, avisoARow } from './sync'
+import { quienSoy } from './identidad'
 import { ZONAS, TIPOS_AVISO, PRIORIDADES, MODOS_FALLA } from './types'
 import type { Aviso, MaterialItem, Prioridad } from './types'
 
-const CREADO_POR = 'B. Villalobos'
 const hoyISO = () => new Date().toISOString().slice(0, 10)
 
 function uuid(): string {
@@ -119,7 +119,7 @@ export default function AvisoForm({ onSaved }: { onSaved: () => void }) {
       fotos,
       modoFalla: f.modoFalla ? modoFallaLabel(f.modoFalla) : '',
       estado: 'completo',
-      creadoPor: CREADO_POR,
+      creadoPor: quienSoy(),
       createdAt: Date.now(),
       sincronizado: false,
     }
@@ -169,7 +169,7 @@ export default function AvisoForm({ onSaved }: { onSaved: () => void }) {
       <input value={f.equipo} onChange={(e) => set('equipo', e.target.value)} placeholder="Ej: Vasija Protec BPV 8-1200" />
 
       <div className="sec">Descripción del aviso</div>
-      <textarea rows={4} value={f.descripcion} onChange={(e) => set('descripcion', e.target.value)} placeholder="Describí el trabajo… o usá el dictado." />
+      <textarea rows={4} value={f.descripcion} onChange={(e) => set('descripcion', e.target.value)} placeholder="Describe el trabajo… o usa el dictado." />
       <div className="desc-tools">
         <button type="button" className="btn tool" onClick={() => set('descripcion', mejorarRedaccion(f.descripcion))}>✦ Mejorar redacción</button>
         <button type="button" className="btn tool" onClick={dictar}>🎤 Dictar</button>
@@ -182,7 +182,7 @@ export default function AvisoForm({ onSaved }: { onSaved: () => void }) {
         <option value="">Sin especificar</option>
         {MODOS_FALLA.map((m) => <option key={m.codigo} value={m.codigo}>{m.codigo} · {m.nombre}</option>)}
       </select>
-      {f.modoFalla && <div className="hint">Materiales sugeridos según la falla. Editá lo que necesites.</div>}
+      {f.modoFalla && <div className="hint">Materiales sugeridos según la falla. Edita lo que necesites.</div>}
 
       {materiales.map((m, i) => (
         <div className="mat-row" key={i}>

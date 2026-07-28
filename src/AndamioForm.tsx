@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { db, generarFolioAndamio } from './db'
 import { generarPDFAndamio } from './pdfAndamio'
 import { encolar, andamioARow } from './sync'
+import { quienSoy } from './identidad'
 import { ZONAS } from './types'
 import type { Andamio, EstadoTarjeta } from './types'
 import { uuid, fileToJpeg, hoyISO } from './util'
 
-const CREADO_POR = 'B. Villalobos'
 const ESTADOS: EstadoTarjeta[] = ['Verde', 'Amarilla', 'Roja']
 const ESTADO_CLASE: Record<EstadoTarjeta, string> = { Verde: 'verde', Amarilla: 'amarilla', Roja: 'roja' }
 
@@ -53,7 +53,7 @@ export default function AndamioForm({ onSaved, onCrearSubsecuente }: { onSaved: 
       folio,
       fotosAndamio,
       fotosTarjeta,
-      creadoPor: CREADO_POR,
+      creadoPor: quienSoy(),
       createdAt: Date.now(),
       sincronizado: false,
     }

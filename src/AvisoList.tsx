@@ -7,7 +7,7 @@ export default function AvisoList() {
 
   if (!avisos) return <p className="muted">Cargando…</p>
   if (avisos.length === 0)
-    return <div className="empty">Aún no hay avisos guardados.<br />Creá el primero en la pestaña «Nuevo aviso».</div>
+    return <div className="empty">Aún no hay avisos guardados.<br />Crea el primero en la pestaña «Nuevo aviso».</div>
 
   return (
     <div className="list">

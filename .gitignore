@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 shot_*.png
+
+# Respaldos de la base: datos de operación de planta, el repo es público
+respaldos/

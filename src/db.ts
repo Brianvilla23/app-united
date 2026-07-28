@@ -1,11 +1,12 @@
 import Dexie, { type Table } from 'dexie'
-import type { Aviso, Andamio, MarcaFuga, TapaEstado, OutboxItem } from './types'
+import type { Aviso, Andamio, MarcaFuga, TapaEstado, OutboxItem, HistorialItem } from './types'
 
 export class UnitedDB extends Dexie {
   avisos!: Table<Aviso, string>
   andamios!: Table<Andamio, string>
   marcas!: Table<MarcaFuga, string>
   tapas!: Table<TapaEstado, string>
+  historial!: Table<HistorialItem, string>
   outbox!: Table<OutboxItem, string>
 
   constructor() {
@@ -62,6 +63,36 @@ export class UnitedDB extends Dexie {
       tapas: 'id, rack, vasija, [rack+vasija]',
       outbox: 'id, createdAt, tabla',
     }).upgrade(async (tx) => { await tx.table('tapas').clear() })
+    this.version(10).stores({
+      avisos: 'id, folio, createdAt, estado, sincronizado',
+      andamios: 'id, folio, createdAt, sincronizado',
+      marcas: 'id, rack, vasija, componente, createdAt, [rack+vasija+componente]',
+      tapas: 'id, rack, vasija, [rack+vasija]',
+      historial: 'id, rack, vasija, createdAt, tipo',
+      outbox: 'id, createdAt, tabla',
+    })
+    // v11: la tapa pasa a tener lado (alimentación/descarga) y estado "aislada".
+    // OJO: esta migración NO borra nada — reescribe los registros existentes
+    // como lado 'alimentacion', que es lo que se venía registrando hasta ahora.
+    this.version(11).stores({
+      avisos: 'id, folio, createdAt, estado, sincronizado',
+      andamios: 'id, folio, createdAt, sincronizado',
+      marcas: 'id, rack, vasija, componente, createdAt, [rack+vasija+componente]',
+      tapas: 'id, lado, rack, vasija, [lado+rack+vasija]',
+      historial: 'id, rack, vasija, createdAt, tipo',
+      outbox: 'id, createdAt, tabla',
+    }).upgrade(async (tx) => {
+      const tabla = tx.table('tapas')
+      const viejas = await tabla.toArray()
+      if (viejas.length === 0) return
+      await tabla.clear()
+      await tabla.bulkAdd(viejas.map((t: Record<string, unknown>) => ({
+        ...t,
+        id: `alimentacion-${t.rack}-${t.vasija}`,
+        lado: 'alimentacion',
+        aislada: false,
+      })))
+    })
   }
 }
 
