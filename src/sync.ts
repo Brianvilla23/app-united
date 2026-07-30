@@ -57,11 +57,33 @@ export function andamioARow(a: Andamio): Record<string, unknown> {
 // ---------- drenar: subir lo pendiente ----------
 
 let drenando = false
+// Si se encola algo MIENTRAS estamos subiendo, esa llamada a drenar() se va sin
+// hacer nada por el candado. Antes eso dejaba la cola esperando hasta el ciclo
+// de 45 s (se veía como "↑ 62 por subir" un rato largo). Ahora queda anotado y
+// damos otra vuelta al terminar.
+let otraVuelta = false
 
 export async function drenar(): Promise<void> {
-  if (drenando || !navigator.onLine) return
+  if (!navigator.onLine) return
+  if (drenando) { otraVuelta = true; return }
   drenando = true
   try {
+    let seguir = true
+    while (seguir) {
+      otraVuelta = false
+      const huboError = await subirPendientes()
+      // repetir solo si entró algo nuevo y la subida venía bien: si el servidor
+      // está fallando, no insistimos en bucle y esperamos al próximo ciclo
+      seguir = otraVuelta && !huboError
+    }
+  } finally {
+    drenando = false
+  }
+}
+
+/** Sube la cola en orden. Devuelve true si se cortó por un error. */
+async function subirPendientes(): Promise<boolean> {
+  {
     const items = await db.outbox.orderBy('createdAt').toArray()
     for (const it of items) {
       let error: unknown = null
@@ -89,12 +111,11 @@ export async function drenar(): Promise<void> {
         // upsert por id: si la respuesta se perdió, el reintento no duplica
         ({ error } = await supabase.from('historial').upsert(it.payload))
       }
-      if (error) break // sin señal o error del servidor: reintenta en el próximo ciclo
+      if (error) return true // sin señal o error del servidor: reintenta en el próximo ciclo
       await db.outbox.delete(it.id)
     }
-  } finally {
-    drenando = false
   }
+  return false
 }
 
 // ---------- pull del diagrama compartido ----------
