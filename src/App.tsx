@@ -130,6 +130,22 @@ export default function App() {
   const [actAbierta, setActAbierta] = useState<Actividad | null>(null)
   // desde dónde se entró, para que el botón de atrás vuelva ahí y no al menú
   const [volverA, setVolverA] = useState<Vista>('menu')
+
+  // El botón físico de atrás del teléfono cerraba la app en vez de volver a la
+  // pantalla anterior. Cada navegación empuja una entrada al historial y el
+  // popstate nos devuelve, así el gesto de atrás de Android funciona igual que
+  // el botón de la barra.
+  const irA = (v: Vista, desde: Vista = 'menu') => {
+    setVolverA(desde)
+    setVista(v)
+    if (v !== 'menu') window.history.pushState({ vista: v }, '')
+  }
+
+  useEffect(() => {
+    const alVolver = () => setVista((actual) => (actual === 'menu' ? 'menu' : volverA))
+    window.addEventListener('popstate', alVolver)
+    return () => window.removeEventListener('popstate', alVolver)
+  }, [volverA])
   const [yo, setYo] = useState(quienSoy())
   const [editandoNombre, setEditandoNombre] = useState(false)
   useEffect(() => { iniciarSync(); void seedTapasRack12() }, [])
@@ -159,7 +175,7 @@ export default function App() {
             <div><b>App United</b><small>Planta Desaladora · Coloso</small></div>
           </div>
         ) : (
-          <button className="back" onClick={() => setVista(volverA)}>‹ {TITULOS[vista]}</button>
+          <button className="back" onClick={() => window.history.back()}>‹ {TITULOS[vista]}</button>
         )}
         <OfflineDot />
       </header>
@@ -168,7 +184,7 @@ export default function App() {
         <button onClick={() => setEditandoNombre(true)}>cambiar</button>
       </div>
       <main className="main">
-        {vista === 'menu' && <Menu go={(v) => { setVolverA('menu'); setVista(v) }} />}
+        {vista === 'menu' && <Menu go={(v) => irA(v, 'menu')} />}
         {vista === 'aviso' && <AvisoForm onSaved={() => setVista('guardados')} />}
         {vista === 'andamio' && <AndamioForm onSaved={() => setVista('guardados')} onCrearSubsecuente={() => setVista('aviso')} />}
         {vista === 'fugas' && <Fugas />}
@@ -176,8 +192,7 @@ export default function App() {
           ladoFijo={actAbierta?.tipo === 'tapa' ? actAbierta.lados[0] : undefined} />}
         {vista === 'outage' && <Outage onAbrir={(a: Actividad) => {
           setActAbierta(a)
-          setVolverA('outage')
-          setVista(a.tipo === 'tapa' ? 'tapas' : a.tipo === 'venteo' ? 'venteos' : 'actividad')
+          irA(a.tipo === 'tapa' ? 'tapas' : a.tipo === 'venteo' ? 'venteos' : 'actividad', 'outage')
         }} />}
         {vista === 'venteos' && <Venteos actividad="cambio_venteo" />}
         {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} />}

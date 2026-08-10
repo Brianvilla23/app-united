@@ -298,10 +298,10 @@ textarea { resize: vertical; }
 
 
 /* ---------- identidad United ---------- */
-.plano-titulo b { color: var(--united-rojo); }
+.plano-titulo b { color: var(--ink); }
 .leyenda.abajo .leg-titulo,
 .act-cuerpo > b { letter-spacing: .2px; }
-.avance-top b { color: var(--united-rojo); }
+.avance-top b { color: var(--ink); }
 .act-n { background: var(--united-gris); }
 .act.completa .act-n { background: #22c55e; }
 .plano-titulo span { color: var(--united-gris); }
