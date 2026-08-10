@@ -8,9 +8,11 @@ import AvisoForm from './AvisoForm'
 import AndamioForm from './AndamioForm'
 import Guardados from './Guardados'
 import Fugas from './Fugas'
+import Outage from './Outage'
+import type { Actividad } from './actividades'
 import { fechaLarga } from './fecha'
 
-type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'guardados'
+type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'guardados'
 
 const TITULOS: Record<Vista, string> = {
   menu: 'App United',
@@ -18,6 +20,7 @@ const TITULOS: Record<Vista, string> = {
   andamio: 'Levantamiento de andamio',
   fugas: 'Diagrama de fugas',
   tapas: 'Estado de tapas',
+  outage: 'Outage Rack 12',
   guardados: 'Guardados',
 }
 
@@ -96,6 +99,11 @@ function Menu({ go }: { go: (v: Vista) => void }) {
           <span className="mc-txt"><b>Estado de tapas</b><small>Rack 12 · agripadas, pernos rodados, normalizadas</small></span>
           <span className="mc-arrow">›</span>
         </button>
+        <button className="menu-card" onClick={() => go('outage')}>
+          <span className="mc-ico" style={{ background: 'rgba(37,99,235,.1)' }}>🗓️</span>
+          <span className="mc-txt"><b>Outage Rack 12</b><small>Secuencia completa · 15 actividades</small></span>
+          <span className="mc-arrow">›</span>
+        </button>
         <button className="menu-card" onClick={() => go('guardados')}>
           <span className="mc-ico slate">🗂️</span>
           <span className="mc-txt"><b>Guardados</b><small>{nAvisos + nAndamios} registros · PDF y respaldo</small></span>
@@ -158,6 +166,7 @@ export default function App() {
         {vista === 'andamio' && <AndamioForm onSaved={() => setVista('guardados')} onCrearSubsecuente={() => setVista('aviso')} />}
         {vista === 'fugas' && <Fugas />}
         {vista === 'tapas' && <Fugas modoInicial="tapas" />}
+        {vista === 'outage' && <Outage onAbrir={(a: Actividad) => setVista(a.tipo === 'tapa' ? 'tapas' : 'outage')} />}
         {vista === 'guardados' && <Guardados />}
       </main>
       <footer className="app-foot">App United v0.2 · uso interno</footer>
