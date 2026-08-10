@@ -199,3 +199,32 @@ export interface CeldaManifold { fila: string; col: number; id: string }
 export const MANIFOLDS: CeldaManifold[] = FILAS_MANIFOLD.flatMap((f) =>
   [1, 2, 3, 4].map((c) => ({ fila: f, col: c, id: `${f}${c}` })),
 )
+
+// --- geometría del plano real de manifolds ---
+// El diagrama que se muestra en la app ES el plano de Planificación
+// ("Manifold pvc lado descarga enumerados.pdf") recortado a x 55-715, y 55-712,
+// que es el recorte donde entran las 40 etiquetas completas.
+// Sobre esa imagen van las zonas tocables, una por manifold.
+export const PLANO_MF = { ancho: 660, alto: 657 }
+
+/** y del centro de cada fila, ya trasladada al recorte. */
+const Y_FILA: Record<string, number> = {
+  A: 75, BC: 118, DE: 174, FG: 227, HI: 280, JK: 347, LM: 401, NO: 454, PQ: 512, RS: 564,
+}
+
+// Las dos columnas verdes del plano están en x 217-237 y 533-552 (originales).
+// Cada barra va entre el borde del dibujo y su columna verde.
+const X_COL: Record<number, [number, number]> = {
+  1: [37, 162],   // 92-217 en el PDF (borde izq → columna verde B)
+  2: [182, 303],  // 237-358 (columna verde B → centro)
+  3: [350, 478],  // 405-533 (centro → columna verde A)
+  4: [497, 627],  // 552-682 (columna verde A → borde der)
+}
+
+export interface ZonaManifold { id: string; x: number; y: number; w: number; h: number }
+
+export const ZONAS_MANIFOLD: ZonaManifold[] = MANIFOLDS.map((m) => {
+  const [x0, x1] = X_COL[m.col]
+  const yc = Y_FILA[m.fila]
+  return { id: m.id, x: x0, y: yc - 19, w: x1 - x0, h: 38 }
+})

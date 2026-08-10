@@ -9,7 +9,7 @@ import { db } from './db'
 import { encolar } from './sync'
 import { quienSoy } from './identidad'
 import { itemId, LADOS, type LadoRack } from './types'
-import { MANIFOLDS, FILAS_MANIFOLD, type Actividad } from './actividades'
+import { MANIFOLDS, PLANO_MF, ZONAS_MANIFOLD, type Actividad } from './actividades'
 import { TOTAL_VASIJAS, type Vista } from './rackLayout'
 import PlanoRack from './PlanoRack'
 
@@ -138,94 +138,37 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
   )
 }
 
-// --- los 40 manifolds, dibujados como en el plano ---
-// Verificado contra "Manifold pvc lado descarga enumerados.pdf": columna verde
-// central, y por fila una barra azul (el manifold PVC) con sus brazos y el
-// tubing celeste con americana amarilla saliendo por detrás de cada brazo.
-const MW = 460
-const FILA_H = 58, MY0 = 46
-const COL_VERDE_W = 26
-const BARRA_H = 16
-const BRAZOS = 4
-
-const VERDE_MF = '#00b050'
-const VERDE_BORDE = '#4d7c2a'
-const AZUL_MF = '#1a71a8'
-const CELESTE = '#29b6f6'
-const AMARILLO = '#f5b301'
-const MORADO = '#7b3fa0'
-const ROJO_UNITED = '#e1251b'
-
+// --- manifolds: se usa EL PLANO REAL de Planificación ---
+// El fondo es el PDF "Manifold pvc lado descarga enumerados" recortado y
+// cuantizado a 16 colores (86 KB, sin pérdida visible porque son colores
+// planos). Encima van las 40 zonas tocables. Así el diagrama de la app es
+// idéntico al de planta, no una réplica dibujada a mano.
 function Manifolds({
-  hechos, onTocar, espejo,
+  hechos, onTocar,
 }: { hechos: Set<string>; onTocar: (id: string) => void; espejo: boolean }) {
-  const alto = MY0 + FILAS_MANIFOLD.length * FILA_H + 16
-  const cxVerde = MW / 2
-  // columnas: 1 y 4 en los extremos, 2 y 3 pegadas a la columna verde
-  const anchoBarra = 92
-  const xIni = (col: number) => {
-    const c = espejo ? 5 - col : col
-    if (c === 1) return 26
-    if (c === 2) return cxVerde - COL_VERDE_W / 2 - anchoBarra - 6
-    if (c === 3) return cxVerde + COL_VERDE_W / 2 + 6
-    return MW - 26 - anchoBarra
-  }
-
+  const { ancho, alto } = PLANO_MF
   return (
     <div className="fugas-scroll">
-      <svg viewBox={`0 0 ${MW} ${alto}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
-        <text x={(xIni(1) + xIni(2) + anchoBarra) / 2} y={20} textAnchor="middle" fontSize={11} fontWeight={800} fill="#0f172a">
-          SEMI RACK {espejo ? 'A' : 'B'}
-        </text>
-        <text x={(xIni(3) + xIni(4) + anchoBarra) / 2} y={20} textAnchor="middle" fontSize={11} fontWeight={800} fill="#0f172a">
-          SEMI RACK {espejo ? 'B' : 'A'}
-        </text>
-
-        {/* columna verde central: el manifold principal */}
-        <rect x={cxVerde - COL_VERDE_W / 2} y={MY0 - 12} width={COL_VERDE_W} height={alto - MY0 - 2}
-          fill={VERDE_MF} stroke={VERDE_BORDE} strokeWidth={1.2} />
-        <ellipse cx={cxVerde} cy={MY0 - 12} rx={COL_VERDE_W / 2} ry={4}
-          fill="#7fd8a0" stroke={VERDE_BORDE} strokeWidth={1.2} />
-
-        {FILAS_MANIFOLD.map((f, i) => {
-          const y = MY0 + i * FILA_H + FILA_H / 2
+      <svg viewBox={`0 0 ${ancho} ${alto}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
+        <image href="./manifold_descarga.png" x={0} y={0} width={ancho} height={alto} />
+        {ZONAS_MANIFOLD.map((z) => {
+          const on = hechos.has(z.id)
           return (
-            <g key={'fila' + f}>
-              {/* tramo verde que une la columna con cada manifold interior */}
-              <rect x={cxVerde - COL_VERDE_W / 2 - 8} y={y - BARRA_H / 2} width={8} height={BARRA_H} fill={VERDE_MF} />
-              <rect x={cxVerde + COL_VERDE_W / 2} y={y - BARRA_H / 2} width={8} height={BARRA_H} fill={VERDE_MF} />
-
-              {MANIFOLDS.filter((m) => m.fila === f).map((m) => {
-                const x0 = xIni(m.col)
-                const on = hechos.has(m.id)
-                const relleno = on ? HECHO : AZUL_MF
-                const borde = on ? '#15803d' : VERDE_BORDE
-                return (
-                  <g key={m.id} onClick={() => onTocar(m.id)} style={{ cursor: 'pointer' }}>
-                    {/* barra del manifold */}
-                    <rect x={x0} y={y - BARRA_H / 2} width={anchoBarra} height={BARRA_H}
-                      fill={relleno} stroke={borde} strokeWidth={1.4} />
-                    {/* brazos + tubing por detrás de cada brazo */}
-                    {Array.from({ length: BRAZOS }).map((_, k) => {
-                      const bx = x0 + 9 + k * ((anchoBarra - 18) / (BRAZOS - 1))
-                      return (
-                        <g key={k}>
-                          <rect x={bx - 4} y={y - BARRA_H / 2 - 5} width={8} height={BARRA_H + 10}
-                            fill={relleno} stroke={borde} strokeWidth={1.1} />
-                          {/* tubing: sale por detrás del brazo */}
-                          <rect x={bx - 1.6} y={y - BARRA_H / 2 - 15} width={3.2} height={10} fill={CELESTE} />
-                          <rect x={bx - 9} y={y - BARRA_H / 2 - 18} width={9} height={3.2} fill={CELESTE} />
-                          <circle cx={bx} cy={y - BARRA_H / 2 - 6} r={2.4} fill={MORADO} />
-                          <circle cx={bx - 10} cy={y - BARRA_H / 2 - 16.4} r={2.6} fill={AMARILLO} />
-                        </g>
-                      )
-                    })}
-                    {/* código, bajo la barra */}
-                    <text x={x0 + anchoBarra / 2} y={y + BARRA_H / 2 + 15} textAnchor="middle"
-                      fontSize={12} fontWeight={800} fill={on ? '#15803d' : ROJO_UNITED}>{m.id}</text>
-                  </g>
-                )
-              })}
+            <g key={z.id} onClick={() => onTocar(z.id)} style={{ cursor: 'pointer' }}>
+              <rect
+                x={z.x} y={z.y} width={z.w} height={z.h} rx={5}
+                fill={on ? 'rgba(34,197,94,.42)' : 'transparent'}
+                stroke={on ? '#15803d' : 'rgba(120,130,145,.35)'}
+                strokeWidth={on ? 2.2 : 1}
+                strokeDasharray={on ? undefined : '3 3'}
+              />
+              {on && (
+                <path
+                  d={`M ${z.x + z.w - 26} ${z.y + z.h / 2} l 6 7 l 13 -15`}
+                  fill="none" stroke="#15803d" strokeWidth={4}
+                  strokeLinecap="round" strokeLinejoin="round"
+                />
+              )}
             </g>
           )
         })}
