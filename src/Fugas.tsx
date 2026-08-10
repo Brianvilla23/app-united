@@ -37,11 +37,19 @@ function arco(cx0: number, cy0: number, r: number, a0: number, a1: number): stri
 }
 
 export default function Fugas({
-  modoInicial = 'fugas', actividad = 'retiro_tapas_alim', titulo,
-}: { modoInicial?: 'fugas' | 'tapas'; actividad?: string; titulo?: string }) {
+  modoInicial = 'fugas', actividad = 'retiro_tapas_alim', titulo, ladoFijo,
+}: {
+  modoInicial?: 'fugas' | 'tapas'
+  actividad?: string
+  titulo?: string
+  /** Cuando se entra desde una actividad del outage, el lado ya viene definido
+      y no hay nada que elegir: se ocultan el conmutador Fugas/Tapas y el
+      selector de lado, que ahí solo confunden. */
+  ladoFijo?: LadoRack
+}) {
   const [modo, setModo] = useState<'fugas' | 'tapas'>(modoInicial)
   const [rackFugas, setRackFugas] = useState(1)
-  const [lado, setLado] = useState<LadoRack>('alimentacion')
+  const [lado, setLado] = useState<LadoRack>(ladoFijo ?? 'alimentacion')
   const [vista, setVista] = useState<Vista>('A')
   const [sel, setSel] = useState<string | null>(null)
   const [selTapa, setSelTapa] = useState<string | null>(null)
@@ -149,10 +157,12 @@ export default function Fugas({
 
   return (
     <div>
-      <div className="vista-seg" style={{ marginBottom: 10 }}>
-        <button className={modo === 'fugas' ? 'on' : ''} onClick={() => setModo('fugas')}>Fugas</button>
-        <button className={modo === 'tapas' ? 'on' : ''} onClick={() => setModo('tapas')}>Estado de tapas</button>
-      </div>
+      {!ladoFijo && (
+        <div className="vista-seg" style={{ marginBottom: 10 }}>
+          <button className={modo === 'fugas' ? 'on' : ''} onClick={() => setModo('fugas')}>Fugas</button>
+          <button className={modo === 'tapas' ? 'on' : ''} onClick={() => setModo('tapas')}>Estado de tapas</button>
+        </div>
+      )}
 
       {modo === 'fugas' ? (
         <div className="rack-tabs">
@@ -164,7 +174,7 @@ export default function Fugas({
         </div>
       ) : (
         <>
-          <div className="lado-seg">
+          {!ladoFijo && <div className="lado-seg">
             {LADOS.map((l) => (
               <button
                 key={l.codigo}
@@ -175,7 +185,7 @@ export default function Fugas({
                 <small>{tapasPorLado(l.codigo)} tapas</small>
               </button>
             ))}
-          </div>
+          </div>}
 
           <div className="avance">
             <div className="avance-top">

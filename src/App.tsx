@@ -172,7 +172,8 @@ export default function App() {
         {vista === 'aviso' && <AvisoForm onSaved={() => setVista('guardados')} />}
         {vista === 'andamio' && <AndamioForm onSaved={() => setVista('guardados')} onCrearSubsecuente={() => setVista('aviso')} />}
         {vista === 'fugas' && <Fugas />}
-        {vista === 'tapas' && <Fugas modoInicial="tapas" actividad={actAbierta?.tipo === 'tapa' ? actAbierta.id : 'retiro_tapas_alim'} titulo={actAbierta?.tipo === 'tapa' ? actAbierta.nombre.toUpperCase() : undefined} />}
+        {vista === 'tapas' && <Fugas modoInicial="tapas" actividad={actAbierta?.tipo === 'tapa' ? actAbierta.id : 'retiro_tapas_alim'} titulo={actAbierta?.tipo === 'tapa' ? actAbierta.nombre.toUpperCase() : undefined}
+          ladoFijo={actAbierta?.tipo === 'tapa' ? actAbierta.lados[0] : undefined} />}
         {vista === 'outage' && <Outage onAbrir={(a: Actividad) => {
           setActAbierta(a)
           setVolverA('outage')
