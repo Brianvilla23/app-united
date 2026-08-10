@@ -138,39 +138,93 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
   )
 }
 
-// --- los 40 manifolds: 10 filas × 4 columnas, 1 y 4 en los extremos ---
-const MW = 360, COL_X = [30, 140, 200, 310], FILA_H = 30, MY0 = 34
+// --- los 40 manifolds, dibujados como en el plano ---
+// Verificado contra "Manifold pvc lado descarga enumerados.pdf": columna verde
+// central, y por fila una barra azul (el manifold PVC) con sus brazos y el
+// tubing celeste con americana amarilla saliendo por detrás de cada brazo.
+const MW = 420
+const FILA_H = 46, MY0 = 40
+const COL_VERDE_W = 22
+const BARRA_H = 13
+const BRAZOS = 4
+
+const VERDE_MF = '#00b050'
+const VERDE_BORDE = '#4d7c2a'
+const AZUL_MF = '#1a71a8'
+const CELESTE = '#29b6f6'
+const AMARILLO = '#f5b301'
+const MORADO = '#7b3fa0'
 
 function Manifolds({
   hechos, onTocar, espejo,
 }: { hechos: Set<string>; onTocar: (id: string) => void; espejo: boolean }) {
-  const alto = MY0 + FILAS_MANIFOLD.length * FILA_H + 14
-  const x = (col: number) => COL_X[espejo ? 4 - col : col - 1]
+  const alto = MY0 + FILAS_MANIFOLD.length * FILA_H + 16
+  const cxVerde = MW / 2
+  // columnas: 1 y 4 en los extremos, 2 y 3 pegadas a la columna verde
+  const anchoBarra = 78
+  const xIni = (col: number) => {
+    const c = espejo ? 5 - col : col
+    if (c === 1) return 26
+    if (c === 2) return cxVerde - COL_VERDE_W / 2 - anchoBarra - 6
+    if (c === 3) return cxVerde + COL_VERDE_W / 2 + 6
+    return MW - 26 - anchoBarra
+  }
 
   return (
     <div className="fugas-scroll">
       <svg viewBox={`0 0 ${MW} ${alto}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
-        <text x={(x(1) + x(2)) / 2} y={20} textAnchor="middle" fontSize={11} fontWeight={800} fill="#0f172a">
+        <text x={(xIni(1) + xIni(2) + anchoBarra) / 2} y={20} textAnchor="middle" fontSize={11} fontWeight={800} fill="#0f172a">
           SEMI RACK {espejo ? 'A' : 'B'}
         </text>
-        <text x={(x(3) + x(4)) / 2} y={20} textAnchor="middle" fontSize={11} fontWeight={800} fill="#0f172a">
+        <text x={(xIni(3) + xIni(4) + anchoBarra) / 2} y={20} textAnchor="middle" fontSize={11} fontWeight={800} fill="#0f172a">
           SEMI RACK {espejo ? 'B' : 'A'}
         </text>
 
-        {FILAS_MANIFOLD.map((f, i) => (
-          <text key={'f' + f} x={10} y={MY0 + i * FILA_H + 18} fontSize={9} fontWeight={700} fill="#64748b">{f}</text>
-        ))}
+        {/* columna verde central: el manifold principal */}
+        <rect x={cxVerde - COL_VERDE_W / 2} y={MY0 - 12} width={COL_VERDE_W} height={alto - MY0 - 2}
+          fill={VERDE_MF} stroke={VERDE_BORDE} strokeWidth={1.2} />
+        <ellipse cx={cxVerde} cy={MY0 - 12} rx={COL_VERDE_W / 2} ry={4}
+          fill="#7fd8a0" stroke={VERDE_BORDE} strokeWidth={1.2} />
 
-        {MANIFOLDS.map((m) => {
-          const i = FILAS_MANIFOLD.indexOf(m.fila as typeof FILAS_MANIFOLD[number])
-          const cx = x(m.col), cy = MY0 + i * FILA_H + 13
-          const on = hechos.has(m.id)
+        {FILAS_MANIFOLD.map((f, i) => {
+          const y = MY0 + i * FILA_H + FILA_H / 2
           return (
-            <g key={m.id} onClick={() => onTocar(m.id)} style={{ cursor: 'pointer' }}>
-              <rect x={cx - 24} y={cy - 10} width={48} height={20} rx={5}
-                fill={on ? HECHO : '#fff'} stroke={on ? '#15803d' : '#b9c2cd'} strokeWidth={1.6} />
-              <text x={cx} y={cy + 4} textAnchor="middle" fontSize={9.5} fontWeight={700}
-                fill={on ? '#052e16' : '#0f172a'}>{m.id}</text>
+            <g key={'fila' + f}>
+              {/* tramo verde que une la columna con cada manifold interior */}
+              <rect x={cxVerde - COL_VERDE_W / 2 - 8} y={y - BARRA_H / 2} width={8} height={BARRA_H} fill={VERDE_MF} />
+              <rect x={cxVerde + COL_VERDE_W / 2} y={y - BARRA_H / 2} width={8} height={BARRA_H} fill={VERDE_MF} />
+
+              {MANIFOLDS.filter((m) => m.fila === f).map((m) => {
+                const x0 = xIni(m.col)
+                const on = hechos.has(m.id)
+                const relleno = on ? HECHO : AZUL_MF
+                const borde = on ? '#15803d' : VERDE_BORDE
+                return (
+                  <g key={m.id} onClick={() => onTocar(m.id)} style={{ cursor: 'pointer' }}>
+                    {/* barra del manifold */}
+                    <rect x={x0} y={y - BARRA_H / 2} width={anchoBarra} height={BARRA_H}
+                      fill={relleno} stroke={borde} strokeWidth={1.4} />
+                    {/* brazos + tubing por detrás de cada brazo */}
+                    {Array.from({ length: BRAZOS }).map((_, k) => {
+                      const bx = x0 + 9 + k * ((anchoBarra - 18) / (BRAZOS - 1))
+                      return (
+                        <g key={k}>
+                          <rect x={bx - 4} y={y - BARRA_H / 2 - 5} width={8} height={BARRA_H + 10}
+                            fill={relleno} stroke={borde} strokeWidth={1.1} />
+                          {/* tubing: sale por detrás del brazo */}
+                          <rect x={bx - 1.6} y={y - BARRA_H / 2 - 15} width={3.2} height={10} fill={CELESTE} />
+                          <rect x={bx - 9} y={y - BARRA_H / 2 - 18} width={9} height={3.2} fill={CELESTE} />
+                          <circle cx={bx} cy={y - BARRA_H / 2 - 6} r={2.4} fill={MORADO} />
+                          <circle cx={bx - 10} cy={y - BARRA_H / 2 - 16.4} r={2.6} fill={AMARILLO} />
+                        </g>
+                      )
+                    })}
+                    {/* código, bajo la barra */}
+                    <text x={x0 + anchoBarra / 2} y={y + BARRA_H / 2 + 12} textAnchor="middle"
+                      fontSize={10} fontWeight={800} fill={on ? '#15803d' : '#b91c1c'}>{m.id}</text>
+                  </g>
+                )
+              })}
             </g>
           )
         })}
