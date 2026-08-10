@@ -283,3 +283,10 @@ textarea { resize: vertical; }
 .act-bar span { display: block; height: 100%; background: #22c55e; border-radius: 3px; }
 .act-pct { flex-shrink: 0; font-size: 13px; font-weight: 800; color: var(--ink); margin-top: 1px; }
 .act.bloqueada .act-pct { color: var(--muted); }
+
+/* campo de shim en la instalación de tapas */
+.shim { margin-top: 12px; background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; }
+.shim label { display: block; font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.shim-campo { display: flex; align-items: center; gap: 8px; }
+.shim-campo input { flex: 1; font-size: 18px; font-weight: 700; text-align: center; padding: 10px; }
+.shim-campo span { font-size: 14px; font-weight: 700; color: var(--muted); }

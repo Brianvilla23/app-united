@@ -167,6 +167,8 @@ export async function pullTapas(): Promise<void> {
         segurosAgripados: (r.seguros_agripados as number[] | null) ?? [],
         pernosRodados: (r.pernos_rodados as number[] | null) ?? [],
         aislada: !!r.aislada,
+        tapon: !!r.tapon,
+        shimMm: (r.shim_mm as number | null) ?? null,
         creadoPor: r.creado_por ?? '',
         createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
         sincronizado: true,

@@ -171,9 +171,18 @@ export interface TapaEstado {
   segurosAgripados: number[]
   pernosRodados: number[]
   aislada: boolean
+  /** Solo en la instalación de alimentación: tapón al centro del orificio. */
+  tapon?: boolean
+  /** Solo en la instalación: graduación del shim, en milímetros. */
+  shimMm?: number | null
   creadoPor: string
   createdAt: number
   sincronizado: boolean
+}
+
+/** La instalación de tapas pide tapón central y shim; el retiro no. */
+export function esInstalacion(actividad: string): boolean {
+  return actividad.startsWith('instalacion_tapas')
 }
 
 export function tapaId(actividad: string, lado: LadoRack, rack: number, vasija: string): string {

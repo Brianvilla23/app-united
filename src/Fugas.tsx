@@ -9,7 +9,7 @@ import {
   type ComponenteFuga, type Vista,
 } from './rackLayout'
 import {
-  ESTADOS_TAPA, LADOS, RACK_TAPAS, defEstadoTapa, estadoTapaDe, resumirTapas, tapaId,
+  ESTADOS_TAPA, LADOS, RACK_TAPAS, defEstadoTapa, estadoTapaDe, esInstalacion, resumirTapas, tapaId,
   PERNOS_POR_TAPA, SEGUROS_POR_TAPA,
   type TapaEstado, type LadoRack,
 } from './types'
@@ -81,6 +81,7 @@ export default function Fugas({
     const base: TapaEstado = cur ?? {
       id, actividad, lado, rack, vasija,
       tapaAgripada: false, segurosAgripados: [], pernosRodados: [], aislada: false,
+      tapon: false, shimMm: null,
       creadoPor: yo, createdAt: Date.now(), sincronizado: false,
     }
     const next: TapaEstado = { ...base, ...patch, id, actividad, lado, rack, vasija, creadoPor: yo, sincronizado: false }
@@ -91,6 +92,8 @@ export default function Fugas({
       seguros_agripados: next.segurosAgripados,
       pernos_rodados: next.pernosRodados,
       aislada: next.aislada,
+      tapon: next.tapon ?? false,
+      shim_mm: next.shimMm ?? null,
       creado_por: yo,
     })
     await registrar('tapa', lado, rack, vasija, 'actualizó tapa', describirTapa(next))
@@ -383,10 +386,24 @@ export default function Fugas({
                   )
                 })}
 
-                {/* puerto de permeado (centro) */}
-                <circle cx={C} cy={C} r={26} fill="#2b2f33" pointerEvents="none" />
-                <circle cx={C} cy={C} r={19} fill="none" stroke="#dc2626" strokeWidth={6} pointerEvents="none" />
-                <circle cx={C} cy={C} r={9} fill="#0f172a" pointerEvents="none" />
+                {/* puerto de permeado (centro). En la instalación es el TAPÓN
+                    y se toca para marcarlo puesto. */}
+                {esInstalacion(actividad) ? (
+                  <g onClick={() => void updateTapa(selTapa, { tapon: !(rec?.tapon ?? false) })} style={{ cursor: 'pointer' }}>
+                    <circle cx={C} cy={C} r={27} fill={rec?.tapon ? '#15803d' : '#2b2f33'} />
+                    <circle cx={C} cy={C} r={19} fill="none" stroke={rec?.tapon ? '#86efac' : '#dc2626'} strokeWidth={6} />
+                    {rec?.tapon
+                      ? <path d={`M ${C - 8} ${C} l 5 5.5 l 10.5 -11`} fill="none" stroke="#fff" strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round" />
+                      : <circle cx={C} cy={C} r={9} fill="#0f172a" />}
+                    <text x={C} y={C + 46} textAnchor="middle" fontSize={10} fontWeight={800} fill={rec?.tapon ? '#15803d' : '#64748b'}>TAPÓN</text>
+                  </g>
+                ) : (
+                  <>
+                    <circle cx={C} cy={C} r={26} fill="#2b2f33" pointerEvents="none" />
+                    <circle cx={C} cy={C} r={19} fill="none" stroke="#dc2626" strokeWidth={6} pointerEvents="none" />
+                    <circle cx={C} cy={C} r={9} fill="#0f172a" pointerEvents="none" />
+                  </>
+                )}
 
                 {/* 3 pernos parker */}
                 {Array.from({ length: PERNOS_POR_TAPA }).map((_, i) => {
@@ -424,8 +441,27 @@ export default function Fugas({
                 {est && <> · Estado: <b style={{ color: defEstadoTapa(est).color }}>{defEstadoTapa(est).nombre}</b></>}
               </div>
 
+              {esInstalacion(actividad) && (
+                <div className="shim">
+                  <label>Graduación de shim</label>
+                  <div className="shim-campo">
+                    <input
+                      type="number" inputMode="decimal" step="0.5" min="0"
+                      value={rec?.shimMm ?? ''}
+                      placeholder="0"
+                      onChange={(e) => void updateTapa(selTapa, {
+                        shimMm: e.target.value === '' ? null : Number(e.target.value),
+                      })}
+                    />
+                    <span>mm</span>
+                  </div>
+                </div>
+              )}
+
               <div className="row" style={{ marginTop: 12, gap: 8 }}>
-                <button className="btn" style={{ flex: 2, borderColor: '#16a34a', color: '#15803d' }} onClick={() => void updateTapa(selTapa, { tapaAgripada: false, segurosAgripados: [], pernosRodados: [], aislada: false })}>Marcar retirada OK</button>
+                <button className="btn" style={{ flex: 2, borderColor: '#16a34a', color: '#15803d' }} onClick={() => void updateTapa(selTapa, { tapaAgripada: false, segurosAgripados: [], pernosRodados: [], aislada: false })}>
+                  {esInstalacion(actividad) ? 'Marcar instalada OK' : 'Marcar retirada OK'}
+                </button>
                 <button className="btn ghost" onClick={() => { void limpiarTapa(selTapa); setSelTapa(null) }}>Limpiar</button>
               </div>
             </div>
