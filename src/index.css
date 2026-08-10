@@ -41,6 +41,10 @@ img, svg { max-width: 100%; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand b { font-size: 16px; font-weight: 700; display: block; line-height: 1.15; }
 .brand small { font-size: 11px; color: #94a3b8; display: block; }
+.brand-logo {
+  height: 26px; width: auto; display: block;
+  background: #fff; border-radius: 6px; padding: 3px 5px;
+}
 .net { font-size: 11.5px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
 .net.on { background: rgba(13,148,136,.22); color: #5eead4; }
 .net.off { background: rgba(217,119,6,.22); color: #fcd34d; }
@@ -177,6 +181,26 @@ textarea { resize: vertical; }
 .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .modal-head b { font-size: 17px; }
 .modal-x { border: none; background: #f1f5f9; width: 30px; height: 30px; border-radius: 50%; font-size: 13px; color: var(--muted); cursor: pointer; }
+
+/* piezas de un manifold: una fila por vasija con sus chips */
+.piezas { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.pieza-fila { display: flex; align-items: center; gap: 8px; }
+.pieza-fila b { width: 46px; flex-shrink: 0; font-size: 13px; font-weight: 800; color: var(--ink); }
+.pieza-chip {
+  flex: 1; font-family: inherit; font-size: 13px; font-weight: 600; padding: 9px 10px;
+  border: 1.5px solid var(--border); border-radius: 10px; background: #f8fafc;
+  color: var(--muted); cursor: pointer;
+}
+.pieza-chip.on { border-color: #16a34a; background: rgba(34,197,94,.12); color: #15803d; }
+.pieza-chip.on::before { content: '✓ '; font-weight: 800; }
+.pieza-chip.fuga { border-color: #8a6d03; background: rgba(240,180,0,.18); color: #7a5f00; }
+.pieza-chip.fuga::before { content: '● '; font-weight: 800; }
+
+/* venteos de la prueba de presión: son del semi rack, no de una vasija */
+.venteos-prueba { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px; margin-top: 10px; }
+.venteos-prueba > b { display: block; font-size: 12px; font-weight: 800; letter-spacing: .5px; color: var(--ink); margin-bottom: 8px; }
+.venteos-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.venteos-chips .pieza-chip { flex: 1 1 45%; }
 
 .comp-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .comp-btn { display: flex; align-items: center; gap: 9px; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: 11px; background: #f8fafc; font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer; }

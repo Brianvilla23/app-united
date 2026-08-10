@@ -3,10 +3,10 @@
 // está bloqueado por lo que falta terminar antes.
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
-import { RACK_TAPAS, estaExtraida } from './types'
+import { RACK_TAPAS, estaExtraida, type DatosManifold } from './types'
 import { TOTAL_VASIJAS } from './rackLayout'
 import {
-  ACTIVIDADES, TIPOS_LISTOS, estaBloqueada, itemsDe,
+  ACTIVIDADES, TIPOS_LISTOS, estaBloqueada, itemsDe, resumirManifold,
   type Actividad, type TipoDiagrama,
 } from './actividades'
 
@@ -32,6 +32,15 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
       return Math.round((hechas / TOTAL_VASIJAS) * 1000) / 10
     }
     const act = ACTIVIDADES.find((a) => a.id === id)
+    if (act?.partes) {
+      // acá el avance son las piezas puestas, no los manifolds terminados
+      const propios = itemsAv.filter((i) => i.actividad === id)
+      const hechas = propios.reduce(
+        (n, i) => n + resumirManifold(i.item, act.partes!, i.datos as DatosManifold).hechas, 0,
+      )
+      const total = itemsDe(act)
+      return total > 0 ? Math.round((hechas / total) * 1000) / 10 : 0
+    }
     if (act) {
       const hechos = itemsAv.filter((i) => i.actividad === id && i.hecho).length
       const total = itemsDe(act)

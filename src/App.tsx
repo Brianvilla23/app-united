@@ -11,10 +11,11 @@ import Fugas from './Fugas'
 import Outage from './Outage'
 import Venteos from './Venteos'
 import PlanoActividad from './PlanoActividad'
-import type { Actividad } from './actividades'
+import Pruebas from './Pruebas'
+import { ACTIVIDADES, type Actividad } from './actividades'
 import { fechaLarga } from './fecha'
 
-type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'guardados'
+type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'guardados'
 
 const TITULOS: Record<Vista, string> = {
   menu: 'App United',
@@ -25,6 +26,7 @@ const TITULOS: Record<Vista, string> = {
   outage: 'Outage Rack 12',
   venteos: 'Cambio de venteos',
   actividad: 'Actividad del outage',
+  prueba: 'Prueba de presión',
   guardados: 'Guardados',
 }
 
@@ -42,6 +44,19 @@ function OfflineDot() {
       {pendientes > 0 && <span className="net off">↑ {pendientes} por subir</span>}
       <span className={'net ' + (online ? 'on' : 'off')}>{online ? '● en línea' : '● offline'}</span>
     </span>
+  )
+}
+
+// El logo real de United, extraído de la plantilla del programa semanal
+// (`Plantilla_Maestra_MN55-M04.xls`). Va sobre una placa blanca porque el
+// isotipo es rojo sobre blanco: sobre el azul de la barra el rojo queda apagado
+// y la barra gris del logo desaparece.
+function Marca() {
+  return (
+    <div className="brand">
+      <img className="brand-logo" src="./united.png" alt="United" />
+      <div><b>App United</b><small>Planta Desaladora · Coloso</small></div>
+    </div>
   )
 }
 
@@ -105,7 +120,7 @@ function Menu({ go }: { go: (v: Vista) => void }) {
         </button>
         <button className="menu-card" onClick={() => go('outage')}>
           <span className="mc-ico" style={{ background: 'rgba(37,99,235,.1)' }}>🗓️</span>
-          <span className="mc-txt"><b>Outage Rack 12</b><small>Secuencia completa · 15 actividades</small></span>
+          <span className="mc-txt"><b>Outage Rack 12</b><small>Secuencia completa · {ACTIVIDADES.length} actividades</small></span>
           <span className="mc-arrow">›</span>
         </button>
         <button className="menu-card" onClick={() => go('guardados')}>
@@ -156,10 +171,7 @@ export default function App() {
     return (
       <div className="app">
         <header className="topbar">
-          <div className="brand">
-            <img src="./favicon.png" alt="" width={30} height={30} style={{ borderRadius: 8 }} />
-            <div><b>App United</b><small>Planta Desaladora · Coloso</small></div>
-          </div>
+          <Marca />
         </header>
         <main className="main"><QuienEres inicial={yo} onListo={confirmarNombre} /></main>
       </div>
@@ -170,10 +182,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         {vista === 'menu' ? (
-          <div className="brand">
-            <img src="./favicon.png" alt="" width={30} height={30} style={{ borderRadius: 8 }} />
-            <div><b>App United</b><small>Planta Desaladora · Coloso</small></div>
-          </div>
+          <Marca />
         ) : (
           <button className="back" onClick={() => window.history.back()}>‹ {TITULOS[vista]}</button>
         )}
@@ -192,10 +201,14 @@ export default function App() {
           ladoFijo={actAbierta?.tipo === 'tapa' ? actAbierta.lados[0] : undefined} />}
         {vista === 'outage' && <Outage onAbrir={(a: Actividad) => {
           setActAbierta(a)
-          irA(a.tipo === 'tapa' ? 'tapas' : a.tipo === 'venteo' ? 'venteos' : 'actividad', 'outage')
+          irA(a.tipo === 'tapa' ? 'tapas'
+            : a.tipo === 'venteo' ? 'venteos'
+            : a.tipo === 'fugas' ? 'prueba'
+            : 'actividad', 'outage')
         }} />}
         {vista === 'venteos' && <Venteos actividad="cambio_venteo" />}
         {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} />}
+        {vista === 'prueba' && actAbierta && <Pruebas actividad={actAbierta} />}
         {vista === 'guardados' && <Guardados />}
       </main>
       <footer className="app-foot">App United v0.2 · uso interno</footer>

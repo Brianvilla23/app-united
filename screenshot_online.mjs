@@ -2,7 +2,12 @@ import { chromium } from 'playwright'
 
 const browser = await chromium.launch()
 // contexto nuevo = sin caché ni service worker viejo, como una ventana incógnito
-const page = await browser.newPage({ viewport: { width: 400, height: 840 }, deviceScaleFactor: 2 })
+const ctx = await browser.newContext({ viewport: { width: 400, height: 840 }, deviceScaleFactor: 2 })
+// La publicada escribe en la base real de la cuadrilla: se corta Supabase para
+// que revisar la app no le meta marcas falsas al rack.
+await ctx.route('**://*.supabase.co/**', (r) => r.abort())
+await ctx.addInitScript(() => localStorage.setItem('united_quien_soy', 'B. Villalobos'))
+const page = await ctx.newPage()
 await page.goto('https://brianvilla23.github.io/app-united/', { waitUntil: 'networkidle' })
 await page.waitForTimeout(2000)
 const tieneTapas = await page.getByText('Estado de tapas').count()

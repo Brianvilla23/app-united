@@ -47,12 +47,15 @@ export interface PlanoRackProps {
   onVasija?: (id: string) => void
   /** modo 'simple': ids ya marcados como hechos */
   hechos?: Set<string>
+  /** modo 'simple': color propio por vasija, cuando no alcanza con hecho/pendiente
+      (las pruebas de presión distinguen revisada sin fuga de revisada con fuga) */
+  colores?: Map<string, { color: string; texto: string }>
   /** true cuando se dibuja para el PDF: sin cursor ni handlers */
   paraPdf?: boolean
 }
 
 export default function PlanoRack({
-  modo, vista, espejo, tapaRec, porVasija, onVasija, hechos, paraPdf = false,
+  modo, vista, espejo, tapaRec, porVasija, onVasija, hechos, colores, paraPdf = false,
 }: PlanoRackProps) {
   const vb = viewBoxPara(vista, espejo)
   const vDib = vistaDibujo(vista, espejo)
@@ -115,8 +118,8 @@ export default function PlanoRack({
         const rec = tapaRec.get(celda.id)
         const simpleHecho = modo === 'simple' && hechos?.has(celda.id)
         const tc = modo === 'tapas' && rec ? defEstadoTapa(estadoTapaDe(rec))
-          : simpleHecho ? { color: '#22c55e', texto: '#052e16' }
-          : undefined
+          : colores?.get(celda.id)
+          ?? (simpleHecho ? { color: '#22c55e', texto: '#052e16' } : undefined)
         return (
           <g
             key={celda.id}

@@ -1,5 +1,5 @@
 # App United — Estado del proyecto
-_Última actualización: 25-07-2026_
+_Última actualización: 10-08-2026_
 
 App móvil (PWA) para los supervisores de la Planta Desaladora United, Coloso.
 Funciona offline en planta y se instala en el celular sin tienda de apps.
@@ -133,6 +133,78 @@ cuando exista el módulo de login hay que cambiarlas por políticas con `auth.ui
 
 ---
 
+## 9. Outage Rack 12 — la secuencia completa ✅ (29-07 al 10-08-2026)
+
+Pestaña propia con **las 16 actividades del outage en su orden de ejecución**
+(fuente: hojas manuscritas de Brayan + planos de Planificación, en
+`src/actividades.ts`). Cada una muestra su avance y su diagrama; el candado
+**avisa** el orden pero no lo impone, porque en terreno las cuadrillas se
+traslapan y la app no puede impedir registrar lo ya hecho.
+
+Todo el avance vive en **una sola tabla**, `avance_item` (`sql/03`), con
+`datos jsonb` libre para lo particular de cada actividad. Agregar una actividad
+es elegir su tipo en el catálogo, no programar una pantalla.
+
+| Tipo de diagrama | Qué dibuja |
+|---|---|
+| `tapa` | plano de 295 con seguros y pernos (reusa el módulo de tapas) |
+| `simple` | plano de 295, se toca y queda hecho |
+| `manifold` | los 40 manifolds sobre el plano real |
+| `venteo` | los 6 venteos del rack |
+| `fugas` | pruebas de presión de baja y alta |
+
+### Manifolds: el diagrama ES el plano
+Redibujarlo a mano nunca iba a quedar idéntico, así que la app muestra el PDF
+de Planificación recortado y cuantizado (`public/manifold_descarga.png`, 83 KB)
+con las 40 zonas tocables encima. El SVG vectorial del plano pesaba 1,17 MB.
+
+### Detalle de manifold: stub end y tubing por vasija ✅ (10-08)
+Tocar un manifold en **Codificación** o en **Instalación de manifold** abre su
+detalle: el recorte del plano ampliado, con el stub end (ámbar) y el tubing
+(celeste) de cada vasija marcables uno por uno, más la barra completa.
+
+- Las zonas **no se estimaron a ojo**: `scripts/gen_manifold.py` las saca de la
+  geometría vectorial del PDF filtrando por color de relleno, y genera
+  `src/manifoldDetalle.ts` + `public/manifold_detalle.png` (28 KB).
+- El plano trae hasta 4 copias encimadas de cada pieza (copia-pega del CAD).
+  Deduplicadas dan **295 tubing y 295 stub end: una por vasija del rack**, y el
+  script lo verifica en los 40 manifolds antes de escribir nada.
+- Por eso cada pieza sabe a qué vasija sirve: en terreno se marca "el tubing de
+  la D14", no "el tercero de la izquierda". La fórmula de nombrado
+  (`vasijaDeParte`) se comparó pieza por pieza contra la del generador.
+- Los 40 manifolds se dibujan igual salvo qué vasijas existen en su fila y de
+  qué lado queda la columna verde: **7 recortes cubren los 40**.
+- El avance cuenta **piezas y no manifolds** — instalar los 295 stub end es
+  trabajo real y tenía que verse en la barra. Instalación = 630 piezas,
+  codificación = 335.
+- Al marcar se lee de la base dentro de la transacción y no de la pantalla: dos
+  toques seguidos se pisaban y se perdía la primera marca.
+- ⚠️ Si en `codificacion` quedó algún ítem viejo con `hecho: true` y
+  `datos: {}` (del modo anterior, marcar el manifold entero), se ve verde pero
+  aporta 0 a la barra de piezas. Hoy no hay ninguno así.
+
+### Pruebas de presión ✅ (10-08)
+`prueba_baja` y `prueba_alta` tienen su propio diagrama — **no** el módulo de
+fugas del rack, que marca victaulic y sideports del spool, que no es lo que se
+revisa acá. Cada vasija queda **sin revisar · revisada sin fuga (verde) · con
+fuga (amarillo)**, y al abrirla se marca dónde filtra:
+
+- **Baja**: tapón, tapa, interconector.
+- **Alta**: esos tres y, solo en descarga, manifold, stub end y tubing.
+- Los **venteos van aparte** porque son del semi rack y no de una vasija: fila
+  propia bajo el plano, con los del lado que se esté revisando.
+- Supuesto a confirmar con Brayan: se ofrecen **todos** los venteos del lado en
+  las dos pruebas (en descarga son 4: 2 de alta y 2 de baja).
+
+### ⚠️ El local escribe en la base REAL
+`src/supabase.ts` trae la URL y la clave anon fijas, así que `npm run dev`
+sincroniza contra la base que usa la cuadrilla en planta. `screenshot.mjs` y
+`screenshot_online.mjs` cortan Supabase (`ctx.route(...supabase.co...)`) y dejan
+el nombre puesto: **cualquier script nuevo tiene que hacer lo mismo** o deja
+marcas falsas sobre el rack.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
@@ -149,6 +221,9 @@ cuando exista el módulo de login hay que cambiarlas por políticas con `auth.ui
   marcas por parada.
 - **Falta marcar la vasija aislada**: Brayan dijo que hay 1, pero no cuál.
   Se marca desde el detalle de la tapa → "Marcar vasija aislada".
+- **Qué actividad hay que eliminar del outage**: Brayan dijo que sobra una de
+  las 16, pero quedó sin decir cuál. Se saca de `ACTIVIDADES` en
+  `src/actividades.ts` (el contador del menú y del outage ya son automáticos).
 - Módulos que faltan del mapa original: entrega de turno, reporte de equipo,
   plan de semana, mantenciones futuras, login.
 
@@ -157,6 +232,11 @@ cuando exista el módulo de login hay que cambiarlas por políticas con `auth.ui
 ## 🛠 Notas técnicas
 - **Stack**: Vite + React + TypeScript · Dexie/IndexedDB (offline) · jsPDF ·
   vite-plugin-pwa · Supabase (sync) · deploy con `npm run deploy` a GitHub Pages.
+- **Identidad visual**: paleta corporativa United en `index.css`
+  (`--united-rojo #e1251b`, `--united-gris #7f7f7f`) y el logo real en la barra
+  superior (`public/united.png`, sacado de `Plantilla_Maestra_MN55-M04.xls`).
+  Va sobre placa blanca: el isotipo es rojo sobre blanco y en el azul de la
+  barra el rojo se apaga y la barra gris del logo desaparece.
 - **Claude puede ver la app**: Playwright instalado. `node screenshot.mjs` saca
   captura del local; `screenshot_online.mjs`, de la versión publicada.
   Regla aprendida: **capturar y mirar antes de decir que está listo.**

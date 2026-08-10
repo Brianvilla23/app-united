@@ -89,6 +89,16 @@ export function itemId(actividad: string, lado: LadoRack, item: string): string 
   return `${actividad}-${lado}-${item}`
 }
 
+/** `datos` de un manifold: qué piezas suyas ya están puestas.
+    Stub end y tubing van por vasija, el manifold es la barra completa.
+    Va como `type` y no como `interface` para que entre en el `datos:
+    Record<string, unknown>` de ItemAvance. */
+export type DatosManifold = {
+  stubend?: string[]
+  tubing?: string[]
+  manifold?: boolean
+}
+
 // Registro de quién tocó qué y cuándo (trazabilidad del rack compartido).
 export interface HistorialItem {
   id: string

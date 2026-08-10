@@ -27,3 +27,6 @@ shot_*.png
 
 # Respaldos de la base: datos de operación de planta, el repo es público
 respaldos/
+
+# Capturas de revisión: se regeneran con `node screenshot.mjs`
+ver_*.png
