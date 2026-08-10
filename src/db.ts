@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Aviso, Andamio, MarcaFuga, TapaEstado, OutboxItem, HistorialItem } from './types'
+import type { Aviso, Andamio, MarcaFuga, TapaEstado, OutboxItem, HistorialItem, ItemAvance } from './types'
 
 export class UnitedDB extends Dexie {
   avisos!: Table<Aviso, string>
@@ -7,6 +7,7 @@ export class UnitedDB extends Dexie {
   marcas!: Table<MarcaFuga, string>
   tapas!: Table<TapaEstado, string>
   historial!: Table<HistorialItem, string>
+  items!: Table<ItemAvance, string>
   outbox!: Table<OutboxItem, string>
 
   constructor() {
@@ -92,6 +93,17 @@ export class UnitedDB extends Dexie {
         lado: 'alimentacion',
         aislada: false,
       })))
+    })
+    // v13: tabla genérica para las actividades del outage que no son tapas
+    // (venteos, manifold, pasos simples). Solo agrega, no toca lo existente.
+    this.version(13).stores({
+      avisos: 'id, folio, createdAt, estado, sincronizado',
+      andamios: 'id, folio, createdAt, sincronizado',
+      marcas: 'id, rack, vasija, componente, createdAt, [rack+vasija+componente]',
+      tapas: 'id, lado, rack, vasija, [lado+rack+vasija]',
+      historial: 'id, rack, vasija, createdAt, tipo',
+      items: 'id, actividad, lado, item, [actividad+lado]',
+      outbox: 'id, createdAt, tabla',
     })
   }
 }

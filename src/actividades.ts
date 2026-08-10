@@ -35,24 +35,24 @@ export const MANIFOLDS_POR_LADO = 40
 
 export const ACTIVIDADES: Actividad[] = [
   {
+    id: 'retiro_tapas_alim',
+    nombre: 'Retiro de tapas · alimentación',
+    tipo: 'tapa',
+    lados: ['alimentacion'],
+  },
+  {
     id: 'codificacion',
     nombre: 'Codificación de manifold y tubing',
     tipo: 'manifold',
     lados: ['descarga'],
     pasos: ['Codificar manifold', 'Codificar tubing'],
-    nota: 'Va primero: hay que codificar antes de desarmar.',
+    nota: 'Después de retirar las tapas de alimentación y antes de desarmar.',
   },
   {
     id: 'retiro_manifold',
     nombre: 'Retiro de manifold',
     tipo: 'manifold',
     lados: ['descarga'],
-  },
-  {
-    id: 'retiro_tapas_alim',
-    nombre: 'Retiro de tapas · alimentación',
-    tipo: 'tapa',
-    lados: ['alimentacion'],
   },
   {
     id: 'retiro_membrana',
@@ -147,7 +147,7 @@ export function itemsDe(a: Actividad): number {
 }
 
 /** Diagramas ya construidos. El resto se muestra pero todavía no se puede abrir. */
-export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa']
+export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo']
 
 // --- los 6 venteos del rack ---
 // 2 en alimentación (uno por semi rack, al medio), 2 en descarga, y 2 más

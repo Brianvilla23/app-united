@@ -2,7 +2,7 @@ import { db } from './db'
 import { supabase } from './supabase'
 import { uuid } from './util'
 import { quienSoy } from './identidad'
-import { tapaId } from './types'
+import { tapaId, itemId } from './types'
 import type { Aviso, Andamio, TablaOutbox, HistorialItem, LadoRack } from './types'
 
 // ---------- historial (trazabilidad) ----------
@@ -107,6 +107,12 @@ async function subirPendientes(): Promise<boolean> {
       } else if (it.tabla === 'tapas_delete') {
         ({ error } = await supabase.from('estado_tapas').delete()
           .match({ lado: it.payload.lado, rack: it.payload.rack, vasija: it.payload.vasija }))
+      } else if (it.tabla === 'item_upsert') {
+        ({ error } = await supabase.from('avance_item').upsert(it.payload))
+        if (!error) {
+          const id = itemId(it.payload.actividad as string, it.payload.lado as LadoRack, String(it.payload.item))
+          await db.items.update(id, { sincronizado: true })
+        }
       } else if (it.tabla === 'historial') {
         // upsert por id: si la respuesta se perdió, el reintento no duplica
         ({ error } = await supabase.from('historial').upsert(it.payload))
@@ -189,12 +195,33 @@ export async function pullHistorial(): Promise<void> {
   })
 }
 
+export async function pullItems(): Promise<void> {
+  if (!navigator.onLine) return
+  if (await db.outbox.where('tabla').equals('item_upsert').count() > 0) return
+  const { data, error } = await supabase.from('avance_item').select('*')
+  if (error || !data) return
+  await db.transaction('rw', db.items, async () => {
+    await db.items.clear()
+    await db.items.bulkAdd(data.map((r) => ({
+      id: itemId(r.actividad, r.lado, r.item),
+      actividad: r.actividad,
+      lado: r.lado,
+      item: r.item,
+      hecho: !!r.hecho,
+      datos: (r.datos as Record<string, unknown>) ?? {},
+      creadoPor: r.creado_por ?? '',
+      createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
+      sincronizado: true,
+    })))
+  })
+}
+
 // ---------- ciclo de sincronización ----------
 
 let iniciado = false
 
 function ciclo(): void {
-  void drenar().then(() => { void pullMarcas(); void pullTapas(); void pullHistorial() })
+  void drenar().then(() => { void pullMarcas(); void pullTapas(); void pullHistorial(); void pullItems() })
 }
 
 export function iniciarSync(): void {

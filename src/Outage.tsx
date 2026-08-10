@@ -20,6 +20,7 @@ const ETIQUETA_TIPO: Record<TipoDiagrama, string> = {
 
 export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void }) {
   const tapas = useLiveQuery(() => db.tapas.toArray(), []) ?? []
+  const itemsAv = useLiveQuery(() => db.items.toArray(), []) ?? []
 
   // Avance por actividad. Hoy solo el retiro de tapas de alimentación tiene
   // datos reales; el resto queda en 0 hasta que se construya su diagrama.
@@ -29,6 +30,12 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
         (t) => t.rack === RACK_TAPAS && t.lado === 'alimentacion' && estaExtraida(t),
       ).length
       return Math.round((hechas / TOTAL_VASIJAS) * 1000) / 10
+    }
+    const act = ACTIVIDADES.find((a) => a.id === id)
+    if (act) {
+      const hechos = itemsAv.filter((i) => i.actividad === id && i.hecho).length
+      const total = itemsDe(act)
+      if (total > 0 && hechos > 0) return Math.round((hechos / total) * 1000) / 10
     }
     return 0
   }

@@ -69,7 +69,25 @@ export const MODOS_FALLA: ModoFalla[] = [
 
 export type TablaOutbox =
   | 'avisos' | 'andamios' | 'marcas_upsert' | 'marcas_delete'
-  | 'tapas_upsert' | 'tapas_delete' | 'historial'
+  | 'tapas_upsert' | 'tapas_delete' | 'historial' | 'item_upsert'
+
+// Avance de las actividades que no usan el plano de tapas (venteos, manifold,
+// pasos simples). Un registro por ítem marcado.
+export interface ItemAvance {
+  id: string          // `${actividad}-${lado}-${item}`
+  actividad: string
+  lado: LadoRack
+  item: string        // id del venteo / manifold / vasija
+  hecho: boolean
+  datos: Record<string, unknown>
+  creadoPor: string
+  createdAt: number
+  sincronizado: boolean
+}
+
+export function itemId(actividad: string, lado: LadoRack, item: string): string {
+  return `${actividad}-${lado}-${item}`
+}
 
 // Registro de quién tocó qué y cuándo (trazabilidad del rack compartido).
 export interface HistorialItem {
