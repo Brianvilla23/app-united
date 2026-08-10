@@ -28,6 +28,8 @@ export interface Actividad {
   pasos?: string[]
   /** true = no forma parte de la cadena secuencial. */
   libre?: boolean
+  /** true = es del rack completo, el lado no aplica (ej. las membranas). */
+  sinLado?: boolean
   nota?: string
 }
 
@@ -63,6 +65,7 @@ export const ACTIVIDADES: Actividad[] = [
   },
   {
     id: 'retiro_membrana',
+    sinLado: true,
     nombre: 'Retiro de membrana',
     tipo: 'simple',
     lados: ['alimentacion'],
@@ -81,6 +84,7 @@ export const ACTIVIDADES: Actividad[] = [
   },
   {
     id: 'carguio_membrana',
+    sinLado: true,
     nombre: 'Carguío de membrana',
     tipo: 'simple',
     lados: ['alimentacion'],
@@ -154,7 +158,9 @@ export function itemsDe(a: Actividad): number {
 }
 
 /** Diagramas ya construidos. El resto se muestra pero todavía no se puede abrir. */
-export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo', 'simple', 'manifold', 'fugas']
+// 'fugas' NO se enlaza al módulo de fugas existente: ese es del rack completo
+// y marca otros componentes. Las pruebas de baja y alta llevan diagrama propio.
+export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo', 'simple', 'manifold']
 
 // --- los 6 venteos del rack ---
 // 2 en alimentación (uno por semi rack, al medio), 2 en descarga, y 2 más

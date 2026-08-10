@@ -161,6 +161,9 @@ export const SEGUROS_POR_TAPA = 3
 
 export interface TapaEstado {
   id: string
+  /** Retiro e instalación son actividades distintas sobre la misma vasija:
+      cada una lleva su propio registro. */
+  actividad: string
   lado: LadoRack
   rack: number
   vasija: string
@@ -173,8 +176,8 @@ export interface TapaEstado {
   sincronizado: boolean
 }
 
-export function tapaId(lado: LadoRack, rack: number, vasija: string): string {
-  return `${lado}-${rack}-${vasija}`
+export function tapaId(actividad: string, lado: LadoRack, rack: number, vasija: string): string {
+  return `${actividad}-${lado}-${rack}-${vasija}`
 }
 
 export type FallaTapa = Pick<TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados' | 'aislada'>

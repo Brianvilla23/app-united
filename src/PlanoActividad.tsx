@@ -56,10 +56,10 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
     <div>
       <div className="plano-titulo">
         <b>{actividad.nombre.toUpperCase()}</b>
-        <span>{LADOS.find((l) => l.codigo === lado)!.nombre.toUpperCase()}</span>
+        <span>{actividad.sinLado ? 'RACK 12' : LADOS.find((l) => l.codigo === lado)!.nombre.toUpperCase()}</span>
       </div>
 
-      {actividad.lados.length > 1 && (
+      {actividad.lados.length > 1 && !actividad.sinLado && (
         <div className="lado-seg">
           {actividad.lados.map((l) => (
             <button key={l} className={lado === l ? 'on' : ''} onClick={() => setLado(l)}>
@@ -120,12 +120,12 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
         <b className="leg-titulo">LEYENDA</b>
         <span className="leg-item">
           <span className="leg-dot" style={{ background: HECHO }} /> Hecho
-          <em>{actividad.nombre}</em>
+          <em>Ya ejecutado</em>
           <i>{hechos.size}</i>
         </span>
         <span className="leg-item">
           <span className="leg-dot vacio" /> Pendiente
-          <em>Todavía no se hace</em>
+          <em>{actividad.nombre} pendiente</em>
           <i>{totalLado - hechos.size}</i>
         </span>
         <span className="leg-item total">

@@ -128,6 +128,8 @@ function Menu({ go }: { go: (v: Vista) => void }) {
 export default function App() {
   const [vista, setVista] = useState<Vista>('menu')
   const [actAbierta, setActAbierta] = useState<Actividad | null>(null)
+  // desde dónde se entró, para que el botón de atrás vuelva ahí y no al menú
+  const [volverA, setVolverA] = useState<Vista>('menu')
   const [yo, setYo] = useState(quienSoy())
   const [editandoNombre, setEditandoNombre] = useState(false)
   useEffect(() => { iniciarSync(); void seedTapasRack12() }, [])
@@ -157,7 +159,7 @@ export default function App() {
             <div><b>App United</b><small>Planta Desaladora · Coloso</small></div>
           </div>
         ) : (
-          <button className="back" onClick={() => setVista('menu')}>‹ {TITULOS[vista]}</button>
+          <button className="back" onClick={() => setVista(volverA)}>‹ {TITULOS[vista]}</button>
         )}
         <OfflineDot />
       </header>
@@ -166,14 +168,15 @@ export default function App() {
         <button onClick={() => setEditandoNombre(true)}>cambiar</button>
       </div>
       <main className="main">
-        {vista === 'menu' && <Menu go={setVista} />}
+        {vista === 'menu' && <Menu go={(v) => { setVolverA('menu'); setVista(v) }} />}
         {vista === 'aviso' && <AvisoForm onSaved={() => setVista('guardados')} />}
         {vista === 'andamio' && <AndamioForm onSaved={() => setVista('guardados')} onCrearSubsecuente={() => setVista('aviso')} />}
         {vista === 'fugas' && <Fugas />}
-        {vista === 'tapas' && <Fugas modoInicial="tapas" />}
+        {vista === 'tapas' && <Fugas modoInicial="tapas" actividad={actAbierta?.tipo === 'tapa' ? actAbierta.id : 'retiro_tapas_alim'} titulo={actAbierta?.tipo === 'tapa' ? actAbierta.nombre.toUpperCase() : undefined} />}
         {vista === 'outage' && <Outage onAbrir={(a: Actividad) => {
           setActAbierta(a)
-          setVista(a.tipo === 'tapa' ? 'tapas' : a.tipo === 'venteo' ? 'venteos' : a.tipo === 'fugas' ? 'fugas' : 'actividad')
+          setVolverA('outage')
+          setVista(a.tipo === 'tapa' ? 'tapas' : a.tipo === 'venteo' ? 'venteos' : 'actividad')
         }} />}
         {vista === 'venteos' && <Venteos actividad="cambio_venteo" />}
         {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} />}

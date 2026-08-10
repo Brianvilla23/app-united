@@ -36,7 +36,9 @@ function arco(cx0: number, cy0: number, r: number, a0: number, a1: number): stri
   return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`
 }
 
-export default function Fugas({ modoInicial = 'fugas' }: { modoInicial?: 'fugas' | 'tapas' }) {
+export default function Fugas({
+  modoInicial = 'fugas', actividad = 'retiro_tapas_alim', titulo,
+}: { modoInicial?: 'fugas' | 'tapas'; actividad?: string; titulo?: string }) {
   const [modo, setModo] = useState<'fugas' | 'tapas'>(modoInicial)
   const [rackFugas, setRackFugas] = useState(1)
   const [lado, setLado] = useState<LadoRack>('alimentacion')
@@ -60,23 +62,23 @@ export default function Fugas({ modoInicial = 'fugas' }: { modoInicial?: 'fugas'
 
   // tapas del rack Y del lado que se está viendo (son piezas distintas por lado)
   const tapaRec = new Map<string, TapaEstado>()
-  for (const t of todasTapas) if (t.rack === rack && t.lado === lado) tapaRec.set(t.vasija, t)
+  for (const t of todasTapas) if (t.rack === rack && t.lado === lado && t.actividad === actividad) tapaRec.set(t.vasija, t)
   const resumen = resumirTapas([...tapaRec.values()], TOTAL_VASIJAS)
-  const tapasPorLado = (l: LadoRack) => todasTapas.filter((t) => t.rack === RACK_TAPAS && t.lado === l).length
+  const tapasPorLado = (l: LadoRack) => todasTapas.filter((t) => t.rack === RACK_TAPAS && t.lado === l && t.actividad === actividad).length
 
   const updateTapa = async (vasija: string, patch: Partial<TapaEstado>) => {
-    const id = tapaId(lado, rack, vasija)
+    const id = tapaId(actividad, lado, rack, vasija)
     const yo = quienSoy()
     const cur = todasTapas.find((t) => t.id === id)
     const base: TapaEstado = cur ?? {
-      id, lado, rack, vasija,
+      id, actividad, lado, rack, vasija,
       tapaAgripada: false, segurosAgripados: [], pernosRodados: [], aislada: false,
       creadoPor: yo, createdAt: Date.now(), sincronizado: false,
     }
-    const next: TapaEstado = { ...base, ...patch, id, lado, rack, vasija, creadoPor: yo, sincronizado: false }
+    const next: TapaEstado = { ...base, ...patch, id, actividad, lado, rack, vasija, creadoPor: yo, sincronizado: false }
     await db.tapas.put(next)
     await encolar('tapas_upsert', {
-      lado, rack, vasija,
+      actividad, lado, rack, vasija,
       tapa_agripada: next.tapaAgripada,
       seguros_agripados: next.segurosAgripados,
       pernos_rodados: next.pernosRodados,
@@ -103,8 +105,8 @@ export default function Fugas({ modoInicial = 'fugas' }: { modoInicial?: 'fugas'
   }
 
   const limpiarTapa = async (vasija: string) => {
-    await db.tapas.delete(tapaId(lado, rack, vasija))
-    await encolar('tapas_delete', { lado, rack, vasija })
+    await db.tapas.delete(tapaId(actividad, lado, rack, vasija))
+    await encolar('tapas_delete', { actividad, lado, rack, vasija })
     await registrar('tapa', lado, rack, vasija, 'borró el registro de la tapa')
   }
 
@@ -197,7 +199,7 @@ export default function Fugas({ modoInicial = 'fugas' }: { modoInicial?: 'fugas'
       </div>
 
       <div className="plano-titulo">
-        <b>RACK {rack}</b>
+        <b>{titulo ?? `RACK ${rack}`}</b>
         <span>{modo === 'tapas' ? LADOS.find((l) => l.codigo === lado)!.nombre.toUpperCase() : 'LADO ALIMENTACIÓN'}</span>
       </div>
 

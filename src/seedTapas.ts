@@ -9,7 +9,8 @@ const FLAG = 'seed_tapas_r12_v4'
 
 function rec(vasija: string, p: Partial<TapaEstado>): TapaEstado {
   return {
-    id: tapaId('alimentacion', 12, vasija), lado: 'alimentacion', rack: 12, vasija,
+    id: tapaId('retiro_tapas_alim', 'alimentacion', 12, vasija),
+    actividad: 'retiro_tapas_alim', lado: 'alimentacion', rack: 12, vasija,
     tapaAgripada: false, segurosAgripados: [], pernosRodados: [], aislada: false,
     creadoPor: AUTOR, createdAt: Date.now(), sincronizado: false,
     ...p,
@@ -41,7 +42,7 @@ export async function seedTapasRack12(): Promise<void> {
     for (const f of filas) {
       await db.tapas.put(f)
       await encolar('tapas_upsert', {
-        lado: 'alimentacion', rack: 12, vasija: f.vasija,
+        actividad: 'retiro_tapas_alim', lado: 'alimentacion', rack: 12, vasija: f.vasija,
         tapa_agripada: f.tapaAgripada, seguros_agripados: f.segurosAgripados,
         pernos_rodados: f.pernosRodados, aislada: f.aislada,
         ot: '419375139', creado_por: AUTOR,

@@ -101,12 +101,12 @@ async function subirPendientes(): Promise<boolean> {
       } else if (it.tabla === 'tapas_upsert') {
         ({ error } = await supabase.from('estado_tapas').upsert(it.payload))
         if (!error) {
-          const id = tapaId(it.payload.lado as LadoRack, Number(it.payload.rack), String(it.payload.vasija))
+          const id = tapaId(String(it.payload.actividad ?? 'retiro_tapas_alim'), it.payload.lado as LadoRack, Number(it.payload.rack), String(it.payload.vasija))
           await db.tapas.update(id, { sincronizado: true })
         }
       } else if (it.tabla === 'tapas_delete') {
         ({ error } = await supabase.from('estado_tapas').delete()
-          .match({ lado: it.payload.lado, rack: it.payload.rack, vasija: it.payload.vasija }))
+          .match({ actividad: it.payload.actividad ?? 'retiro_tapas_alim', lado: it.payload.lado, rack: it.payload.rack, vasija: it.payload.vasija }))
       } else if (it.tabla === 'item_upsert') {
         ({ error } = await supabase.from('avance_item').upsert(it.payload))
         if (!error) {
@@ -156,8 +156,10 @@ export async function pullTapas(): Promise<void> {
     await db.tapas.clear()
     await db.tapas.bulkAdd(data.map((r) => {
       const lado = (r.lado as LadoRack | null) ?? 'alimentacion'
+      const actividad = (r.actividad as string | null) ?? 'retiro_tapas_alim'
       return {
-        id: tapaId(lado, r.rack, r.vasija),
+        id: tapaId(actividad, lado, r.rack, r.vasija),
+        actividad,
         lado,
         rack: r.rack,
         vasija: r.vasija,
