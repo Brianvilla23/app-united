@@ -55,6 +55,13 @@ export const ACTIVIDADES: Actividad[] = [
     lados: ['descarga'],
   },
   {
+    id: 'retiro_tapas_desc',
+    nombre: 'Retiro de tapas · descarga',
+    tipo: 'tapa',
+    lados: ['descarga'],
+    nota: 'Va después de retirar el manifold.',
+  },
+  {
     id: 'retiro_membrana',
     nombre: 'Retiro de membrana',
     tipo: 'simple',
@@ -147,7 +154,7 @@ export function itemsDe(a: Actividad): number {
 }
 
 /** Diagramas ya construidos. El resto se muestra pero todavía no se puede abrir. */
-export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo']
+export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo', 'simple', 'manifold', 'fugas']
 
 // --- los 6 venteos del rack ---
 // 2 en alimentación (uno por semi rack, al medio), 2 en descarga, y 2 más
@@ -174,3 +181,15 @@ export function estaBloqueada(i: number, avance: (id: string) => number): boolea
   if (a.libre) return false
   return ACTIVIDADES.slice(0, i).some((prev) => !prev.libre && avance(prev.id) < 100)
 }
+
+// --- layout de los 40 manifolds ---
+// 10 filas (cada manifold cubre dos filas de vasijas) × 4 columnas.
+// Las columnas 1 y 4 van en los extremos; 2 y 3 al centro, pegadas al hueco.
+// Verificado contra "Manifold pvc lado descarga enumerados.pdf".
+export const FILAS_MANIFOLD = ['A', 'BC', 'DE', 'FG', 'HI', 'JK', 'LM', 'NO', 'PQ', 'RS'] as const
+
+export interface CeldaManifold { fila: string; col: number; id: string }
+
+export const MANIFOLDS: CeldaManifold[] = FILAS_MANIFOLD.flatMap((f) =>
+  [1, 2, 3, 4].map((c) => ({ fila: f, col: c, id: `${f}${c}` })),
+)

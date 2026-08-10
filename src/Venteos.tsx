@@ -16,8 +16,12 @@ const GRIS = '#c3cad3'
 const GRIS_BORDE = '#9aa5b1'
 
 const W = 340, H = 250
-const BLOQUE_W = 132, BLOQUE_H = 62
-const X_A = 22, X_B = W - 22 - BLOQUE_W
+// Los bloques abarcan TODO el semi rack, no son cajas sueltas: juntos cubren
+// el ancho completo del rack, con el hueco central que separa A de B.
+const MARGEN = 12, HUECO = 14
+const BLOQUE_W = (W - 2 * MARGEN - HUECO) / 2
+const BLOQUE_H = 74
+const X_A = MARGEN, X_B = MARGEN + BLOQUE_W + HUECO
 
 export default function Venteos({ actividad }: { actividad: string }) {
   const items = useLiveQuery(() => db.items.where('actividad').equals(actividad).toArray(), [actividad]) ?? []
@@ -54,12 +58,12 @@ export default function Venteos({ actividad }: { actividad: string }) {
             <g key={sr}>
               <rect x={x} y={y} width={BLOQUE_W} height={BLOQUE_H} rx={8}
                 fill="#f8fafc" stroke={GRIS_BORDE} strokeWidth={1.2} />
-              <text x={x + BLOQUE_W / 2} y={y + 14} textAnchor="middle" fontSize={9} fontWeight={700} fill="#64748b">
+              <text x={x + BLOQUE_W / 2} y={y + 16} textAnchor="middle" fontSize={9} fontWeight={700} fill="#64748b">
                 SEMI RACK {sr}
               </text>
               {propios.map((v, k) => {
                 const cx = x + BLOQUE_W / 2 + (propios.length === 1 ? 0 : k === 0 ? -30 : 30)
-                const cy = y + 40
+                const cy = y + 46
                 const on = hechoDe(v)
                 return (
                   <g key={v.id} onClick={() => void toggle(v)} style={{ cursor: 'pointer' }}>

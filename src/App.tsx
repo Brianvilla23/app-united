@@ -10,10 +10,11 @@ import Guardados from './Guardados'
 import Fugas from './Fugas'
 import Outage from './Outage'
 import Venteos from './Venteos'
+import PlanoActividad from './PlanoActividad'
 import type { Actividad } from './actividades'
 import { fechaLarga } from './fecha'
 
-type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'guardados'
+type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'guardados'
 
 const TITULOS: Record<Vista, string> = {
   menu: 'App United',
@@ -23,6 +24,7 @@ const TITULOS: Record<Vista, string> = {
   tapas: 'Estado de tapas',
   outage: 'Outage Rack 12',
   venteos: 'Cambio de venteos',
+  actividad: 'Actividad del outage',
   guardados: 'Guardados',
 }
 
@@ -125,6 +127,7 @@ function Menu({ go }: { go: (v: Vista) => void }) {
 
 export default function App() {
   const [vista, setVista] = useState<Vista>('menu')
+  const [actAbierta, setActAbierta] = useState<Actividad | null>(null)
   const [yo, setYo] = useState(quienSoy())
   const [editandoNombre, setEditandoNombre] = useState(false)
   useEffect(() => { iniciarSync(); void seedTapasRack12() }, [])
@@ -168,8 +171,12 @@ export default function App() {
         {vista === 'andamio' && <AndamioForm onSaved={() => setVista('guardados')} onCrearSubsecuente={() => setVista('aviso')} />}
         {vista === 'fugas' && <Fugas />}
         {vista === 'tapas' && <Fugas modoInicial="tapas" />}
-        {vista === 'outage' && <Outage onAbrir={(a: Actividad) => setVista(a.tipo === 'tapa' ? 'tapas' : a.tipo === 'venteo' ? 'venteos' : 'outage')} />}
+        {vista === 'outage' && <Outage onAbrir={(a: Actividad) => {
+          setActAbierta(a)
+          setVista(a.tipo === 'tapa' ? 'tapas' : a.tipo === 'venteo' ? 'venteos' : a.tipo === 'fugas' ? 'fugas' : 'actividad')
+        }} />}
         {vista === 'venteos' && <Venteos actividad="cambio_venteo" />}
+        {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} />}
         {vista === 'guardados' && <Guardados />}
       </main>
       <footer className="app-foot">App United v0.2 · uso interno</footer>

@@ -39,18 +39,20 @@ function copleX(fila: string, col: number, lado: 'N' | 'S'): number {
 }
 
 export interface PlanoRackProps {
-  modo: 'fugas' | 'tapas'
+  modo: 'fugas' | 'tapas' | 'simple'
   vista: Vista
   espejo: boolean
   tapaRec: Map<string, TapaEstado>
   porVasija: Map<string, Set<ComponenteFuga>>
   onVasija?: (id: string) => void
+  /** modo 'simple': ids ya marcados como hechos */
+  hechos?: Set<string>
   /** true cuando se dibuja para el PDF: sin cursor ni handlers */
   paraPdf?: boolean
 }
 
 export default function PlanoRack({
-  modo, vista, espejo, tapaRec, porVasija, onVasija, paraPdf = false,
+  modo, vista, espejo, tapaRec, porVasija, onVasija, hechos, paraPdf = false,
 }: PlanoRackProps) {
   const vb = viewBoxPara(vista, espejo)
   const vDib = vistaDibujo(vista, espejo)
@@ -111,7 +113,10 @@ export default function PlanoRack({
         const x = cx(celda.col), y = cy(i)
         const set = porVasija.get(celda.id)
         const rec = tapaRec.get(celda.id)
-        const tc = modo === 'tapas' && rec ? defEstadoTapa(estadoTapaDe(rec)) : undefined
+        const simpleHecho = modo === 'simple' && hechos?.has(celda.id)
+        const tc = modo === 'tapas' && rec ? defEstadoTapa(estadoTapaDe(rec))
+          : simpleHecho ? { color: '#22c55e', texto: '#052e16' }
+          : undefined
         return (
           <g
             key={celda.id}
