@@ -142,10 +142,10 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
 // Verificado contra "Manifold pvc lado descarga enumerados.pdf": columna verde
 // central, y por fila una barra azul (el manifold PVC) con sus brazos y el
 // tubing celeste con americana amarilla saliendo por detrás de cada brazo.
-const MW = 420
-const FILA_H = 46, MY0 = 40
-const COL_VERDE_W = 22
-const BARRA_H = 13
+const MW = 460
+const FILA_H = 58, MY0 = 46
+const COL_VERDE_W = 26
+const BARRA_H = 16
 const BRAZOS = 4
 
 const VERDE_MF = '#00b050'
@@ -154,6 +154,7 @@ const AZUL_MF = '#1a71a8'
 const CELESTE = '#29b6f6'
 const AMARILLO = '#f5b301'
 const MORADO = '#7b3fa0'
+const ROJO_UNITED = '#e1251b'
 
 function Manifolds({
   hechos, onTocar, espejo,
@@ -161,7 +162,7 @@ function Manifolds({
   const alto = MY0 + FILAS_MANIFOLD.length * FILA_H + 16
   const cxVerde = MW / 2
   // columnas: 1 y 4 en los extremos, 2 y 3 pegadas a la columna verde
-  const anchoBarra = 78
+  const anchoBarra = 92
   const xIni = (col: number) => {
     const c = espejo ? 5 - col : col
     if (c === 1) return 26
@@ -220,8 +221,8 @@ function Manifolds({
                       )
                     })}
                     {/* código, bajo la barra */}
-                    <text x={x0 + anchoBarra / 2} y={y + BARRA_H / 2 + 12} textAnchor="middle"
-                      fontSize={10} fontWeight={800} fill={on ? '#15803d' : '#b91c1c'}>{m.id}</text>
+                    <text x={x0 + anchoBarra / 2} y={y + BARRA_H / 2 + 15} textAnchor="middle"
+                      fontSize={12} fontWeight={800} fill={on ? '#15803d' : ROJO_UNITED}>{m.id}</text>
                   </g>
                 )
               })}

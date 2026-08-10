@@ -9,6 +9,11 @@
   --danger: #dc2626;
   --warning: #d97706;
   --slate: #0f172a;
+  /* Paleta corporativa United (logo rojo + barra gris del reporte semanal) */
+  --united-rojo: #e1251b;
+  --united-rojo-oscuro: #b31d15;
+  --united-gris: #7f7f7f;
+  --united-gris-claro: #d9d9d9;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 4px 14px rgba(15, 23, 42, .06);
 }
@@ -290,3 +295,13 @@ textarea { resize: vertical; }
 .shim-campo { display: flex; align-items: center; gap: 8px; }
 .shim-campo input { flex: 1; font-size: 18px; font-weight: 700; text-align: center; padding: 10px; }
 .shim-campo span { font-size: 14px; font-weight: 700; color: var(--muted); }
+
+
+/* ---------- identidad United ---------- */
+.plano-titulo b { color: var(--united-rojo); }
+.leyenda.abajo .leg-titulo,
+.act-cuerpo > b { letter-spacing: .2px; }
+.avance-top b { color: var(--united-rojo); }
+.act-n { background: var(--united-gris); }
+.act.completa .act-n { background: #22c55e; }
+.plano-titulo span { color: var(--united-gris); }
