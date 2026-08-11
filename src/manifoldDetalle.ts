@@ -18,6 +18,8 @@ export interface ZonaParte {
   fila: FilaTubing
   brazo: number
   x: number; y: number; w: number; h: number
+  /** La manguera amarilla del tubing: se marca con él, es la misma pieza. */
+  mang?: [number, number, number, number]
 }
 
 export interface Arquetipo {
@@ -38,9 +40,9 @@ export const ARQUETIPOS: Record<string, Arquetipo> = {
       { fila: 'abajo', brazo: 3, x: 98.88, y: 40.04, w: 3.84, h: 5.88 },
     ],
     tubing: [
-      { fila: 'abajo', brazo: 1, x: 50.4, y: 36.08, w: 14.52, h: 8.28 },
-      { fila: 'abajo', brazo: 2, x: 77.4, y: 35.72, w: 14.28, h: 8.28 },
-      { fila: 'abajo', brazo: 3, x: 102.84, y: 35.6, w: 14.64, h: 8.28 },
+      { fila: 'abajo', brazo: 1, x: 50.4, y: 36.08, w: 14.52, h: 8.28, mang: [62.28, 44.84, 4.68, 4.8] },
+      { fila: 'abajo', brazo: 2, x: 77.4, y: 35.72, w: 14.28, h: 8.28, mang: [88.56, 44.6, 4.68, 4.8] },
+      { fila: 'abajo', brazo: 3, x: 102.84, y: 35.6, w: 14.64, h: 8.28, mang: [114.72, 44.48, 4.68, 4.8] },
     ],
   },
   'tipo2': {
@@ -52,9 +54,9 @@ export const ARQUETIPOS: Record<string, Arquetipo> = {
       { fila: 'abajo', brazo: 2, x: 73.32, y: 39.56, w: 3.96, h: 5.88 },
     ],
     tubing: [
-      { fila: 'abajo', brazo: 0, x: 23.52, y: 36.2, w: 15.0, h: 8.28 },
-      { fila: 'abajo', brazo: 1, x: 51.12, y: 36.2, w: 13.8, h: 8.28 },
-      { fila: 'abajo', brazo: 2, x: 77.52, y: 35.84, w: 15.0, h: 8.28 },
+      { fila: 'abajo', brazo: 0, x: 23.52, y: 36.2, w: 15.0, h: 8.28, mang: [36.24, 45.08, 4.68, 4.56] },
+      { fila: 'abajo', brazo: 1, x: 51.12, y: 36.2, w: 13.8, h: 8.28, mang: [63.0, 45.08, 4.32, 4.68] },
+      { fila: 'abajo', brazo: 2, x: 77.52, y: 35.84, w: 15.0, h: 8.28, mang: [89.28, 44.96, 4.8, 4.56] },
     ],
   },
   'tipo3': {
@@ -70,13 +72,13 @@ export const ARQUETIPOS: Record<string, Arquetipo> = {
       { fila: 'arriba', brazo: 3, x: 99.12, y: 6.92, w: 3.96, h: 6.48 },
     ],
     tubing: [
-      { fila: 'abajo', brazo: 0, x: 23.64, y: 36.2, w: 14.16, h: 8.28 },
-      { fila: 'abajo', brazo: 1, x: 50.4, y: 36.2, w: 14.64, h: 8.28 },
-      { fila: 'abajo', brazo: 2, x: 77.52, y: 35.84, w: 14.28, h: 8.28 },
-      { fila: 'abajo', brazo: 3, x: 102.96, y: 35.72, w: 14.52, h: 8.28 },
-      { fila: 'arriba', brazo: 1, x: 50.04, y: 8.72, w: 14.64, h: 8.16 },
-      { fila: 'arriba', brazo: 2, x: 76.68, y: 8.6, w: 14.16, h: 8.16 },
-      { fila: 'arriba', brazo: 3, x: 103.32, y: 8.24, w: 14.52, h: 8.16 },
+      { fila: 'abajo', brazo: 0, x: 23.64, y: 36.2, w: 14.16, h: 8.28, mang: [35.64, 44.48, 4.68, 5.16] },
+      { fila: 'abajo', brazo: 1, x: 50.4, y: 36.2, w: 14.64, h: 8.28, mang: [62.4, 44.6, 4.68, 5.16] },
+      { fila: 'abajo', brazo: 2, x: 77.52, y: 35.84, w: 14.28, h: 8.28, mang: [88.68, 44.36, 4.68, 5.16] },
+      { fila: 'abajo', brazo: 3, x: 102.96, y: 35.72, w: 14.52, h: 8.28, mang: [114.84, 44.24, 4.68, 5.16] },
+      { fila: 'arriba', brazo: 1, x: 50.04, y: 8.72, w: 14.64, h: 8.16, mang: [61.8, 3.32, 4.8, 4.8] },
+      { fila: 'arriba', brazo: 2, x: 76.68, y: 8.6, w: 14.16, h: 8.16, mang: [88.2, 3.2, 4.68, 5.16] },
+      { fila: 'arriba', brazo: 3, x: 103.32, y: 8.24, w: 14.52, h: 8.16, mang: [115.08, 2.84, 4.68, 5.16] },
     ],
   },
   'tipo4': {
@@ -92,13 +94,13 @@ export const ARQUETIPOS: Record<string, Arquetipo> = {
       { fila: 'arriba', brazo: 2, x: 72.24, y: 6.8, w: 3.96, h: 5.76 },
     ],
     tubing: [
-      { fila: 'abajo', brazo: 0, x: 23.52, y: 36.2, w: 15.0, h: 7.92 },
-      { fila: 'abajo', brazo: 1, x: 51.12, y: 36.2, w: 14.16, h: 7.8 },
-      { fila: 'abajo', brazo: 2, x: 77.4, y: 35.84, w: 15.0, h: 7.92 },
-      { fila: 'abajo', brazo: 3, x: 103.56, y: 35.72, w: 13.92, h: 7.8 },
-      { fila: 'arriba', brazo: 0, x: 23.28, y: 8.6, w: 15.0, h: 8.16 },
-      { fila: 'arriba', brazo: 1, x: 50.76, y: 8.36, w: 14.52, h: 8.16 },
-      { fila: 'arriba', brazo: 2, x: 76.56, y: 8.12, w: 15.0, h: 8.16 },
+      { fila: 'abajo', brazo: 0, x: 23.52, y: 36.2, w: 15.0, h: 7.92, mang: [36.24, 43.88, 4.68, 4.92] },
+      { fila: 'abajo', brazo: 1, x: 51.12, y: 36.2, w: 14.16, h: 7.8, mang: [63.0, 44.0, 4.32, 4.92] },
+      { fila: 'abajo', brazo: 2, x: 77.4, y: 35.84, w: 15.0, h: 7.92, mang: [89.28, 43.76, 4.68, 5.04] },
+      { fila: 'abajo', brazo: 3, x: 103.56, y: 35.72, w: 13.92, h: 7.8, mang: [114.72, 44.0, 4.68, 5.4] },
+      { fila: 'arriba', brazo: 0, x: 23.28, y: 8.6, w: 15.0, h: 8.16, mang: [35.16, 3.32, 4.92, 4.8] },
+      { fila: 'arriba', brazo: 1, x: 50.76, y: 8.36, w: 14.52, h: 8.16, mang: [62.52, 2.96, 4.32, 4.8] },
+      { fila: 'arriba', brazo: 2, x: 76.56, y: 8.12, w: 15.0, h: 8.16, mang: [88.8, 2.84, 4.68, 4.92] },
     ],
   },
   'tipo5': {
@@ -113,12 +115,12 @@ export const ARQUETIPOS: Record<string, Arquetipo> = {
       { fila: 'arriba', brazo: 2, x: 72.36, y: 6.8, w: 3.96, h: 6.12 },
     ],
     tubing: [
-      { fila: 'abajo', brazo: 0, x: 23.52, y: 36.08, w: 14.52, h: 7.92 },
-      { fila: 'abajo', brazo: 1, x: 50.76, y: 36.08, w: 14.16, h: 7.92 },
-      { fila: 'abajo', brazo: 2, x: 77.52, y: 35.72, w: 14.64, h: 7.92 },
-      { fila: 'arriba', brazo: 0, x: 23.4, y: 8.6, w: 14.52, h: 8.52 },
-      { fila: 'arriba', brazo: 1, x: 50.4, y: 8.24, w: 14.64, h: 8.52 },
-      { fila: 'arriba', brazo: 2, x: 76.68, y: 8.12, w: 14.52, h: 8.52 },
+      { fila: 'abajo', brazo: 0, x: 23.52, y: 36.08, w: 14.52, h: 7.92, mang: [35.88, 44.24, 4.68, 4.92] },
+      { fila: 'abajo', brazo: 1, x: 50.76, y: 36.08, w: 14.16, h: 7.92, mang: [62.76, 44.24, 4.44, 5.04] },
+      { fila: 'abajo', brazo: 2, x: 77.52, y: 35.72, w: 14.64, h: 7.92, mang: [89.04, 44.12, 4.68, 4.92] },
+      { fila: 'arriba', brazo: 0, x: 23.4, y: 8.6, w: 14.52, h: 8.52, mang: [34.8, 3.56, 4.92, 4.8] },
+      { fila: 'arriba', brazo: 1, x: 50.4, y: 8.24, w: 14.64, h: 8.52, mang: [62.16, 3.32, 4.56, 4.8] },
+      { fila: 'arriba', brazo: 2, x: 76.68, y: 8.12, w: 14.52, h: 8.52, mang: [88.56, 3.08, 4.68, 4.92] },
     ],
   },
   'tipo6': {
@@ -135,14 +137,14 @@ export const ARQUETIPOS: Record<string, Arquetipo> = {
       { fila: 'arriba', brazo: 3, x: 99.0, y: 6.8, w: 3.96, h: 6.48 },
     ],
     tubing: [
-      { fila: 'abajo', brazo: 0, x: 23.52, y: 36.08, w: 14.16, h: 8.28 },
-      { fila: 'abajo', brazo: 1, x: 50.4, y: 36.08, w: 14.52, h: 8.28 },
-      { fila: 'abajo', brazo: 2, x: 77.4, y: 35.72, w: 14.28, h: 8.28 },
-      { fila: 'abajo', brazo: 3, x: 102.84, y: 35.6, w: 14.64, h: 8.28 },
-      { fila: 'arriba', brazo: 0, x: 23.28, y: 8.96, w: 14.28, h: 8.88 },
-      { fila: 'arriba', brazo: 1, x: 49.92, y: 8.6, w: 14.64, h: 8.88 },
-      { fila: 'arriba', brazo: 2, x: 76.56, y: 8.48, w: 14.16, h: 8.88 },
-      { fila: 'arriba', brazo: 3, x: 103.2, y: 8.12, w: 14.52, h: 8.88 },
+      { fila: 'abajo', brazo: 0, x: 23.52, y: 36.08, w: 14.16, h: 8.28, mang: [35.52, 44.72, 4.68, 4.8] },
+      { fila: 'abajo', brazo: 1, x: 50.4, y: 36.08, w: 14.52, h: 8.28, mang: [62.28, 44.84, 4.68, 4.8] },
+      { fila: 'abajo', brazo: 2, x: 77.4, y: 35.72, w: 14.28, h: 8.28, mang: [88.56, 44.6, 4.68, 4.8] },
+      { fila: 'abajo', brazo: 3, x: 102.84, y: 35.6, w: 14.64, h: 8.28, mang: [114.72, 44.48, 4.68, 4.8] },
+      { fila: 'arriba', brazo: 0, x: 23.28, y: 8.96, w: 14.28, h: 8.88, mang: [35.04, 4.28, 4.56, 4.8] },
+      { fila: 'arriba', brazo: 1, x: 49.92, y: 8.6, w: 14.64, h: 8.88, mang: [61.8, 3.92, 4.68, 4.8] },
+      { fila: 'arriba', brazo: 2, x: 76.56, y: 8.48, w: 14.16, h: 8.88, mang: [88.08, 3.8, 4.68, 4.8] },
+      { fila: 'arriba', brazo: 3, x: 103.2, y: 8.12, w: 14.52, h: 8.88, mang: [114.96, 3.44, 4.68, 4.8] },
     ],
   },
   'tipo7': {
@@ -159,14 +161,14 @@ export const ARQUETIPOS: Record<string, Arquetipo> = {
       { fila: 'arriba', brazo: 3, x: 99.84, y: 6.92, w: 3.84, h: 6.48 },
     ],
     tubing: [
-      { fila: 'abajo', brazo: 0, x: 23.52, y: 36.2, w: 15.0, h: 8.28 },
-      { fila: 'abajo', brazo: 1, x: 51.12, y: 36.2, w: 13.92, h: 8.28 },
-      { fila: 'abajo', brazo: 2, x: 77.52, y: 35.84, w: 15.0, h: 8.28 },
-      { fila: 'abajo', brazo: 3, x: 103.68, y: 35.72, w: 13.8, h: 8.28 },
-      { fila: 'arriba', brazo: 0, x: 23.4, y: 9.08, w: 15.0, h: 9.24 },
-      { fila: 'arriba', brazo: 1, x: 50.76, y: 8.72, w: 13.8, h: 9.24 },
-      { fila: 'arriba', brazo: 2, x: 76.56, y: 8.6, w: 15.0, h: 9.24 },
-      { fila: 'arriba', brazo: 3, x: 103.92, y: 8.24, w: 13.92, h: 9.24 },
+      { fila: 'abajo', brazo: 0, x: 23.52, y: 36.2, w: 15.0, h: 8.28, mang: [36.24, 45.08, 4.8, 4.56] },
+      { fila: 'abajo', brazo: 1, x: 51.12, y: 36.2, w: 13.92, h: 8.28, mang: [63.0, 45.08, 4.32, 4.68] },
+      { fila: 'abajo', brazo: 2, x: 77.52, y: 35.84, w: 15.0, h: 8.28, mang: [89.4, 44.96, 4.68, 4.56] },
+      { fila: 'abajo', brazo: 3, x: 103.68, y: 35.72, w: 13.8, h: 8.28, mang: [114.72, 44.84, 4.68, 4.56] },
+      { fila: 'arriba', brazo: 0, x: 23.4, y: 9.08, w: 15.0, h: 9.24, mang: [35.88, 4.76, 4.56, 4.56] },
+      { fila: 'arriba', brazo: 1, x: 50.76, y: 8.72, w: 13.8, h: 9.24, mang: [62.52, 4.4, 4.32, 4.68] },
+      { fila: 'arriba', brazo: 2, x: 76.56, y: 8.6, w: 15.0, h: 9.24, mang: [88.8, 4.28, 4.68, 4.56] },
+      { fila: 'arriba', brazo: 3, x: 103.92, y: 8.24, w: 13.92, h: 9.24, mang: [114.96, 3.92, 4.68, 4.68] },
     ],
   },
 }

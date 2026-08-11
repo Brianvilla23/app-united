@@ -11,7 +11,9 @@ import {
 import { ARQUETIPOS, ARQUETIPO_DE, SPRITE, TILE, type ZonaParte } from './manifoldDetalle'
 import type { DatosManifold } from './types'
 
-const HECHO = 'rgba(34,197,94,.5)'
+// El verde va translúcido a propósito: marcar una pieza NO puede taparla, si no
+// se pierde de vista qué es (el tubing celeste desaparecía bajo el relleno).
+const HECHO = 'rgba(34,197,94,.26)'
 const HECHO_BORDE = '#15803d'
 const PENDIENTE_BORDE = 'rgba(100,116,139,.55)'
 // Lo pendiente se rellena 'transparent' y NO 'none': con 'none' el interior de
@@ -77,15 +79,34 @@ export default function DetalleManifold({
       const t = zonaTocable(z, parte)
       return (
         <g key={parte + z.fila + z.brazo} onClick={() => toggle(parte, vasija)} style={{ cursor: 'pointer' }}>
+          {/* el recuadro calza justo con la pieza: el stub end y su tubing son
+              contiguos y, agrandados, sus bordes se fundían en un solo bulto */}
           <rect
-            x={z.x - 0.7} y={z.y - 0.7} width={z.w + 1.4} height={z.h + 1.4} rx={1.6}
+            x={z.x} y={z.y} width={z.w} height={z.h} rx={1.2}
             fill={on ? HECHO : PENDIENTE}
             stroke={on ? HECHO_BORDE : PENDIENTE_BORDE}
-            strokeWidth={on ? 1.1 : 0.5}
+            strokeWidth={on ? 1.3 : 0.5}
             strokeDasharray={on ? undefined : '1.4 1.4'}
           />
+          {/* la manguera amarilla es parte del tubing, no una pieza aparte:
+              entra en la misma marca y en el mismo toque */}
+          {z.mang && (
+            <rect
+              x={z.mang[0]} y={z.mang[1]} width={z.mang[2]} height={z.mang[3]} rx={1.2}
+              fill={on ? HECHO : PENDIENTE}
+              stroke={on ? HECHO_BORDE : PENDIENTE_BORDE}
+              strokeWidth={on ? 1.3 : 0.5}
+              strokeDasharray={on ? undefined : '1.4 1.4'}
+            />
+          )}
           {/* el área que recibe el dedo es más grande que la pieza */}
           <rect x={t.x} y={t.y} width={t.w} height={t.h} fill="transparent" />
+          {z.mang && (
+            <rect
+              x={z.mang[0] - 1} y={z.mang[1] - 1}
+              width={z.mang[2] + 2} height={z.mang[3] + 2} fill="transparent"
+            />
+          )}
         </g>
       )
     })
@@ -112,7 +133,7 @@ export default function DetalleManifold({
                   width={arq.barra[2] + 1.4} height={arq.barra[3] + 1.4} rx={1.6}
                   fill={datos.manifold ? HECHO : PENDIENTE}
                   stroke={datos.manifold ? HECHO_BORDE : PENDIENTE_BORDE}
-                  strokeWidth={datos.manifold ? 1.1 : 0.5}
+                  strokeWidth={datos.manifold ? 1.5 : 0.5}
                   strokeDasharray={datos.manifold ? undefined : '1.4 1.4'}
                 />
               </g>

@@ -99,8 +99,10 @@ export const ACTIVIDADES: Actividad[] = [
     nombre: 'Codificación de manifold y tubing',
     tipo: 'manifold',
     lados: ['descarga'],
-    pasos: ['Codificar manifold', 'Codificar tubing'],
-    partes: ['manifold', 'tubing'],
+    pasos: ['Codificar manifold', 'Codificar stub end', 'Codificar tubing'],
+    // El stub end se codifica igual que el resto: si no queda marcado, la pieza
+    // vuelve sin saber a qué vasija iba (corrección de Brayan, 11-08).
+    partes: ['manifold', 'stubend', 'tubing'],
     nota: 'Después de retirar las tapas de alimentación y antes de desarmar.',
   },
   {

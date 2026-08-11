@@ -31,6 +31,9 @@ TS = os.path.join(RAIZ, "src", "manifoldDetalle.ts")
 
 # Colores de relleno del plano.
 AZUL, CELESTE, AMBAR, MORADO = "#0070c0", "#00b0f0", "#ffc000", "#7030a0"
+# La manguera amarilla que cuelga de cada tubing. Se marca junto con él: es
+# parte de la misma pieza, no algo aparte (corrección de Brayan, 11-08).
+MANGUERA = "#ffff00"
 
 # Recorte de cada manifold, en puntos PDF y relativo al extremo izquierdo de su
 # barra azul. Cubre la pieza más saliente de los 40 (medido, no estimado).
@@ -102,7 +105,7 @@ def main():
     piezas = collections.defaultdict(lambda: collections.defaultdict(list))
     for d in dibujos:
         color = hexc(d.get("fill"))
-        if color not in (CELESTE, AMBAR, MORADO):
+        if color not in (CELESTE, AMBAR, MORADO, MANGUERA):
             continue
         r = d["rect"]
         cx, cy = (r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2
@@ -138,17 +141,23 @@ def main():
     for mid in [f + str(c) for f in FILAS_MF for c in (1, 2, 3, 4)]:
         barra = barra_de[mid]
         esperadas = vasijas_de(mid)
-        zonas = {"stubend": [], "tubing": []}
-        for clave, color in (("stubend", AMBAR), ("tubing", CELESTE)):
+        zonas = {"stubend": [], "tubing": [], "manguera": []}
+        for clave, color in (("stubend", AMBAR), ("tubing", CELESTE), ("manguera", MANGUERA)):
             for r in dedupe(piezas[mid][color]):
                 fila = "arriba" if r.y0 < barra.y0 else "abajo"
                 # el brazo es el más cercano por la izquierda: las piezas nacen
                 # en el stub end y llegan al brazo por la derecha
                 brazo = min(range(4), key=lambda k: abs((r.x0 - barra.x0) - PASO_X[clave] - k * PASO))
                 zonas[clave].append((fila, brazo, r))
-        for clave in zonas:
+        for clave in ("stubend", "tubing"):
             vistos = {(f, b) for f, b, _ in zonas[clave]}
             assert vistos == set(esperadas), f"{mid} {clave}: {sorted(vistos)} != {sorted(esperadas)}"
+        # la manguera es opcional: si el plano no la dibuja para algún brazo, el
+        # tubing se marca igual, solo que sin ese pedazo amarillo
+        mangueras = {(f, b): r for f, b, r in zonas["manguera"]}
+        faltan = set(esperadas) - set(mangueras)
+        if faltan:
+            SIN_MANGUERA.extend(f"{mid} {f}/{b}" for f, b in sorted(faltan))
         total_t += len(zonas["tubing"])
         total_s += len(zonas["stubend"])
 
@@ -169,15 +178,23 @@ def main():
                          "x": round(r.x0 - ox, 2), "y": round(r.y0 - oy, 2),
                          "w": round(r.width, 2), "h": round(r.height, 2)}
                         for f, b, r in sorted(zonas["stubend"], key=lambda z: (z[0], z[1]))],
-            "tubing": [{"fila": f, "brazo": b, "vasija": esperadas[(f, b)],
-                        "x": round(r.x0 - ox, 2), "y": round(r.y0 - oy, 2),
-                        "w": round(r.width, 2), "h": round(r.height, 2)}
+            "tubing": [dict({"fila": f, "brazo": b, "vasija": esperadas[(f, b)],
+                             "x": round(r.x0 - ox, 2), "y": round(r.y0 - oy, 2),
+                             "w": round(r.width, 2), "h": round(r.height, 2)},
+                            **({"mang": [round(mangueras[(f, b)].x0 - ox, 2),
+                                         round(mangueras[(f, b)].y0 - oy, 2),
+                                         round(mangueras[(f, b)].width, 2),
+                                         round(mangueras[(f, b)].height, 2)]}
+                               if (f, b) in mangueras else {}))
                        for f, b, r in sorted(zonas["tubing"], key=lambda z: (z[0], z[1]))],
         }
 
     assert total_t == total_s == 295, f"tubing={total_t} stubend={total_s}, deberían ser 295"
     print(f"{len(arquetipos)} dibujos distintos cubren los 40 manifolds "
           f"({total_t} tubing y {total_s} stub end = una por vasija)")
+    if SIN_MANGUERA:
+        print(f"  sin manguera dibujada en el plano: {len(SIN_MANGUERA)} "
+              f"({', '.join(SIN_MANGUERA[:6])}{'…' if len(SIN_MANGUERA) > 6 else ''})")
 
     # 5. la tira de recortes
     px_w, px_h = int(round(TILE_W * ESCALA)), int(round(TILE_H * ESCALA))
@@ -200,7 +217,10 @@ def main():
     # 6. el módulo TypeScript
     def zonas_ts(zs):
         return "".join(
-            f"\n      {{ fila: '{z['fila']}', brazo: {z['brazo']}, x: {z['x']}, y: {z['y']}, w: {z['w']}, h: {z['h']} }},"
+            f"\n      {{ fila: '{z['fila']}', brazo: {z['brazo']}, x: {z['x']}, y: {z['y']}, "
+            f"w: {z['w']}, h: {z['h']}"
+            + (f", mang: {json.dumps(z['mang'])}" if "mang" in z else "")
+            + " },"
             for z in zs)
 
     cuerpo = "".join(
@@ -238,6 +258,8 @@ export interface ZonaParte {{
   fila: FilaTubing
   brazo: number
   x: number; y: number; w: number; h: number
+  /** La manguera amarilla del tubing: se marca con él, es la misma pieza. */
+  mang?: [number, number, number, number]
 }}
 
 export interface Arquetipo {{
@@ -261,8 +283,9 @@ export const ARQUETIPO_DE: Record<string, string> = {{{mapa}
 # separación entre brazos y desplazamiento de cada pieza respecto del brazo,
 # medidos sobre el plano (son constantes en los 40 manifolds)
 PASO = 26.5
-PASO_X = {"stubend": 1.1, "tubing": 5.4}
+PASO_X = {"stubend": 1.1, "tubing": 5.4, "manguera": 17.7}
 FIRMA_NOMBRE = {}
+SIN_MANGUERA = []
 
 if __name__ == "__main__":
     main()
