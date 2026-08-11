@@ -162,15 +162,22 @@ con las 40 zonas tocables encima. El SVG vectorial del plano pesaba 1,17 MB.
 
 ### Detalle de manifold: stub end y tubing por vasija ✅ (10-08)
 Tocar un manifold en **Codificación** o en **Instalación de manifold** abre su
-detalle: el recorte del plano ampliado, con el stub end (ámbar) y el tubing
-(celeste) de cada vasija marcables uno por uno, más la barra completa.
+detalle: el recorte del plano ampliado, con el **stub end** (octágono ámbar) y
+el **tubing** (la manguerita amarilla del extremo) de cada vasija marcables uno
+por uno, más la barra del manifold.
+
+⚠️ **La barra celeste NO es el tubing: es el BRAZO**, la pieza que va al cuerpo
+central del manifold. Son repuestos distintos (MF6 Brazo vs MF7 Tubing en el
+catálogo SAP). Estuvo al revés hasta que Brayan lo corrigió el 11-08. El brazo
+**no se marca** en las actividades del outage: queda dibujado y ubicado en
+`manifoldDetalle.ts` por si más adelante hay que registrarlo.
 
 - Las zonas **no se estimaron a ojo**: `scripts/gen_manifold.py` las saca de la
   geometría vectorial del PDF filtrando por color de relleno, y genera
   `src/manifoldDetalle.ts` + `public/manifold_detalle.png` (28 KB).
 - El plano trae hasta 4 copias encimadas de cada pieza (copia-pega del CAD).
-  Deduplicadas dan **295 tubing y 295 stub end: una por vasija del rack**, y el
-  script lo verifica en los 40 manifolds antes de escribir nada.
+  Deduplicadas dan **295 stub end, 295 brazos y 295 tubing: uno por vasija del
+  rack**, y el script lo verifica en los 40 manifolds antes de escribir nada.
 - Por eso cada pieza sabe a qué vasija sirve: en terreno se marca "el tubing de
   la D14", no "el tercero de la izquierda". La fórmula de nombrado
   (`vasijaDeParte`) se comparó pieza por pieza contra la del generador.

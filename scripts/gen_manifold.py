@@ -3,17 +3,16 @@
 
 Salidas:
   public/manifold_detalle.png  — tira con los recortes del PDF, uno por arquetipo
-  src/manifoldDetalle.ts       — zonas tocables de stub end y tubing, en puntos PDF
+  src/manifoldDetalle.ts       — zonas tocables de cada pieza, en puntos PDF
 
 Por qué así: el diagrama de la app ES el plano, no una réplica dibujada a mano
 (misma decisión que el diagrama general de manifolds). Las zonas no se estiman a
 ojo: salen de la geometría vectorial del propio PDF, filtrando por color de
-relleno. Ámbar #ffc000 = stub end, celeste #00b0f0 = tubing, azul #0070c0 = el
-manifold PVC.
+relleno (ver el bloque de colores más abajo).
 
 El plano trae formas duplicadas (copia-pega del CAD: hasta 4 copias encimadas de
 la misma pieza), así que hay que deduplicar por posición antes de contar.
-Deduplicado da exactamente 295 tubing y 295 stub end, uno por vasija del rack.
+Deduplicado da exactamente 295 de cada pieza, una por vasija del rack.
 
 Correr:  python scripts/gen_manifold.py
 """
@@ -29,11 +28,18 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PNG = os.path.join(RAIZ, "public", "manifold_detalle.png")
 TS = os.path.join(RAIZ, "src", "manifoldDetalle.ts")
 
-# Colores de relleno del plano.
-AZUL, CELESTE, AMBAR, MORADO = "#0070c0", "#00b0f0", "#ffc000", "#7030a0"
-# La manguera amarilla que cuelga de cada tubing. Se marca junto con él: es
-# parte de la misma pieza, no algo aparte (corrección de Brayan, 11-08).
-MANGUERA = "#ffff00"
+# Colores de relleno del plano y qué pieza es cada uno.
+#
+# OJO: la barra celeste NO es el tubing, es el BRAZO — la pieza que sale del
+# cuerpo central del manifold hacia la vasija, y que es un repuesto distinto
+# (MF6 Brazo vs MF7 Tubing en el catálogo SAP). El tubing es la manguerita
+# amarilla del extremo. Estuvo al revés hasta que Brayan lo corrigió (11-08);
+# el brazo, además, no se marca en las actividades del outage.
+AZUL = "#0070c0"      # cuerpo central del manifold y sus tees
+CELESTE = "#00b0f0"   # brazo
+AMBAR = "#ffc000"     # stub end
+TUBING = "#ffff00"    # tubing (la manguerita)
+MORADO = "#7030a0"    # unión / americana
 
 # Recorte de cada manifold, en puntos PDF y relativo al extremo izquierdo de su
 # barra azul. Cubre la pieza más saliente de los 40 (medido, no estimado).
@@ -105,7 +111,7 @@ def main():
     piezas = collections.defaultdict(lambda: collections.defaultdict(list))
     for d in dibujos:
         color = hexc(d.get("fill"))
-        if color not in (CELESTE, AMBAR, MORADO, MANGUERA):
+        if color not in (CELESTE, AMBAR, MORADO, TUBING):
             continue
         r = d["rect"]
         cx, cy = (r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2
@@ -141,23 +147,17 @@ def main():
     for mid in [f + str(c) for f in FILAS_MF for c in (1, 2, 3, 4)]:
         barra = barra_de[mid]
         esperadas = vasijas_de(mid)
-        zonas = {"stubend": [], "tubing": [], "manguera": []}
-        for clave, color in (("stubend", AMBAR), ("tubing", CELESTE), ("manguera", MANGUERA)):
+        zonas = {"stubend": [], "brazo": [], "tubing": []}
+        for clave, color in (("stubend", AMBAR), ("brazo", CELESTE), ("tubing", TUBING)):
             for r in dedupe(piezas[mid][color]):
                 fila = "arriba" if r.y0 < barra.y0 else "abajo"
-                # el brazo es el más cercano por la izquierda: las piezas nacen
-                # en el stub end y llegan al brazo por la derecha
-                brazo = min(range(4), key=lambda k: abs((r.x0 - barra.x0) - PASO_X[clave] - k * PASO))
-                zonas[clave].append((fila, brazo, r))
-        for clave in ("stubend", "tubing"):
+                # el nº de brazo es el más cercano según el paso del plano: las
+                # piezas nacen en el stub end y llegan al manifold por la derecha
+                n = min(range(4), key=lambda k: abs((r.x0 - barra.x0) - PASO_X[clave] - k * PASO))
+                zonas[clave].append((fila, n, r))
+        for clave in zonas:
             vistos = {(f, b) for f, b, _ in zonas[clave]}
             assert vistos == set(esperadas), f"{mid} {clave}: {sorted(vistos)} != {sorted(esperadas)}"
-        # la manguera es opcional: si el plano no la dibuja para algún brazo, el
-        # tubing se marca igual, solo que sin ese pedazo amarillo
-        mangueras = {(f, b): r for f, b, r in zonas["manguera"]}
-        faltan = set(esperadas) - set(mangueras)
-        if faltan:
-            SIN_MANGUERA.extend(f"{mid} {f}/{b}" for f, b in sorted(faltan))
         total_t += len(zonas["tubing"])
         total_s += len(zonas["stubend"])
 
@@ -174,27 +174,16 @@ def main():
             "clip": (ox, oy),
             "barra": [round(barra.x0 - ox, 2), round(barra.y0 - oy, 2),
                       round(barra.width, 2), round(barra.height, 2)],
-            "stubend": [{"fila": f, "brazo": b, "vasija": esperadas[(f, b)],
-                         "x": round(r.x0 - ox, 2), "y": round(r.y0 - oy, 2),
-                         "w": round(r.width, 2), "h": round(r.height, 2)}
-                        for f, b, r in sorted(zonas["stubend"], key=lambda z: (z[0], z[1]))],
-            "tubing": [dict({"fila": f, "brazo": b, "vasija": esperadas[(f, b)],
-                             "x": round(r.x0 - ox, 2), "y": round(r.y0 - oy, 2),
-                             "w": round(r.width, 2), "h": round(r.height, 2)},
-                            **({"mang": [round(mangueras[(f, b)].x0 - ox, 2),
-                                         round(mangueras[(f, b)].y0 - oy, 2),
-                                         round(mangueras[(f, b)].width, 2),
-                                         round(mangueras[(f, b)].height, 2)]}
-                               if (f, b) in mangueras else {}))
-                       for f, b, r in sorted(zonas["tubing"], key=lambda z: (z[0], z[1]))],
+            **{clave: [{"fila": f, "brazo": b, "vasija": esperadas[(f, b)],
+                        "x": round(r.x0 - ox, 2), "y": round(r.y0 - oy, 2),
+                        "w": round(r.width, 2), "h": round(r.height, 2)}
+                       for f, b, r in sorted(zonas[clave], key=lambda z: (z[0], z[1]))]
+               for clave in ("stubend", "brazo", "tubing")},
         }
 
     assert total_t == total_s == 295, f"tubing={total_t} stubend={total_s}, deberían ser 295"
     print(f"{len(arquetipos)} dibujos distintos cubren los 40 manifolds "
-          f"({total_t} tubing y {total_s} stub end = una por vasija)")
-    if SIN_MANGUERA:
-        print(f"  sin manguera dibujada en el plano: {len(SIN_MANGUERA)} "
-              f"({', '.join(SIN_MANGUERA[:6])}{'…' if len(SIN_MANGUERA) > 6 else ''})")
+          f"({total_t} tubing, {total_s} stub end y {total_s} brazos = uno por vasija)")
 
     # 5. la tira de recortes
     px_w, px_h = int(round(TILE_W * ESCALA)), int(round(TILE_H * ESCALA))
@@ -219,7 +208,6 @@ def main():
         return "".join(
             f"\n      {{ fila: '{z['fila']}', brazo: {z['brazo']}, x: {z['x']}, y: {z['y']}, "
             f"w: {z['w']}, h: {z['h']}"
-            + (f", mang: {json.dumps(z['mang'])}" if "mang" in z else "")
             + " },"
             for z in zs)
 
@@ -229,6 +217,8 @@ def main():
     i: {a['i']},
     barra: {json.dumps(a['barra'])},
     stubend: [{zonas_ts(a['stubend'])}
+    ],
+    brazo: [{zonas_ts(a['brazo'])}
     ],
     tubing: [{zonas_ts(a['tubing'])}
     ],
@@ -258,15 +248,18 @@ export interface ZonaParte {{
   fila: FilaTubing
   brazo: number
   x: number; y: number; w: number; h: number
-  /** La manguera amarilla del tubing: se marca con él, es la misma pieza. */
-  mang?: [number, number, number, number]
 }}
 
 export interface Arquetipo {{
   /** Fila que ocupa dentro de la tira. */
   i: number
+  /** Cuerpo central del manifold. */
   barra: [number, number, number, number]
   stubend: ZonaParte[]
+  /** El brazo va al cuerpo central del manifold. Hoy NO se marca: se deja
+      dibujado y ubicado por si más adelante hay que registrarlo. */
+  brazo: ZonaParte[]
+  /** El tubing es la manguerita del extremo, no la barra celeste. */
   tubing: ZonaParte[]
 }}
 
@@ -283,9 +276,8 @@ export const ARQUETIPO_DE: Record<string, string> = {{{mapa}
 # separación entre brazos y desplazamiento de cada pieza respecto del brazo,
 # medidos sobre el plano (son constantes en los 40 manifolds)
 PASO = 26.5
-PASO_X = {"stubend": 1.1, "tubing": 5.4, "manguera": 17.7}
+PASO_X = {"stubend": 1.1, "brazo": 5.4, "tubing": 17.7}
 FIRMA_NOMBRE = {}
-SIN_MANGUERA = []
 
 if __name__ == "__main__":
     main()

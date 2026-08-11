@@ -37,8 +37,8 @@ export const COMPONENTES_PRUEBA: ComponentePruebaDef[] = [
   { codigo: 'interconector', nombre: 'Interconector', donde: 'vasija', lados: AMBOS, detalle: 'Unión entre membranas' },
   { codigo: 'venteo', nombre: 'Venteo', donde: 'rack', lados: AMBOS, detalle: 'Venteos del semi rack' },
   { codigo: 'manifold', nombre: 'Manifold', donde: 'vasija', lados: ['descarga'], detalle: 'Barra PVC o su brazo' },
-  { codigo: 'stubend', nombre: 'Stub end', donde: 'vasija', lados: ['descarga'], detalle: 'Extremo del tubing' },
-  { codigo: 'tubing', nombre: 'Tubing', donde: 'vasija', lados: ['descarga'], detalle: 'Manguera del brazo' },
+  { codigo: 'stubend', nombre: 'Stub end', donde: 'vasija', lados: ['descarga'], detalle: 'Unión a la vasija' },
+  { codigo: 'tubing', nombre: 'Tubing', donde: 'vasija', lados: ['descarga'], detalle: 'La manguerita del brazo' },
 ]
 
 /** La de baja revisa lo básico; la de alta suma el manifold ya instalado. */
@@ -180,7 +180,7 @@ export const ACTIVIDADES: Actividad[] = [
     lados: ['descarga'],
     pasos: ['Stub end', 'Manifold completo', 'Tubing en cada brazo'],
     partes: ['stubend', 'manifold', 'tubing'],
-    nota: 'En ese orden. El tubing va detrás de cada brazo.',
+    nota: 'En ese orden. El tubing es la manguerita del extremo del brazo.',
   },
   {
     id: 'prueba_alta',
@@ -286,8 +286,8 @@ const X_COL: Record<number, [number, number]> = {
  * posiciones 1-16 y la vasija de la posición p es la columna 17-p (por eso el
  * Semi Rack B queda a la izquierda, igual que en el plano de tapas espejado).
  * Cada manifold cubre 4 posiciones y, si su fila son dos letras, la de arriba
- * es la primera. Verificado contra el PDF: las 295 piezas celestes y las 295
- * ámbar caen exactamente sobre las 295 vasijas del rack.
+ * es la primera. Verificado contra el PDF: los 295 stub end, los 295 brazos y
+ * los 295 tubing caen exactamente sobre las 295 vasijas del rack.
  */
 export function vasijaDeParte(manifold: string, brazo: number, fila: FilaTubing): string {
   const letras = manifold.slice(0, -1)

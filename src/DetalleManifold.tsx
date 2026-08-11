@@ -4,6 +4,9 @@
 //
 // Cada pieza sabe a qué vasija sirve, así que en terreno se marca "el tubing de
 // la D14", no "el tercero de la izquierda".
+//
+// El BRAZO (la barra celeste que va al cuerpo central) no se marca: es otra
+// pieza y en estas actividades no se registra. Queda dibujado, nada más.
 import {
   NOMBRE_PARTE, resumirManifold, vasijaDeParte, vasijasDeManifold,
   type ParteManifold,
@@ -12,7 +15,7 @@ import { ARQUETIPOS, ARQUETIPO_DE, SPRITE, TILE, type ZonaParte } from './manifo
 import type { DatosManifold } from './types'
 
 // El verde va translúcido a propósito: marcar una pieza NO puede taparla, si no
-// se pierde de vista qué es (el tubing celeste desaparecía bajo el relleno).
+// se pierde de vista qué es (la pieza desaparecía bajo el relleno).
 const HECHO = 'rgba(34,197,94,.26)'
 const HECHO_BORDE = '#15803d'
 const PENDIENTE_BORDE = 'rgba(100,116,139,.55)'
@@ -20,12 +23,18 @@ const PENDIENTE_BORDE = 'rgba(100,116,139,.55)'
 // la figura no recibe el toque y la pieza sin marcar quedaba imposible de tocar.
 const PENDIENTE = 'transparent'
 
-/** El toque no cae sobre el dibujo exacto: las piezas miden 4 pt de ancho.
-    El stub end se agranda hacia afuera (a su izquierda no hay nada) y ambos
-    crecen a lo alto, que es donde sobra papel. */
-function zonaTocable(z: ZonaParte, parte: ParteManifold): ZonaParte {
-  const izq = parte === 'stubend' ? 3.4 : 0
-  return { ...z, x: z.x - izq, y: z.y - 3.4, w: z.w + izq, h: z.h + 6.8 }
+// El dedo no cae sobre el dibujo exacto: el stub end mide 4 pt de ancho y el
+// tubing menos de 5. Alrededor de cada uno hay papel de sobra (el brazo, que
+// va entremedio, no se marca), así que el área de toque crece pareja y quedan
+// bien separados entre sí.
+const MARGEN_TOQUE = 3.6
+
+function zonaTocable(z: ZonaParte): ZonaParte {
+  return {
+    ...z,
+    x: z.x - MARGEN_TOQUE, y: z.y - MARGEN_TOQUE,
+    w: z.w + 2 * MARGEN_TOQUE, h: z.h + 2 * MARGEN_TOQUE,
+  }
 }
 
 export default function DetalleManifold({
@@ -76,37 +85,19 @@ export default function DetalleManifold({
     arq[parte].map((z) => {
       const vasija = vasijaDeParte(manifold, z.brazo, z.fila)
       const on = marcada(parte, vasija)
-      const t = zonaTocable(z, parte)
+      const t = zonaTocable(z)
       return (
         <g key={parte + z.fila + z.brazo} onClick={() => toggle(parte, vasija)} style={{ cursor: 'pointer' }}>
-          {/* el recuadro calza justo con la pieza: el stub end y su tubing son
-              contiguos y, agrandados, sus bordes se fundían en un solo bulto */}
+          {/* el recuadro calza justo con la pieza: marcarla no puede taparla */}
           <rect
-            x={z.x} y={z.y} width={z.w} height={z.h} rx={1.2}
+            x={z.x - 0.6} y={z.y - 0.6} width={z.w + 1.2} height={z.h + 1.2} rx={1.2}
             fill={on ? HECHO : PENDIENTE}
             stroke={on ? HECHO_BORDE : PENDIENTE_BORDE}
             strokeWidth={on ? 1.3 : 0.5}
             strokeDasharray={on ? undefined : '1.4 1.4'}
           />
-          {/* la manguera amarilla es parte del tubing, no una pieza aparte:
-              entra en la misma marca y en el mismo toque */}
-          {z.mang && (
-            <rect
-              x={z.mang[0]} y={z.mang[1]} width={z.mang[2]} height={z.mang[3]} rx={1.2}
-              fill={on ? HECHO : PENDIENTE}
-              stroke={on ? HECHO_BORDE : PENDIENTE_BORDE}
-              strokeWidth={on ? 1.3 : 0.5}
-              strokeDasharray={on ? undefined : '1.4 1.4'}
-            />
-          )}
           {/* el área que recibe el dedo es más grande que la pieza */}
           <rect x={t.x} y={t.y} width={t.w} height={t.h} fill="transparent" />
-          {z.mang && (
-            <rect
-              x={z.mang[0] - 1} y={z.mang[1] - 1}
-              width={z.mang[2] + 2} height={z.mang[3] + 2} fill="transparent"
-            />
-          )}
         </g>
       )
     })
