@@ -144,7 +144,7 @@ export const LADOS: { codigo: LadoRack; nombre: string; corto: string }[] = [
 // El rack de tapas es siempre el 12 (es el único en intervención).
 export const RACK_TAPAS = 12
 
-export type EstadoTapa = 'aislada' | 'agripada' | 'seguros' | 'pernos' | 'retirada'
+export type EstadoTapa = 'aislada' | 'agripada' | 'seguros' | 'pernos' | 'pendiente' | 'retirada'
 
 export interface EstadoTapaDef {
   codigo: EstadoTapa
@@ -164,6 +164,7 @@ export const ESTADOS_TAPA: EstadoTapaDef[] = [
   { codigo: 'agripada', nombre: 'Tapa agripada',    color: '#dc2626', texto: '#ffffff', descripcion: 'La tapa completa no sale' },
   { codigo: 'seguros',  nombre: 'Seguros triples',  color: '#facc15', texto: '#422006', descripcion: 'Uno o más seguros agripados' },
   { codigo: 'pernos',   nombre: 'Pernos rodados',   color: '#f59e0b', texto: '#ffffff', descripcion: 'Uno o más pernos parker rodados' },
+  { codigo: 'pendiente', nombre: 'Pendiente retiro', color: '#7c3aed', texto: '#ffffff', descripcion: 'Seguros y pernos fuera, la tapa sigue adentro' },
   { codigo: 'retirada', nombre: 'Retirada',         color: '#22c55e', texto: '#052e16', descripcion: 'Tapa extraída sin problema' },
 ]
 
@@ -182,6 +183,9 @@ export interface TapaEstado {
   segurosAgripados: number[]
   pernosRodados: number[]
   aislada: boolean
+  /** Se sacaron los seguros triples y los pernos parker, pero la tapa sigue
+      adentro: queda pendiente de retiro. */
+  pendienteRetiro?: boolean
   /** Solo en la instalación de alimentación: tapón al centro del orificio. */
   tapon?: boolean
   /** Solo en la instalación: graduación del shim, en milímetros. */
@@ -196,18 +200,29 @@ export function esInstalacion(actividad: string): boolean {
   return actividad.startsWith('instalacion_tapas')
 }
 
+/** En el retiro NO va la vasija aislada (ya no aplica) y sí va el pendiente
+    de retiro; en la instalación es al revés. */
+export function esRetiroTapas(actividad: string): boolean {
+  return actividad.startsWith('retiro_tapas')
+}
+
 export function tapaId(actividad: string, lado: LadoRack, rack: number, vasija: string): string {
   return `${actividad}-${lado}-${rack}-${vasija}`
 }
 
-export type FallaTapa = Pick<TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados' | 'aislada'>
+export type FallaTapa = Pick<
+  TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados' | 'aislada' | 'pendienteRetiro'
+>
 
-/** Estado que manda para el color, según la prioridad de ESTADOS_TAPA. */
+/** Estado que manda para el color, según la prioridad de ESTADOS_TAPA.
+    "Pendiente" va antes de "retirada" porque la tapa todavía está adentro,
+    pero después de las fallas, que son lo grave. */
 export function estadoTapaDe(t: FallaTapa): EstadoTapa {
   if (t.aislada) return 'aislada'
   if (t.tapaAgripada) return 'agripada'
   if (t.segurosAgripados.length > 0) return 'seguros'
   if (t.pernosRodados.length > 0) return 'pernos'
+  if (t.pendienteRetiro) return 'pendiente'
   return 'retirada'
 }
 
@@ -230,7 +245,10 @@ export interface ResumenTapas {
 
 /** Avance = extraídas sobre el total de vasijas del rack (no sobre las registradas). */
 export function resumirTapas(tapas: FallaTapa[], totalVasijas: number): ResumenTapas {
-  const porEstado = { aislada: 0, agripada: 0, seguros: 0, pernos: 0, retirada: 0 } as Record<EstadoTapa, number>
+  // sale de ESTADOS_TAPA y no de una lista escrita a mano: al agregar un estado
+  // nuevo, el que faltara en el objeto quedaba en NaN en la leyenda
+  const porEstado = Object.fromEntries(ESTADOS_TAPA.map((e) => [e.codigo, 0])) as Record<EstadoTapa, number>
+
   for (const t of tapas) porEstado[estadoTapaDe(t)]++
   const extraidas = porEstado.retirada
   return {

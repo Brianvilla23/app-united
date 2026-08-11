@@ -146,7 +146,8 @@ export async function generarPDFTapas(d: DatosPdfTapas): Promise<jsPDF> {
     return pa[1] === pb[1] ? Number(pa[2]) - Number(pb[2]) : pa[1].localeCompare(pb[1])
   }
 
-  const pendientes = (['aislada', 'agripada', 'seguros', 'pernos'] as EstadoTapa[])
+  // "pendiente" entra acá: la tapa sigue adentro, así que es trabajo por hacer
+  const pendientes = (['aislada', 'agripada', 'seguros', 'pernos', 'pendiente'] as EstadoTapa[])
     .map((cod) => ({
       def: defEstadoTapa(cod),
       items: d.tapas.filter((t) => estadoTapaDe(t) === cod).sort(ordenVasija),
@@ -183,6 +184,7 @@ export async function generarPDFTapas(d: DatosPdfTapas): Promise<jsPDF> {
       for (const t of g.items) {
         const partes: string[] = []
         if (t.aislada) partes.push('aislada')
+        if (t.pendienteRetiro) partes.push('pendiente de retiro')
         if (t.tapaAgripada) partes.push('tapa agripada')
         if (t.segurosAgripados.length) partes.push(`seguros ${t.segurosAgripados.map((n) => n + 1).sort().join(',')}`)
         if (t.pernosRodados.length) partes.push(`pernos ${t.pernosRodados.map((n) => n + 1).sort().join(',')}`)

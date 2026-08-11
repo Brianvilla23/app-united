@@ -120,8 +120,14 @@ cuando exista el módulo de login hay que cambiarlas por políticas con `auth.ui
 
 - **Avance**: % de tapas extraídas sobre las **295 vasijas** del rack (no sobre las
   registradas). Al 27-07 va en **56,6 % — 167 de 295**.
-- **5 colores, uno por tipo de falla** (antes eran 2). Si una tapa tiene varias
-  fallas manda **la más grave**: aislada › tapa agripada › seguros › pernos.
+- **6 colores, uno por estado** (antes eran 2). Si una tapa tiene varias
+  fallas manda **la más grave**: aislada › tapa agripada › seguros › pernos ›
+  pendiente de retiro.
+- **Pendiente de retiro** 🟣 (11-08-2026): salieron los seguros triples y los
+  pernos parker, pero la tapa sigue adentro. No es falla ni está retirada, así
+  que no suma al avance. Se marca con el interruptor de abajo del esquema.
+  **En el retiro ya no va la vasija aislada**: ese interruptor pasa a ser el de
+  pendiente de retiro, y la aislada queda solo en la instalación.
   Verificado: 15 + 0 + 24 + 167 = 206 registros. El único con seguros también
   tiene la tapa agripada, por eso "Seguros triples" marca 0.
 - **Tapas aisladas**: nuevo estado, se marca desde el detalle de la tapa.

@@ -9,9 +9,9 @@ import {
   type ComponenteFuga, type Vista,
 } from './rackLayout'
 import {
-  ESTADOS_TAPA, LADOS, RACK_TAPAS, defEstadoTapa, estadoTapaDe, esInstalacion, resumirTapas, tapaId,
-  PERNOS_POR_TAPA, SEGUROS_POR_TAPA,
-  type TapaEstado, type LadoRack,
+  ESTADOS_TAPA, LADOS, RACK_TAPAS, defEstadoTapa, estadoTapaDe, esInstalacion, esRetiroTapas,
+  resumirTapas, tapaId, PERNOS_POR_TAPA, SEGUROS_POR_TAPA,
+  type TapaEstado, type LadoRack, type FallaTapa,
 } from './types'
 import { generarPDFTapas, nombreArchivoTapas } from './pdfTapas'
 import { fechaHistorial } from './fecha'
@@ -20,9 +20,10 @@ import FugasManifold from './FugasManifold'
 import ComentarioRack from './ComentarioRack'
 
 // texto corto del estado de una tapa, para el historial
-function describirTapa(t: Pick<TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados' | 'aislada'>): string {
+function describirTapa(t: FallaTapa): string {
   const p: string[] = []
   if (t.aislada) p.push('aislada')
+  if (t.pendienteRetiro) p.push('pendiente de retiro')
   if (t.tapaAgripada) p.push('tapa agripada')
   if (t.segurosAgripados.length) p.push(`seguros ${t.segurosAgripados.map((i) => i + 1).sort().join(', ')}`)
   if (t.pernosRodados.length) p.push(`pernos ${t.pernosRodados.map((i) => i + 1).sort().join(', ')}`)
@@ -88,7 +89,7 @@ export default function Fugas({
     const base: TapaEstado = cur ?? {
       id, actividad, lado, rack, vasija,
       tapaAgripada: false, segurosAgripados: [], pernosRodados: [], aislada: false,
-      tapon: false, shimMm: null,
+      pendienteRetiro: false, tapon: false, shimMm: null,
       creadoPor: yo, createdAt: Date.now(), sincronizado: false,
     }
     const next: TapaEstado = { ...base, ...patch, id, actividad, lado, rack, vasija, creadoPor: yo, sincronizado: false }
@@ -99,6 +100,7 @@ export default function Fugas({
       seguros_agripados: next.segurosAgripados,
       pernos_rodados: next.pernosRodados,
       aislada: next.aislada,
+      pendiente_retiro: next.pendienteRetiro ?? false,
       tapon: next.tapon ?? false,
       shim_mm: next.shimMm ?? null,
       creado_por: yo,
@@ -120,6 +122,10 @@ export default function Fugas({
 
   const toggleAislada = (vasija: string) => {
     void updateTapa(vasija, { aislada: !(tapaRec.get(vasija)?.aislada ?? false) })
+  }
+
+  const togglePendiente = (vasija: string) => {
+    void updateTapa(vasija, { pendienteRetiro: !(tapaRec.get(vasija)?.pendienteRetiro ?? false) })
   }
 
   const limpiarTapa = async (vasija: string) => {
@@ -364,6 +370,7 @@ export default function Fugas({
         const segs = rec?.segurosAgripados ?? []
         const pernos = rec?.pernosRodados ?? []
         const aislada = rec?.aislada ?? false
+        const pendiente = rec?.pendienteRetiro ?? false
         const est = rec ? estadoTapaDe(rec) : null
         const headFill = aislada
           ? defEstadoTapa('aislada').color
@@ -432,20 +439,34 @@ export default function Fugas({
 
                 <text x={C} y={266} textAnchor="middle" fontSize={10} fill="#94a3b8">arcos = 3 seguros triples · círculos = 3 pernos parker</text>
 
-                {/* Vasija aislada: parte del esquema, se toca igual que los seguros y pernos */}
-                <g onClick={() => toggleAislada(selTapa)} style={{ cursor: 'pointer' }}>
-                  <rect
-                    x={45} y={282} width={180} height={34} rx={17}
-                    fill={aislada ? defEstadoTapa('aislada').color : '#f1f5f9'}
-                    stroke={aislada ? '#1d4ed8' : '#c3ccd6'}
-                    strokeWidth={aislada ? 2.5 : 1.8}
-                  />
-                  <circle cx={68} cy={299} r={8} fill={aislada ? '#fff' : '#cfd6dd'} />
-                  {aislada && <path d="M 63.5 299 l 3.2 3.4 l 6-6.6" fill="none" stroke={defEstadoTapa('aislada').color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />}
-                  <text x={144} y={304} textAnchor="middle" fontSize={13} fontWeight={800} fill={aislada ? '#fff' : '#64748b'}>
-                    VASIJA AISLADA
-                  </text>
-                </g>
+                {/* Un interruptor abajo del esquema, se toca igual que los
+                    seguros y pernos. En el retiro es "pendiente de retiro"
+                    (salieron seguros y pernos, la tapa sigue adentro); en la
+                    instalación es la vasija aislada, que en el retiro ya no
+                    aplica. */}
+                {(() => {
+                  const retiro = esRetiroTapas(actividad)
+                  const on = retiro ? pendiente : aislada
+                  const def = defEstadoTapa(retiro ? 'pendiente' : 'aislada')
+                  return (
+                    <g
+                      onClick={() => (retiro ? togglePendiente(selTapa) : toggleAislada(selTapa))}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <rect
+                        x={30} y={282} width={210} height={34} rx={17}
+                        fill={on ? def.color : '#f1f5f9'}
+                        stroke={on ? def.color : '#c3ccd6'}
+                        strokeWidth={on ? 2.5 : 1.8}
+                      />
+                      <circle cx={53} cy={299} r={8} fill={on ? '#fff' : '#cfd6dd'} />
+                      {on && <path d="M 48.5 299 l 3.2 3.4 l 6-6.6" fill="none" stroke={def.color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />}
+                      <text x={143} y={304} textAnchor="middle" fontSize={12.5} fontWeight={800} fill={on ? '#fff' : '#64748b'}>
+                        {retiro ? 'PENDIENTE DE RETIRO' : 'VASIJA AISLADA'}
+                      </text>
+                    </g>
+                  )
+                })()}
               </svg>
 
               <div className="hint" style={{ textAlign: 'center', marginTop: 4 }}>
