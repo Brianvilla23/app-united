@@ -123,6 +123,11 @@ export const ACTIVIDADES: Actividad[] = [
     nombre: 'Retiro de manifold',
     tipo: 'manifold',
     lados: ['descarga'],
+    // Al retirar solo se lleva la cuenta de los stub end: el manifold sale
+    // entero y el tubing se cambia, así que lo que hay que dejar registrado es
+    // que ningún stub end se quedó atrás.
+    partes: ['stubend'],
+    nota: 'Se marca el stub end de cada vasija: el manifold queda retirado cuando están todos.',
   },
   {
     id: 'retiro_tapas_desc',

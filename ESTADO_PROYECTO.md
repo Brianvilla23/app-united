@@ -180,11 +180,18 @@ Redibujarlo a mano nunca iba a quedar idéntico, así que la app muestra el PDF
 de Planificación recortado y cuantizado (`public/manifold_descarga.png`, 83 KB)
 con las 40 zonas tocables encima. El SVG vectorial del plano pesaba 1,17 MB.
 
-### Detalle de manifold: stub end y tubing por vasija ✅ (10-08)
-Tocar un manifold en **Codificación** o en **Instalación de manifold** abre su
-detalle: el recorte del plano ampliado, con el **stub end** (octágono ámbar) y
-el **tubing** (la manguerita amarilla del extremo) de cada vasija marcables uno
-por uno, más la barra del manifold.
+### Detalle de manifold: pieza por pieza ✅ (10-08)
+Tocar un manifold abre su detalle: el recorte del plano ampliado, con sus
+piezas marcables una por una. Qué se marca depende de la actividad:
+
+| Actividad | Piezas |
+|---|---|
+| Codificación de manifold y tubing | manifold · stub end · tubing |
+| **Retiro de manifold** | **solo stub end** — sale entero y el tubing se cambia, lo que hay que dejar registrado es que ninguno se quedó atrás |
+| Instalación de manifold | stub end · manifold · tubing |
+
+El **stub end** es el octágono ámbar y el **tubing** es la manguerita amarilla
+del extremo.
 
 ⚠️ **La barra celeste NO es el tubing: es el BRAZO**, la pieza que va al cuerpo
 central del manifold. Son repuestos distintos (MF6 Brazo vs MF7 Tubing en el
