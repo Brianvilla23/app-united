@@ -4,10 +4,10 @@ import { generarPDFAndamio } from './pdfAndamio'
 import { encolar, andamioARow } from './sync'
 import { quienSoy } from './identidad'
 import { ZONAS } from './types'
-import type { Andamio, EstadoTarjeta } from './types'
+import { ESTADOS_TARJETA, type Andamio, type EstadoTarjeta } from './types'
 import { uuid, fileToJpeg, hoyISO } from './util'
 
-const ESTADOS: EstadoTarjeta[] = ['Verde', 'Amarilla', 'Roja']
+const ESTADOS = ESTADOS_TARJETA
 const ESTADO_CLASE: Record<EstadoTarjeta, string> = { Verde: 'verde', Amarilla: 'amarilla', Roja: 'roja' }
 
 const vacio = {

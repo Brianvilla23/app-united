@@ -62,7 +62,8 @@ async function insertarPlano(doc: jsPDF, d: DatosPdfTapas, alto: number): Promis
 }
 
 export async function generarPDFTapas(d: DatosPdfTapas): Promise<jsPDF> {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' })
+  // comprimido: baja de ~460 KB a ~60 KB, que es lo que se manda por WhatsApp
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3', compress: true })
   const nombreLado = LADOS.find((l) => l.codigo === d.lado)!.nombre
   const resumen = resumirTapas(d.tapas, d.totalVasijas)
 

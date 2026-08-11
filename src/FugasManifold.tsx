@@ -6,18 +6,21 @@
 // dentro del `item` (`itemFugaManifold`).
 //
 // Acá el brazo SÍ se marca: en el outage no se registra, pero filtrar puede.
-import { useState } from 'react'
+import { createElement, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
 import { quienSoy } from './identidad'
 import { itemId, type DatosManifold } from './types'
 import {
-  FUGA_MANIFOLD, MANIFOLDS, PARTES_FUGA, PLANO_MF, ZONAS_MANIFOLD,
+  FUGA_MANIFOLD, MANIFOLDS, NOMBRE_PARTE, PARTES_FUGA, PLANO_MF,
   itemFugaManifold, resumirManifold,
 } from './actividades'
 import { MARCA, MARCA_BORDE } from './rackLayout'
 import DetalleManifold from './DetalleManifold'
+import PlanoManifolds, { type EstadoManifold } from './PlanoManifolds'
+import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
+import { useComentarioRack } from './ComentarioRack'
 
 const LADO = 'descarga' as const   // los manifolds solo existen en descarga
 
@@ -55,7 +58,48 @@ export default function FugasManifold({ rack }: { rack: number }) {
     })
   }
 
-  const { ancho, alto } = PLANO_MF
+  const estadoManifold = (id: string): EstadoManifold | undefined => {
+    const n = fugasDe(id)
+    return n > 0 ? { color: 'rgba(240,180,0,.4)', borde: MARCA_BORDE, numero: n } : undefined
+  }
+
+  const [generando, setGenerando] = useState(false)
+  const comentario = useComentarioRack(rack)
+
+  const exportarPDF = async () => {
+    setGenerando(true)
+    try {
+      const doc = await generarPDFDiagrama({
+        titulo: 'Fugas de manifold',
+        subtitulo: `Rack ${rack} · Lado descarga`,
+        hoja: 'compacta',
+        vb: PLANO_MF,
+        diagrama: createElement(PlanoManifolds, { estado: estadoManifold, paraPdf: true }),
+        leyenda: [
+          { color: MARCA, nombre: 'Con fuga', desc: 'El número dice cuántas piezas filtran', n: conFuga.length },
+          { color: '#ffffff', hueco: true, nombre: 'Sin fuga', desc: 'Nada registrado', n: MANIFOLDS.length - conFuga.length },
+        ],
+        detalle: [{
+          titulo: 'Dónde filtra',
+          color: MARCA,
+          lineas: conFuga.map((m) => {
+            const d = datosDe(m.id)
+            const partes: string[] = []
+            if (d.manifold) partes.push('barra')
+            for (const p of ['stubend', 'brazo', 'tubing'] as const) {
+              if (d[p]?.length) partes.push(`${NOMBRE_PARTE[p].toLowerCase()} ${d[p]!.join(', ')}`)
+            }
+            return `${m.id}  ·  ${partes.join('  ·  ')}`
+          }),
+        }],
+        comentario: comentario.texto ? { texto: comentario.texto, quien: comentario.quien ?? '' } : undefined,
+        generadoPor: quienSoy(),
+      })
+      doc.save(nombreArchivo('Fugas manifold', `Rack${rack}`))
+    } finally {
+      setGenerando(false)
+    }
+  }
 
   return (
     <div>
@@ -75,33 +119,14 @@ export default function FugasManifold({ rack }: { rack: number }) {
             {conFuga.length === 1 ? 'manifold con fuga' : 'manifolds con fuga'} ·
             {' '}{piezas} {piezas === 1 ? 'pieza' : 'piezas'}
           </span>
+          <button className="btn sm ghost" disabled={generando} onClick={() => void exportarPDF()}>
+            {generando ? 'Generando…' : 'PDF'}
+          </button>
         </div>
       </div>
 
       <div className="fugas-scroll">
-        <svg viewBox={`0 0 ${ancho} ${alto}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
-          <image href="./manifold_descarga.png" x={0} y={0} width={ancho} height={alto} />
-          {ZONAS_MANIFOLD.map((z) => {
-            const n = fugasDe(z.id)
-            return (
-              <g key={z.id} onClick={() => setAbierto(z.id)} style={{ cursor: 'pointer' }}>
-                <rect
-                  x={z.x} y={z.y} width={z.w} height={z.h} rx={5}
-                  fill={n > 0 ? 'rgba(240,180,0,.4)' : 'transparent'}
-                  stroke={n > 0 ? MARCA_BORDE : 'rgba(120,130,145,.35)'}
-                  strokeWidth={n > 0 ? 2.2 : 1}
-                  strokeDasharray={n > 0 ? undefined : '3 3'}
-                />
-                {n > 0 && (
-                  <text
-                    x={z.x + z.w - 14} y={z.y + z.h / 2 + 5} textAnchor="middle"
-                    fontSize={15} fontWeight={800} fill={MARCA_BORDE}
-                  >{n}</text>
-                )}
-              </g>
-            )
-          })}
-        </svg>
+        <PlanoManifolds estado={estadoManifold} onTocar={(id) => setAbierto(id)} />
       </div>
 
       <div className="leyenda abajo">

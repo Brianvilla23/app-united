@@ -260,7 +260,11 @@ export function resumirTapas(tapas: FallaTapa[], totalVasijas: number): ResumenT
   }
 }
 
-export type EstadoTarjeta = 'Verde' | 'Amarilla' | 'Roja'
+// Solo verde y roja: la amarilla se sacó el 11-08-2026 por decisión de Brayan.
+// 'Amarilla' se conserva en el tipo porque puede haber actas viejas guardadas
+// con ese valor y no hay que romperlas al mostrarlas.
+export type EstadoTarjeta = 'Verde' | 'Roja' | 'Amarilla'
+export const ESTADOS_TARJETA: EstadoTarjeta[] = ['Verde', 'Roja']
 
 export interface Andamio {
   id: string

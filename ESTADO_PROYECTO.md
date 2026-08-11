@@ -1,5 +1,5 @@
 # App United — Estado del proyecto
-_Última actualización: 10-08-2026_
+_Última actualización: 11-08-2026_
 
 App móvil (PWA) para los supervisores de la Planta Desaladora United, Coloso.
 Funciona offline en planta y se instala en el celular sin tienda de apps.
@@ -27,8 +27,9 @@ copia a brayan.villalobos.c@gmail.com).
 
 ### 2. Levantamiento de andamio
 Acta + PDF (folio `AND-AAAA-####`). Lugar, uso, temporalidad (por días / solo por
-el trabajo), cantidad de cuerpos, fecha, **tarjeta de andamio** (verde/amarilla/roja,
-inspeccionado por, próxima inspección), foto del andamio + foto de la tarjeta,
+el trabajo), cantidad de cuerpos, fecha, **tarjeta de andamio** (verde o roja —
+la amarilla se sacó el 11-08-2026; el tipo la conserva para no romper actas
+viejas ya guardadas —, inspeccionado por, próxima inspección), foto del andamio + foto de la tarjeta,
 "¿se generó el subsecuente?" sí/no.
 
 ### 3. Diagrama de fugas
@@ -71,6 +72,16 @@ Tocar el borde = tapa completa agripada. El color del rack se calcula solo.
 
 ### 5. Extras
 - **Guardados**: lista unificada de avisos y andamios, con descarga de PDF.
+- **PDF de todo** (11-08-2026): cada diagrama tiene su botón `PDF`, con la
+  misma regla que ya traía el de tapas — el papel sale del **mismo SVG que se
+  ve en pantalla** (`svg2pdf`), no de una captura ni de un redibujo, así no se
+  pueden desincronizar. `src/pdfDiagrama.ts` es el molde común: encabezado,
+  diagrama, leyenda y una hoja 2 con el detalle y el comentario del rack.
+  Hoja A3 apaisada para los planos de 295 vasijas (en A4 no se leen) y A4
+  vertical para manifolds y venteos. Van **comprimidos**: sin eso el plano de
+  manifolds pesaba 1,5 MB y no se manda por WhatsApp; comprimido queda en 96 KB.
+  Los planos viven en un solo lugar cada uno — `PlanoRack`, `PlanoManifolds`,
+  `PlanoVenteos` — y los usan pantalla y PDF.
 - **PWA instalable** + **auto-actualización** (revisa versión nueva cada 60 s y se
   actualiza sola). ⚠️ Cada celular debe tomar UNA vez la versión del 22-07 en
   adelante (abrir en incógnito o reinstalar); después ya se actualiza solo.

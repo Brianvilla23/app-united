@@ -7,15 +7,19 @@
 //
 // Cada vasija queda en uno de tres estados: sin revisar, revisada sin fuga, o
 // con fuga. Los venteos van aparte porque son del semi rack, no de una vasija.
-import { useState } from 'react'
+import { createElement, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
 import { quienSoy } from './identidad'
-import { itemId, LADOS, type LadoRack } from './types'
-import { componentesDe, venteosDe, type Actividad, type ComponentePrueba } from './actividades'
-import { MARCA, MARCA_BORDE, TOTAL_VASIJAS, type Vista } from './rackLayout'
+import { itemId, LADOS, RACK_TAPAS, type LadoRack } from './types'
+import {
+  COMPONENTES_PRUEBA, componentesDe, venteosDe,
+  type Actividad, type ComponentePrueba,
+} from './actividades'
+import { ALTO, ANCHO, MARCA, MARCA_BORDE, TOTAL_VASIJAS, type Vista } from './rackLayout'
 import PlanoRack from './PlanoRack'
+import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 
 const OK = { color: '#22c55e', texto: '#052e16' }
 const FUGA = { color: MARCA, texto: '#3b2a00' }
@@ -87,6 +91,53 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
 
   const componentes = componentesDe(actividad.id, lado, 'vasija')
 
+  const [generando, setGenerando] = useState(false)
+
+  const exportarPDF = async () => {
+    setGenerando(true)
+    try {
+      const nombreComp = (c: ComponentePrueba) =>
+        COMPONENTES_PRUEBA.find((x) => x.codigo === c)?.nombre ?? c
+      const doc = await generarPDFDiagrama({
+        titulo: actividad.nombre,
+        subtitulo: `Rack ${RACK_TAPAS} · ${LADOS.find((l) => l.codigo === lado)!.nombre}`,
+        hoja: 'ancha',
+        vb: { ancho: ANCHO, alto: ALTO },
+        diagrama: createElement(PlanoRack, {
+          modo: 'simple' as const, vista: 'todo' as const, espejo: lado === 'descarga',
+          tapaRec: new Map(), porVasija: new Map(), colores, paraPdf: true,
+        }),
+        avance: { pct, detalle: `${hechas} de ${total} revisados`, color: OK.color },
+        leyenda: [
+          { color: FUGA.color, nombre: 'Con fuga', desc: 'Filtró en la prueba', n: conFuga.length },
+          { color: OK.color, nombre: 'Revisada', desc: 'Sin fuga', n: revisadas.length - conFuga.length },
+          { color: '#ffffff', hueco: true, nombre: 'Sin revisar', desc: 'Todavía no se recorre', n: TOTAL_VASIJAS - revisadas.length },
+          { color: '#ffffff', hueco: true, nombre: 'TOTAL', desc: 'Vasijas del rack', n: TOTAL_VASIJAS },
+        ],
+        detalle: [
+          {
+            titulo: 'Vasijas con fuga',
+            color: FUGA.color,
+            lineas: conFuga.map((i) => `${i.item}  ·  ${fugasDe(i.item).map(nombreComp).join(', ')}`),
+          },
+          {
+            titulo: 'Venteos',
+            lineas: venteos.map((v) => {
+              const item = ITEM_VENTEO + v.id
+              const estado = fugasDe(item).length > 0 ? 'CON FUGA'
+                : revisada(item) ? 'revisado, sin fuga' : 'sin revisar'
+              return `Semi ${v.semiRack} · ${v.presion}  ·  ${estado}`
+            }),
+          },
+        ],
+        generadoPor: quienSoy(),
+      })
+      doc.save(nombreArchivo(actividad.nombre, `Rack${RACK_TAPAS}`, lado))
+    } finally {
+      setGenerando(false)
+    }
+  }
+
   return (
     <div>
       <div className="plano-titulo">
@@ -111,6 +162,9 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
         <div className="avance-top">
           <b>{pct}%</b>
           <span>{hechas} de {total} revisados · {conFuga.length} con fuga</span>
+          <button className="btn sm ghost" disabled={generando} onClick={() => void exportarPDF()}>
+            {generando ? 'Generando…' : 'PDF'}
+          </button>
         </div>
         <div className="avance-bar">
           <span style={{ width: `${pct}%`, background: OK.color }} />

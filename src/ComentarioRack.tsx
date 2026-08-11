@@ -21,6 +21,12 @@ const LADO: LadoRack = 'alimentacion'
 // `type` y no `interface` para que entre en el `datos: Record<string, unknown>`
 type DatosComentario = { texto?: string; quien?: string; fecha?: number }
 
+/** El comentario del rack, para mostrarlo y para meterlo en los PDF. */
+export function useComentarioRack(rack: number): DatosComentario {
+  const g = useLiveQuery(() => db.items.get(itemId(COMENTARIO_RACK, LADO, String(rack))), [rack])
+  return (g?.datos as DatosComentario | undefined) ?? {}
+}
+
 export default function ComentarioRack({ rack }: { rack: number }) {
   const id = itemId(COMENTARIO_RACK, LADO, String(rack))
   const guardado = useLiveQuery(() => db.items.get(id), [id])

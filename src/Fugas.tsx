@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { createElement, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar, registrar } from './sync'
 import { quienSoy } from './identidad'
 import {
-  COMPONENTES, TOTAL_VASIJAS, RACKS,
+  ALTO, ANCHO, COMPONENTES, TOTAL_VASIJAS, RACKS,
   MARCA, MARCA_BORDE, PLOMO, PLOMO_BORDE,
   type ComponenteFuga, type Vista,
 } from './rackLayout'
@@ -14,6 +14,8 @@ import {
   type TapaEstado, type LadoRack, type FallaTapa,
 } from './types'
 import { generarPDFTapas, nombreArchivoTapas } from './pdfTapas'
+import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
+import { useComentarioRack } from './ComentarioRack'
 import { fechaHistorial } from './fecha'
 import PlanoRack, { AZUL, VERDE } from './PlanoRack'
 import FugasManifold from './FugasManifold'
@@ -135,6 +137,44 @@ export default function Fugas({
   }
 
   const [generando, setGenerando] = useState(false)
+  const comentario = useComentarioRack(rack)
+
+  /** PDF del levantamiento de fuga de vasijas (el de tapas es aparte). */
+  const exportarFugasPDF = async () => {
+    setGenerando(true)
+    try {
+      const conFuga = [...porVasija.keys()].sort()
+      const doc = await generarPDFDiagrama({
+        titulo: 'Levantamiento de fuga',
+        subtitulo: `Rack ${rack} · Lado alimentación`,
+        hoja: 'ancha',
+        vb: { ancho: ANCHO, alto: ALTO },
+        diagrama: createElement(PlanoRack, {
+          modo: 'fugas' as const, vista: 'todo' as const, espejo: false,
+          tapaRec: new Map(), porVasija, paraPdf: true,
+        }),
+        leyenda: [
+          { color: MARCA, nombre: 'Con fuga', desc: 'Amarillo = filtra', n: conFuga.length },
+          { color: '#ffffff', hueco: true, nombre: 'Sin fuga', desc: 'Nada registrado', n: TOTAL_VASIJAS - conFuga.length },
+          { color: '#ffffff', hueco: true, nombre: 'MARCAS', desc: 'Componentes marcados en total', n: marcas.length },
+        ],
+        detalle: [{
+          titulo: 'Dónde filtra',
+          color: MARCA,
+          lineas: conFuga.map((v) => {
+            const cs = [...(porVasija.get(v) ?? [])]
+              .map((c) => COMPONENTES.find((x) => x.codigo === c)?.nombre ?? c)
+            return `${v}  ·  ${cs.join(', ')}`
+          }),
+        }],
+        comentario: comentario.texto ? { texto: comentario.texto, quien: comentario.quien ?? '' } : undefined,
+        generadoPor: quienSoy(),
+      })
+      doc.save(nombreArchivo('Fugas vasijas', `Rack${rack}`))
+    } finally {
+      setGenerando(false)
+    }
+  }
 
   const exportarPDF = async () => {
     setGenerando(true)
@@ -178,6 +218,18 @@ export default function Fugas({
           <button className={modo === 'fugas' ? 'on' : ''} onClick={() => setModo('fugas')}>Vasijas</button>
           <button className={modo === 'manifold' ? 'on' : ''} onClick={() => setModo('manifold')}>Manifold</button>
           <button className={modo === 'tapas' ? 'on' : ''} onClick={() => setModo('tapas')}>Tapas</button>
+        </div>
+      )}
+
+      {modo === 'fugas' && (
+        <div className="avance">
+          <div className="avance-top">
+            <b>{porVasija.size}</b>
+            <span>{porVasija.size === 1 ? 'vasija con fuga' : 'vasijas con fuga'} · {marcas.length} marcas</span>
+            <button className="btn sm ghost" disabled={generando} onClick={() => void exportarFugasPDF()}>
+              {generando ? 'Generando…' : 'PDF'}
+            </button>
+          </div>
         </div>
       )}
 

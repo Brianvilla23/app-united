@@ -3,19 +3,21 @@
 //  · tipo 'manifold' → los 40 manifolds (10 filas × 4).
 // Ambos guardan en la misma tabla `items`, así que agregar una actividad nueva
 // es elegir el tipo en el catálogo, no programar una pantalla.
-import { useState } from 'react'
+import { createElement, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
 import { quienSoy } from './identidad'
-import { itemId, LADOS, type DatosManifold, type LadoRack } from './types'
+import { itemId, LADOS, RACK_TAPAS, type DatosManifold, type LadoRack } from './types'
 import {
-  MANIFOLDS, PLANO_MF, piezasPorLado, resumirManifold, vasijasDeManifold,
-  ZONAS_MANIFOLD, type Actividad,
+  MANIFOLDS, NOMBRE_PARTE, PLANO_MF, piezasPorLado, resumirManifold, vasijasDeManifold,
+  type Actividad,
 } from './actividades'
-import { TOTAL_VASIJAS, type Vista } from './rackLayout'
+import { ALTO, ANCHO, CELDAS, TOTAL_VASIJAS, type Vista } from './rackLayout'
 import PlanoRack from './PlanoRack'
+import PlanoManifolds, { type EstadoManifold } from './PlanoManifolds'
 import DetalleManifold from './DetalleManifold'
+import { agruparPorFila, generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 
 const HECHO = '#22c55e'
 const EMPEZADO = '#d97706'
@@ -58,6 +60,77 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
     }
     : { total: totalLado, hechas: hechos.size, unidad: 'hechos' }
   const pct = Math.round((avance.hechas / avance.total) * 1000) / 10
+
+  /** Cómo se pinta cada manifold en el plano general. */
+  const estadoManifold = (id: string): EstadoManifold | undefined => {
+    if (hechos.has(id)) return { color: color + '6b', borde: colorBorde, visto: true }
+    if (empezados.has(id)) return { color: 'rgba(217,119,6,.2)', borde: EMPEZADO }
+    return undefined
+  }
+
+  const [generando, setGenerando] = useState(false)
+  const hecho = actividad.retira ? 'Retirado' : 'Hecho'
+
+  const exportarPDF = async () => {
+    setGenerando(true)
+    try {
+      const esManifold = actividad.tipo === 'manifold'
+      const doc = await generarPDFDiagrama({
+        titulo: actividad.nombre,
+        subtitulo: actividad.sinLado
+          ? `Rack ${RACK_TAPAS}`
+          : `Rack ${RACK_TAPAS} · ${LADOS.find((l) => l.codigo === lado)!.nombre}`,
+        hoja: esManifold ? 'compacta' : 'ancha',
+        vb: esManifold ? PLANO_MF : { ancho: ANCHO, alto: ALTO },
+        diagrama: esManifold
+          ? createElement(PlanoManifolds, { estado: estadoManifold, paraPdf: true })
+          : createElement(PlanoRack, {
+            modo: 'simple' as const, vista: 'todo' as const, espejo: lado === 'descarga',
+            tapaRec: new Map(), porVasija: new Map(), hechos, paraPdf: true,
+          }),
+        avance: { pct, detalle: `${avance.hechas} de ${avance.total} ${avance.unidad}`, color },
+        leyenda: [
+          { color, nombre: hecho, desc: actividad.retira ? 'Ya salió del rack' : 'Ya ejecutado', n: hechos.size },
+          ...(actividad.partes
+            ? [{ color: EMPEZADO, nombre: 'Empezado', desc: 'Con piezas puestas, pero incompleto', n: empezados.size }]
+            : []),
+          { color: '#ffffff', hueco: true, nombre: 'Pendiente', desc: 'Todavía no se hace', n: totalLado - hechos.size - empezados.size },
+          { color: '#ffffff', hueco: true, nombre: 'TOTAL', desc: esManifold ? 'Manifolds del rack' : 'Vasijas del rack', n: totalLado },
+        ],
+        detalle: esManifold
+          ? detallePiezas()
+          : [{ titulo: 'Vasijas pendientes', lineas: agruparPorFila(CELDAS.filter((c) => !hechos.has(c.id)).map((c) => c.id)) }],
+        generadoPor: quienSoy(),
+      })
+      doc.save(nombreArchivo(actividad.nombre, `Rack${RACK_TAPAS}`, actividad.sinLado ? '' : lado))
+    } finally {
+      setGenerando(false)
+    }
+  }
+
+  /** Qué le falta a cada manifold, para la hoja 2. */
+  function detallePiezas(): { titulo: string; lineas: string[] }[] {
+    if (!actividad.partes) {
+      return [{ titulo: 'Pendientes', lineas: MANIFOLDS.filter((m) => !hechos.has(m.id)).map((m) => m.id) }]
+    }
+    const lineas: string[] = []
+    for (const m of MANIFOLDS) {
+      if (hechos.has(m.id)) continue
+      const datos = datosDe(m.id)
+      const r = resumirManifold(m.id, actividad.partes, datos)
+      const faltan = actividad.partes
+        .filter((p) => p !== 'manifold')
+        .map((p) => {
+          const total = vasijasDeManifold(m.id).length
+          const puestas = (datos[p as 'stubend' | 'tubing']?.length) ?? 0
+          return total - puestas > 0 ? `${total - puestas} ${NOMBRE_PARTE[p].toLowerCase()}` : ''
+        })
+        .filter(Boolean)
+      if (actividad.partes.includes('manifold') && !datos.manifold) faltan.push('la barra')
+      lineas.push(`${m.id}  ·  ${r.hechas}/${r.total}${faltan.length ? ` — faltan ${faltan.join(', ')}` : ''}`)
+    }
+    return [{ titulo: 'Manifolds pendientes', lineas }]
+  }
 
   const guardar = async (item: string, hecho: boolean, datos: DatosManifold = {}) => {
     const yo = quienSoy()
@@ -145,6 +218,9 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
         <div className="avance-top">
           <b>{pct}%</b>
           <span>{avance.hechas} de {avance.total} {avance.unidad}</span>
+          <button className="btn sm ghost" disabled={generando} onClick={() => void exportarPDF()}>
+            {generando ? 'Generando…' : 'PDF'}
+          </button>
         </div>
         <div className="avance-bar">
           <span style={{ width: `${pct}%`, background: color }} />
@@ -171,13 +247,12 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
           </div>
         </>
       ) : (
-        <Manifolds
-          hechos={hechos}
-          empezados={empezados}
-          color={color}
-          colorBorde={colorBorde}
-          onTocar={(id) => (actividad.partes ? setAbierto(id) : void toggle(id))}
-        />
+        <div className="fugas-scroll">
+          <PlanoManifolds
+            estado={estadoManifold}
+            onTocar={(id) => (actividad.partes ? setAbierto(id) : void toggle(id))}
+          />
+        </div>
       )}
 
       {abierto && actividad.partes && (
@@ -227,47 +302,3 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
   )
 }
 
-// --- manifolds: se usa EL PLANO REAL de Planificación ---
-// El fondo es el PDF "Manifold pvc lado descarga enumerados" recortado y
-// cuantizado a 16 colores (86 KB, sin pérdida visible porque son colores
-// planos). Encima van las 40 zonas tocables. Así el diagrama de la app es
-// idéntico al de planta, no una réplica dibujada a mano.
-function Manifolds({
-  hechos, empezados, color, colorBorde, onTocar,
-}: {
-  hechos: Set<string>; empezados: Set<string>
-  color: string; colorBorde: string
-  onTocar: (id: string) => void
-}) {
-  const { ancho, alto } = PLANO_MF
-  return (
-    <div className="fugas-scroll">
-      <svg viewBox={`0 0 ${ancho} ${alto}`} style={{ display: 'block', width: '100%', height: 'auto' }}>
-        <image href="./manifold_descarga.png" x={0} y={0} width={ancho} height={alto} />
-        {ZONAS_MANIFOLD.map((z) => {
-          const on = hechos.has(z.id)
-          const medio = !on && empezados.has(z.id)
-          return (
-            <g key={z.id} onClick={() => onTocar(z.id)} style={{ cursor: 'pointer' }}>
-              <rect
-                x={z.x} y={z.y} width={z.w} height={z.h} rx={5}
-                fill={on ? color + '6b' : medio ? 'rgba(217,119,6,.2)' : 'transparent'}
-                stroke={on ? colorBorde : medio ? EMPEZADO : 'rgba(120,130,145,.35)'}
-                strokeWidth={on || medio ? 2.2 : 1}
-                strokeDasharray={on ? undefined : '3 3'}
-              />
-              {/* el visto va AL MEDIO del manifold, que es donde se busca */}
-              {on && (
-                <path
-                  d={`M ${z.x + z.w / 2 - 10} ${z.y + z.h / 2} l 7 8 l 15 -17`}
-                  fill="none" stroke={colorBorde} strokeWidth={4.5}
-                  strokeLinecap="round" strokeLinejoin="round"
-                />
-              )}
-            </g>
-          )
-        })}
-      </svg>
-    </div>
-  )
-}
