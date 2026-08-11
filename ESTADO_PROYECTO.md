@@ -135,9 +135,11 @@ cuando exista el módulo de login hay que cambiarlas por políticas con `auth.ui
 
 ## 9. Outage Rack 12 — la secuencia completa ✅ (29-07 al 10-08-2026)
 
-Pestaña propia con **las 16 actividades del outage en su orden de ejecución**
+Pestaña propia con **las 14 actividades del outage en su orden de ejecución**
 (fuente: hojas manuscritas de Brayan + planos de Planificación, en
-`src/actividades.ts`). Cada una muestra su avance y su diagrama; el candado
+`src/actividades.ts`). Cierra con la prueba de alta: el 11-08 se sacaron
+"Chequeo general" y "Entrega de rack", que no tenían avance guardado.
+Cada una muestra su avance y su diagrama; el candado
 **avisa** el orden pero no lo impone, porque en terreno las cuadrillas se
 traslapan y la app no puede impedir registrar lo ya hecho.
 
@@ -221,9 +223,6 @@ marcas falsas sobre el rack.
   marcas por parada.
 - **Falta marcar la vasija aislada**: Brayan dijo que hay 1, pero no cuál.
   Se marca desde el detalle de la tapa → "Marcar vasija aislada".
-- **Qué actividad hay que eliminar del outage**: Brayan dijo que sobra una de
-  las 16, pero quedó sin decir cuál. Se saca de `ACTIVIDADES` en
-  `src/actividades.ts` (el contador del menú y del outage ya son automáticos).
 - Módulos que faltan del mapa original: entrega de turno, reporte de equipo,
   plan de semana, mantenciones futuras, login.
 

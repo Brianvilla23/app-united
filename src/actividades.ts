@@ -181,28 +181,18 @@ export const ACTIVIDADES: Actividad[] = [
     nota: 'En ese orden. El tubing va detrás de cada brazo.',
   },
   {
-    id: 'chequeo_general',
-    nombre: 'Chequeo general',
-    tipo: 'manifold',
-    lados: ['descarga'],
-    libre: true,
-    nota: 'Control de calidad: americanas (o-ring, hilos) y manguera. No frena al resto.',
-  },
-  {
     id: 'prueba_alta',
     nombre: 'Prueba de alta',
     tipo: 'fugas',
     lados: ['alimentacion', 'descarga'],
     nota: 'Como la de baja, más manifold, stub end, tubing y venteo.',
   },
-  {
-    id: 'entrega_rack',
-    nombre: 'Entrega de rack',
-    tipo: 'simple',
-    lados: ['alimentacion'],
-    nota: 'Retiro de membranas y house keeping.',
-  },
 ]
+
+// Sacadas el 11-08-2026 por decisión de Brayan: "Chequeo general" (era control
+// de calidad de americanas y manguera, libre) y "Entrega de rack" (retiro de
+// membranas y house keeping). Ninguna tenía avance guardado. La prueba de alta
+// cierra la secuencia.
 
 /** Cuántos ítems tiene una actividad (para calcular su avance). */
 export function itemsDe(a: Actividad): number {
