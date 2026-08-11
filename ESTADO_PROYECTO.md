@@ -32,7 +32,27 @@ inspeccionado por, próxima inspección), foto del andamio + foto de la tarjeta,
 "¿se generó el subsecuente?" sí/no.
 
 ### 3. Diagrama de fugas
-Réplica fiel del plano "Vasijas lado Alimentación enumeradas" (**295 vasijas**,
+Tres vistas del mismo rack: **Vasijas · Manifold · Tapas**, con el selector
+R1-R12 en las dos primeras.
+
+**Manifold (11-08-2026)**: el plano de los 40 manifolds, marcando dónde filtra
+en vez de qué se avanzó. Se toca un manifold → detalle con sus piezas → se
+marca barra, stub end, **brazo** o tubing. Acá el brazo SÍ se registra: en el
+outage no se marca, pero filtrar puede. En el plano general el manifold con
+fuga queda amarillo con el número de piezas que filtran. Reusa el detalle del
+outage con `modo="fuga"`. Se guarda en `avance_item` con
+`actividad='fuga_manifold'` y el **rack dentro del `item`** (`7-DE1`), porque
+esa tabla no tiene columna de rack.
+
+**Comentario por rack (11-08-2026)**: caja de texto libre al pie del
+levantamiento, una por rack, para las anomalías que no caben en ninguna
+casilla del diagrama. Queda firmada con quién y cuándo, y sincroniza para toda
+la cuadrilla. También va en `avance_item` (`actividad='comentario_rack'`,
+`item` = el número de rack) y **no** en una tabla nueva a propósito: la cola de
+subida se procesa en orden y se detiene al primer error, así que una tabla que
+falte en Supabase dejaría trancados también los avisos y las tapas.
+
+**Vasijas**: réplica fiel del plano "Vasijas lado Alimentación enumeradas" (**295 vasijas**,
 Semi Rack A cols 1-8 / B cols 9-16, filas A-S). Selector **R1–R12**.
 Vista Semi Rack A / B / Todo (para que se lea bien en celular).
 Se toca una vasija → detalle → se marca el componente con fuga (queda **amarillo**):
@@ -225,9 +245,9 @@ marcas falsas sobre el rack.
   en vez de los 14 modos / 69 repuestos SAP reales. Arreglar la ruta, correrlo,
   integrarlo. Brayan iba a pasar los modos de falla por vasija para la compra.
 - Fugas: el lado descarga ya está soportado en la base (`marcas_fuga.lado`) pero
-  el módulo de fugas sigue fijo en alimentación — falta exponerle el selector.
-  También falta exportar el diagrama de fugas a PDF y un botón para limpiar
-  marcas por parada.
+  la vista de vasijas sigue fija en alimentación — falta exponerle el selector.
+  También falta exportar el diagrama de fugas a PDF (incluyendo la vista de
+  manifold y el comentario del rack) y un botón para limpiar marcas por parada.
 - **Falta marcar la vasija aislada**: Brayan dijo que hay 1, pero no cuál.
   Se marca desde el detalle de la tapa → "Marcar vasija aislada".
 - Módulos que faltan del mapa original: entrega de turno, reporte de equipo,

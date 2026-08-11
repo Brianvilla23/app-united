@@ -16,6 +16,8 @@ import {
 import { generarPDFTapas, nombreArchivoTapas } from './pdfTapas'
 import { fechaHistorial } from './fecha'
 import PlanoRack, { AZUL, VERDE } from './PlanoRack'
+import FugasManifold from './FugasManifold'
+import ComentarioRack from './ComentarioRack'
 
 // texto corto del estado de una tapa, para el historial
 function describirTapa(t: Pick<TapaEstado, 'tapaAgripada' | 'segurosAgripados' | 'pernosRodados' | 'aislada'>): string {
@@ -36,10 +38,15 @@ function arco(cx0: number, cy0: number, r: number, a0: number, a1: number): stri
   return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`
 }
 
+/** El levantamiento tiene tres vistas: las vasijas, el estado de tapas y el
+    manifold (que es donde aparecen las fugas de barra, stub end, brazo y
+    tubing, y que no cabía en el plano de vasijas). */
+export type ModoFugas = 'fugas' | 'tapas' | 'manifold'
+
 export default function Fugas({
   modoInicial = 'fugas', actividad = 'retiro_tapas_alim', titulo, ladoFijo,
 }: {
-  modoInicial?: 'fugas' | 'tapas'
+  modoInicial?: ModoFugas
   actividad?: string
   titulo?: string
   /** Cuando se entra desde una actividad del outage, el lado ya viene definido
@@ -47,7 +54,7 @@ export default function Fugas({
       selector de lado, que ahí solo confunden. */
   ladoFijo?: LadoRack
 }) {
-  const [modo, setModo] = useState<'fugas' | 'tapas'>(modoInicial)
+  const [modo, setModo] = useState<ModoFugas>(modoInicial)
   const [rackFugas, setRackFugas] = useState(1)
   const [lado, setLado] = useState<LadoRack>(ladoFijo ?? 'alimentacion')
   const [vista, setVista] = useState<Vista>('A')
@@ -162,12 +169,13 @@ export default function Fugas({
     <div>
       {!ladoFijo && (
         <div className="vista-seg" style={{ marginBottom: 10 }}>
-          <button className={modo === 'fugas' ? 'on' : ''} onClick={() => setModo('fugas')}>Fugas</button>
-          <button className={modo === 'tapas' ? 'on' : ''} onClick={() => setModo('tapas')}>Estado de tapas</button>
+          <button className={modo === 'fugas' ? 'on' : ''} onClick={() => setModo('fugas')}>Vasijas</button>
+          <button className={modo === 'manifold' ? 'on' : ''} onClick={() => setModo('manifold')}>Manifold</button>
+          <button className={modo === 'tapas' ? 'on' : ''} onClick={() => setModo('tapas')}>Tapas</button>
         </div>
       )}
 
-      {modo === 'fugas' ? (
+      {modo !== 'tapas' ? (
         <div className="rack-tabs">
           {RACKS.map((r) => (
             <button key={r} className={'rack-tab' + (r === rack ? ' on' : '')} onClick={() => setRackFugas(r)}>
@@ -204,6 +212,8 @@ export default function Fugas({
           </div>
         </>
       )}
+
+      {modo === 'manifold' ? <FugasManifold rack={rack} /> : (<>
 
       <div className="vista-seg">
         <button className={vista === 'A' ? 'on' : ''} onClick={() => setVista('A')}>Semi Rack A</button>
@@ -263,6 +273,8 @@ export default function Fugas({
           </>
         )}
       </div>
+
+      </>)}
 
       {sel && (
         <div className="modal-overlay" onClick={() => setSel(null)}>
@@ -468,6 +480,8 @@ export default function Fugas({
           </div>
         )
       })()}
+
+      <ComentarioRack rack={rack} />
 
       <Historial rack={rack} lado={modo === 'tapas' ? lado : 'alimentacion'} />
     </div>

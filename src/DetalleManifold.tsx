@@ -14,10 +14,16 @@ import {
 import { ARQUETIPOS, ARQUETIPO_DE, SPRITE, TILE, type ZonaParte } from './manifoldDetalle'
 import type { DatosManifold } from './types'
 
-// El verde va translúcido a propósito: marcar una pieza NO puede taparla, si no
-// se pierde de vista qué es (la pieza desaparecía bajo el relleno).
-const HECHO = 'rgba(34,197,94,.26)'
-const HECHO_BORDE = '#15803d'
+// El mismo detalle sirve para dos cosas: marcar avance del outage (verde) y
+// marcar fugas en el levantamiento (amarillo, la regla de color de la app).
+// El relleno va translúcido a propósito: marcar una pieza NO puede taparla, si
+// no se pierde de vista qué es.
+const PALETA = {
+  hecho: { fondo: 'rgba(34,197,94,.26)', borde: '#15803d' },
+  fuga: { fondo: 'rgba(240,180,0,.35)', borde: '#8a6d03' },
+}
+export type ModoDetalle = keyof typeof PALETA
+
 const PENDIENTE_BORDE = 'rgba(100,116,139,.55)'
 // Lo pendiente se rellena 'transparent' y NO 'none': con 'none' el interior de
 // la figura no recibe el toque y la pieza sin marcar quedaba imposible de tocar.
@@ -38,7 +44,7 @@ function zonaTocable(z: ZonaParte): ZonaParte {
 }
 
 export default function DetalleManifold({
-  manifold, partes, datos, onMarcar, onCerrar,
+  manifold, partes, datos, onMarcar, onCerrar, modo = 'hecho', encabezado,
 }: {
   manifold: string
   partes: ParteManifold[]
@@ -47,11 +53,17 @@ export default function DetalleManifold({
       piezas seguidas, la segunda no puede partir de una copia vieja. */
   onMarcar: (cambio: (actual: DatosManifold) => DatosManifold) => void
   onCerrar: () => void
+  /** 'hecho' = avance del outage · 'fuga' = levantamiento de fuga. */
+  modo?: ModoDetalle
+  /** Texto extra del título, por ejemplo el rack en el levantamiento. */
+  encabezado?: string
 }) {
   const arq = ARQUETIPOS[ARQUETIPO_DE[manifold]]
   const vasijas = vasijasDeManifold(manifold)
   const resumen = resumirManifold(manifold, partes, datos)
-  const porVasija = partes.filter((p): p is 'stubend' | 'tubing' => p !== 'manifold')
+  const porVasija = partes.filter((p): p is Exclude<ParteManifold, 'manifold'> => p !== 'manifold')
+  const color = PALETA[modo]
+  const esFuga = modo === 'fuga'
 
   const marcada = (parte: ParteManifold, vasija: string) =>
     parte === 'manifold' ? !!datos.manifold : !!datos[parte]?.includes(vasija)
@@ -81,7 +93,7 @@ export default function DetalleManifold({
     })
   }
 
-  const zonas = (parte: 'stubend' | 'tubing') =>
+  const zonas = (parte: Exclude<ParteManifold, 'manifold'>) =>
     arq[parte].map((z) => {
       const vasija = vasijaDeParte(manifold, z.brazo, z.fila)
       const on = marcada(parte, vasija)
@@ -91,8 +103,8 @@ export default function DetalleManifold({
           {/* el recuadro calza justo con la pieza: marcarla no puede taparla */}
           <rect
             x={z.x - 0.6} y={z.y - 0.6} width={z.w + 1.2} height={z.h + 1.2} rx={1.2}
-            fill={on ? HECHO : PENDIENTE}
-            stroke={on ? HECHO_BORDE : PENDIENTE_BORDE}
+            fill={on ? color.fondo : PENDIENTE}
+            stroke={on ? color.borde : PENDIENTE_BORDE}
             strokeWidth={on ? 1.3 : 0.5}
             strokeDasharray={on ? undefined : '1.4 1.4'}
           />
@@ -106,11 +118,13 @@ export default function DetalleManifold({
     <div className="modal-overlay" onClick={onCerrar}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <b>Manifold {manifold}</b>
+          <b>Manifold {manifold}{encabezado ? ` · ${encabezado}` : ''}</b>
           <button className="modal-x" onClick={onCerrar}>✕</button>
         </div>
         <p className="hint" style={{ margin: '0 0 8px' }}>
-          {resumen.hechas} de {resumen.total} piezas · toca la pieza en el plano o úsala de la lista
+          {esFuga
+            ? `${resumen.hechas} ${resumen.hechas === 1 ? 'pieza con fuga' : 'piezas con fuga'} · toca dónde filtra`
+            : `${resumen.hechas} de ${resumen.total} piezas · toca la pieza en el plano o úsala de la lista`}
         </p>
 
         <div className="fugas-scroll">
@@ -122,14 +136,15 @@ export default function DetalleManifold({
                 <rect
                   x={arq.barra[0] - 0.7} y={arq.barra[1] - 0.7}
                   width={arq.barra[2] + 1.4} height={arq.barra[3] + 1.4} rx={1.6}
-                  fill={datos.manifold ? HECHO : PENDIENTE}
-                  stroke={datos.manifold ? HECHO_BORDE : PENDIENTE_BORDE}
+                  fill={datos.manifold ? color.fondo : PENDIENTE}
+                  stroke={datos.manifold ? color.borde : PENDIENTE_BORDE}
                   strokeWidth={datos.manifold ? 1.5 : 0.5}
                   strokeDasharray={datos.manifold ? undefined : '1.4 1.4'}
                 />
               </g>
             )}
             {partes.includes('stubend') && zonas('stubend')}
+            {partes.includes('brazo') && zonas('brazo')}
             {partes.includes('tubing') && zonas('tubing')}
           </svg>
         </div>
@@ -139,7 +154,7 @@ export default function DetalleManifold({
             <div className="pieza-fila">
               <b>Barra</b>
               <button
-                className={'pieza-chip' + (datos.manifold ? ' on' : '')}
+                className={'pieza-chip' + (datos.manifold ? (esFuga ? ' fuga' : ' on') : '')}
                 onClick={() => toggle('manifold')}
               >
                 {NOMBRE_PARTE.manifold}
@@ -152,7 +167,7 @@ export default function DetalleManifold({
               {porVasija.map((parte) => (
                 <button
                   key={parte}
-                  className={'pieza-chip' + (marcada(parte, v.vasija) ? ' on' : '')}
+                  className={'pieza-chip' + (marcada(parte, v.vasija) ? (esFuga ? ' fuga' : ' on') : '')}
                   onClick={() => toggle(parte, v.vasija)}
                 >
                   {NOMBRE_PARTE[parte]}
@@ -163,10 +178,14 @@ export default function DetalleManifold({
         </div>
 
         <div className="row" style={{ gap: 8, marginTop: 12 }}>
-          <button className="btn sm" style={{ flex: 1 }} onClick={() => marcarTodo(true)}>
-            Marcar el manifold completo
+          {!esFuga && (
+            <button className="btn sm" style={{ flex: 1 }} onClick={() => marcarTodo(true)}>
+              Marcar el manifold completo
+            </button>
+          )}
+          <button className="btn sm ghost" style={esFuga ? { flex: 1 } : undefined} onClick={() => marcarTodo(false)}>
+            {esFuga ? 'Sin fugas en este manifold' : 'Limpiar'}
           </button>
-          <button className="btn sm ghost" onClick={() => marcarTodo(false)}>Limpiar</button>
         </div>
       </div>
     </div>

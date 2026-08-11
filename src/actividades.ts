@@ -59,12 +59,25 @@ export function venteosDe(lado: LadoRack): Venteo[] {
 }
 
 /** Piezas que se marcan una por una dentro de un manifold. */
-export type ParteManifold = 'stubend' | 'manifold' | 'tubing'
+export type ParteManifold = 'stubend' | 'manifold' | 'brazo' | 'tubing'
 
 export const NOMBRE_PARTE: Record<ParteManifold, string> = {
   stubend: 'Stub end',
   manifold: 'Manifold',
+  brazo: 'Brazo',
   tubing: 'Tubing',
+}
+
+/** Piezas del manifold que pueden filtrar en el levantamiento de fuga.
+    Acá sí entra el brazo: en el outage no se registra, pero filtrar puede. */
+export const PARTES_FUGA: ParteManifold[] = ['manifold', 'stubend', 'brazo', 'tubing']
+
+/** Actividad y lado con que se guardan las fugas de manifold en `avance_item`.
+    El rack va dentro del `item` porque la tabla no tiene columna de rack y
+    todo lo demás que guarda es del Rack 12. */
+export const FUGA_MANIFOLD = 'fuga_manifold'
+export function itemFugaManifold(rack: number, manifold: string): string {
+  return `${rack}-${manifold}`
 }
 
 export interface Actividad {

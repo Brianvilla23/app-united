@@ -95,6 +95,7 @@ export function itemId(actividad: string, lado: LadoRack, item: string): string 
     Record<string, unknown>` de ItemAvance. */
 export type DatosManifold = {
   stubend?: string[]
+  brazo?: string[]
   tubing?: string[]
   manifold?: boolean
 }
