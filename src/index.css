@@ -195,6 +195,9 @@ textarea { resize: vertical; }
 .pieza-chip.on::before { content: '✓ '; font-weight: 800; }
 .pieza-chip.fuga { border-color: #8a6d03; background: rgba(240,180,0,.18); color: #7a5f00; }
 .pieza-chip.fuga::before { content: '● '; font-weight: 800; }
+/* retirado va en plomo: verde diría que la pieza sigue puesta */
+.pieza-chip.retirado { border-color: #5b6675; background: rgba(125,135,148,.16); color: #475569; }
+.pieza-chip.retirado::before { content: '✓ '; font-weight: 800; }
 
 /* comentario libre del rack, para lo que no cabe en el diagrama */
 .comentario { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px; margin-top: 10px; }

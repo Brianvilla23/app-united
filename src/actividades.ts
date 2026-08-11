@@ -91,6 +91,9 @@ export interface Actividad {
   /** Piezas del manifold que lleva esta actividad. Con `partes`, tocar un
       manifold abre su detalle en vez de marcarlo entero de una. */
   partes?: ParteManifold[]
+  /** true = la actividad SACA la pieza. Lo marcado no se pinta verde sino
+      plomo: verde dice "está puesto", y algo retirado justamente ya no está. */
+  retira?: boolean
   /** true = no forma parte de la cadena secuencial. */
   libre?: boolean
   /** true = es del rack completo, el lado no aplica (ej. las membranas). */
@@ -127,6 +130,7 @@ export const ACTIVIDADES: Actividad[] = [
     // entero y el tubing se cambia, así que lo que hay que dejar registrado es
     // que ningún stub end se quedó atrás.
     partes: ['stubend'],
+    retira: true,
     nota: 'Se marca el stub end de cada vasija: el manifold queda retirado cuando están todos.',
   },
   {

@@ -19,6 +19,10 @@ import DetalleManifold from './DetalleManifold'
 
 const HECHO = '#22c55e'
 const EMPEZADO = '#d97706'
+// Lo que se RETIRA no se pinta verde: verde dice "está puesto", y un manifold
+// retirado justamente ya no está. Va en el plomo del bastidor, con su visto.
+const RETIRADO = '#8e99a8'
+const RETIRADO_BORDE = '#5b6675'
 
 export default function PlanoActividad({ actividad }: { actividad: Actividad }) {
   const [lado, setLado] = useState<LadoRack>(actividad.lados[0])
@@ -41,6 +45,8 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
       : [],
   )
   const totalLado = actividad.tipo === 'manifold' ? MANIFOLDS.length : TOTAL_VASIJAS
+  const color = actividad.retira ? RETIRADO : HECHO
+  const colorBorde = actividad.retira ? RETIRADO_BORDE : '#15803d'
   // con piezas la barra cuenta piezas puestas; si no, ítems terminados
   const avance = actividad.partes
     ? {
@@ -141,7 +147,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
           <span>{avance.hechas} de {avance.total} {avance.unidad}</span>
         </div>
         <div className="avance-bar">
-          <span style={{ width: `${pct}%`, background: HECHO }} />
+          <span style={{ width: `${pct}%`, background: color }} />
         </div>
       </div>
 
@@ -168,12 +174,15 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
         <Manifolds
           hechos={hechos}
           empezados={empezados}
+          color={color}
+          colorBorde={colorBorde}
           onTocar={(id) => (actividad.partes ? setAbierto(id) : void toggle(id))}
         />
       )}
 
       {abierto && actividad.partes && (
         <DetalleManifold
+          modo={actividad.retira ? 'retirado' : 'hecho'}
           manifold={abierto}
           partes={actividad.partes}
           datos={datosDe(abierto)}
@@ -192,8 +201,8 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
       <div className="leyenda abajo">
         <b className="leg-titulo">LEYENDA</b>
         <span className="leg-item">
-          <span className="leg-dot" style={{ background: HECHO }} /> Hecho
-          <em>Ya ejecutado</em>
+          <span className="leg-dot" style={{ background: color }} /> {actividad.retira ? 'Retirado' : 'Hecho'}
+          <em>{actividad.retira ? 'Ya salió del rack' : 'Ya ejecutado'}</em>
           <i>{hechos.size}</i>
         </span>
         {actividad.partes && (
@@ -224,8 +233,12 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
 // planos). Encima van las 40 zonas tocables. Así el diagrama de la app es
 // idéntico al de planta, no una réplica dibujada a mano.
 function Manifolds({
-  hechos, empezados, onTocar,
-}: { hechos: Set<string>; empezados: Set<string>; onTocar: (id: string) => void }) {
+  hechos, empezados, color, colorBorde, onTocar,
+}: {
+  hechos: Set<string>; empezados: Set<string>
+  color: string; colorBorde: string
+  onTocar: (id: string) => void
+}) {
   const { ancho, alto } = PLANO_MF
   return (
     <div className="fugas-scroll">
@@ -238,15 +251,16 @@ function Manifolds({
             <g key={z.id} onClick={() => onTocar(z.id)} style={{ cursor: 'pointer' }}>
               <rect
                 x={z.x} y={z.y} width={z.w} height={z.h} rx={5}
-                fill={on ? 'rgba(34,197,94,.42)' : medio ? 'rgba(217,119,6,.2)' : 'transparent'}
-                stroke={on ? '#15803d' : medio ? EMPEZADO : 'rgba(120,130,145,.35)'}
+                fill={on ? color + '6b' : medio ? 'rgba(217,119,6,.2)' : 'transparent'}
+                stroke={on ? colorBorde : medio ? EMPEZADO : 'rgba(120,130,145,.35)'}
                 strokeWidth={on || medio ? 2.2 : 1}
                 strokeDasharray={on ? undefined : '3 3'}
               />
+              {/* el visto va AL MEDIO del manifold, que es donde se busca */}
               {on && (
                 <path
-                  d={`M ${z.x + z.w - 26} ${z.y + z.h / 2} l 6 7 l 13 -15`}
-                  fill="none" stroke="#15803d" strokeWidth={4}
+                  d={`M ${z.x + z.w / 2 - 10} ${z.y + z.h / 2} l 7 8 l 15 -17`}
+                  fill="none" stroke={colorBorde} strokeWidth={4.5}
                   strokeLinecap="round" strokeLinejoin="round"
                 />
               )}

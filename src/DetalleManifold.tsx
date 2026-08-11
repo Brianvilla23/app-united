@@ -14,15 +14,21 @@ import {
 import { ARQUETIPOS, ARQUETIPO_DE, SPRITE, TILE, type ZonaParte } from './manifoldDetalle'
 import type { DatosManifold } from './types'
 
-// El mismo detalle sirve para dos cosas: marcar avance del outage (verde) y
-// marcar fugas en el levantamiento (amarillo, la regla de color de la app).
-// El relleno va translúcido a propósito: marcar una pieza NO puede taparla, si
-// no se pierde de vista qué es.
+// El mismo detalle sirve para tres cosas, y el color dice cuál: verde = la
+// pieza quedó puesta, plomo = la pieza se retiró, amarillo = filtra (la regla
+// de color del levantamiento). El relleno va translúcido a propósito: marcar
+// una pieza NO puede taparla, si no se pierde de vista qué es.
 const PALETA = {
   hecho: { fondo: 'rgba(34,197,94,.26)', borde: '#15803d' },
+  // plomo para lo que se saca: verde diría "está puesto"
+  retirado: { fondo: 'rgba(125,135,148,.4)', borde: '#5b6675' },
   fuga: { fondo: 'rgba(240,180,0,.35)', borde: '#8a6d03' },
 }
 export type ModoDetalle = keyof typeof PALETA
+
+const CLASE_MARCA: Record<ModoDetalle, string> = {
+  hecho: ' on', retirado: ' retirado', fuga: ' fuga',
+}
 
 const PENDIENTE_BORDE = 'rgba(100,116,139,.55)'
 // Lo pendiente se rellena 'transparent' y NO 'none': con 'none' el interior de
@@ -53,7 +59,7 @@ export default function DetalleManifold({
       piezas seguidas, la segunda no puede partir de una copia vieja. */
   onMarcar: (cambio: (actual: DatosManifold) => DatosManifold) => void
   onCerrar: () => void
-  /** 'hecho' = avance del outage · 'fuga' = levantamiento de fuga. */
+  /** 'hecho' = quedó puesta · 'retirado' = se sacó · 'fuga' = filtra. */
   modo?: ModoDetalle
   /** Texto extra del título, por ejemplo el rack en el levantamiento. */
   encabezado?: string
@@ -64,6 +70,7 @@ export default function DetalleManifold({
   const porVasija = partes.filter((p): p is Exclude<ParteManifold, 'manifold'> => p !== 'manifold')
   const color = PALETA[modo]
   const esFuga = modo === 'fuga'
+  const esRetiro = modo === 'retirado'
 
   const marcada = (parte: ParteManifold, vasija: string) =>
     parte === 'manifold' ? !!datos.manifold : !!datos[parte]?.includes(vasija)
@@ -154,7 +161,7 @@ export default function DetalleManifold({
             <div className="pieza-fila">
               <b>Barra</b>
               <button
-                className={'pieza-chip' + (datos.manifold ? (esFuga ? ' fuga' : ' on') : '')}
+                className={'pieza-chip' + (datos.manifold ? CLASE_MARCA[modo] : '')}
                 onClick={() => toggle('manifold')}
               >
                 {NOMBRE_PARTE.manifold}
@@ -167,7 +174,7 @@ export default function DetalleManifold({
               {porVasija.map((parte) => (
                 <button
                   key={parte}
-                  className={'pieza-chip' + (marcada(parte, v.vasija) ? (esFuga ? ' fuga' : ' on') : '')}
+                  className={'pieza-chip' + (marcada(parte, v.vasija) ? CLASE_MARCA[modo] : '')}
                   onClick={() => toggle(parte, v.vasija)}
                 >
                   {NOMBRE_PARTE[parte]}
@@ -180,7 +187,7 @@ export default function DetalleManifold({
         <div className="row" style={{ gap: 8, marginTop: 12 }}>
           {!esFuga && (
             <button className="btn sm" style={{ flex: 1 }} onClick={() => marcarTodo(true)}>
-              Marcar el manifold completo
+              {esRetiro ? 'Marcar el manifold retirado' : 'Marcar el manifold completo'}
             </button>
           )}
           <button className="btn sm ghost" style={esFuga ? { flex: 1 } : undefined} onClick={() => marcarTodo(false)}>
