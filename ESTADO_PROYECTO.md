@@ -212,6 +212,7 @@ es elegir su tipo en el catálogo, no programar una pantalla.
 | Tipo de diagrama | Qué dibuja |
 |---|---|
 | `tapa` | plano de 295 con seguros y pernos (reusa el módulo de tapas) |
+
 | `simple` | plano de 295, se toca y queda hecho |
 | `manifold` | los 40 manifolds sobre el plano real |
 | `venteo` | los 6 venteos del rack |

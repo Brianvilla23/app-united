@@ -22,16 +22,22 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
   const tapas = useLiveQuery(() => db.tapas.toArray(), []) ?? []
   const itemsAv = useLiveQuery(() => db.items.toArray(), []) ?? []
 
-  // Avance por actividad. Hoy solo el retiro de tapas de alimentación tiene
-  // datos reales; el resto queda en 0 hasta que se construya su diagrama.
+  // Avance por actividad. Cada tipo guarda en su propia tabla, así que el
+  // avance se lee de donde corresponda.
   const avanceDe = (id: string): number => {
-    if (id === 'retiro_tapas_alim') {
+    const act = ACTIVIDADES.find((a) => a.id === id)
+    // Las tapas NO viven en avance_item sino en su propia tabla, y cada
+    // actividad lleva su registro por lado. Antes esto solo contemplaba el
+    // retiro de alimentación: las otras tres caían al conteo de avance_item,
+    // donde no hay ninguna tapa, y se veían siempre en 0% aunque el rack
+    // estuviera medio desarmado.
+    if (act?.tipo === 'tapa') {
+      const lado = act.lados[0]
       const hechas = tapas.filter(
-        (t) => t.rack === RACK_TAPAS && t.lado === 'alimentacion' && estaExtraida(t),
+        (t) => t.rack === RACK_TAPAS && t.lado === lado && t.actividad === id && estaExtraida(t),
       ).length
       return Math.round((hechas / TOTAL_VASIJAS) * 1000) / 10
     }
-    const act = ACTIVIDADES.find((a) => a.id === id)
     if (act?.partes) {
       // acá el avance son las piezas puestas, no los manifolds terminados
       const propios = itemsAv.filter((i) => i.actividad === id)
