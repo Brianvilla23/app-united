@@ -4,6 +4,9 @@ import { db } from './db'
 import { iniciarSync } from './sync'
 import { seedTapasRack12 } from './seedTapas'
 import { quienSoy, guardarQuienSoy } from './identidad'
+import {
+  ModoContexto, NOMBRE_MODO, guardarModo, modoGuardado, type ModoUso,
+} from './permisos'
 import AvisoForm from './AvisoForm'
 import AndamioForm from './AndamioForm'
 import Guardados from './Guardados'
@@ -60,8 +63,15 @@ function Marca() {
   )
 }
 
-function QuienEres({ inicial, onListo }: { inicial: string; onListo: (n: string) => void }) {
+function QuienEres({
+  inicial, modoInicial, onListo,
+}: {
+  inicial: string
+  modoInicial: ModoUso
+  onListo: (n: string, m: ModoUso) => void
+}) {
   const [nombre, setNombre] = useState(inicial)
+  const [modo, setModo] = useState<ModoUso>(modoInicial)
   const valido = nombre.trim().length >= 3
 
   return (
@@ -76,9 +86,22 @@ function QuienEres({ inicial, onListo }: { inicial: string; onListo: (n: string)
         value={nombre}
         placeholder="Nombre y apellido"
         onChange={(e) => setNombre(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && valido) onListo(nombre) }}
+        onKeyDown={(e) => { if (e.key === 'Enter' && valido) onListo(nombre, modo) }}
       />
-      <button className="btn primary" disabled={!valido} onClick={() => onListo(nombre)}>
+
+      <div className="modo-elige">
+        <b>¿Qué vas a hacer?</b>
+        <button className={modo === 'ver' ? 'on' : ''} onClick={() => setModo('ver')}>
+          <span>Solo mirar</span>
+          <small>Ves el avance y descargas los PDF, pero no puedes cambiar nada</small>
+        </button>
+        <button className={modo === 'editar' ? 'on' : ''} onClick={() => setModo('editar')}>
+          <span>Registrar avance</span>
+          <small>Marcas tapas, manifolds, fugas y venteos</small>
+        </button>
+      </div>
+
+      <button className="btn primary" disabled={!valido} onClick={() => onListo(nombre, modo)}>
         Continuar
       </button>
     </div>
@@ -162,10 +185,17 @@ export default function App() {
     return () => window.removeEventListener('popstate', alVolver)
   }, [volverA])
   const [yo, setYo] = useState(quienSoy())
+  const [modo, setModo] = useState<ModoUso>(modoGuardado())
   const [editandoNombre, setEditandoNombre] = useState(false)
   useEffect(() => { iniciarSync(); void seedTapasRack12() }, [])
 
-  const confirmarNombre = (n: string) => { guardarQuienSoy(n); setYo(quienSoy()); setEditandoNombre(false) }
+  const confirmarNombre = (n: string, m: ModoUso) => {
+    guardarQuienSoy(n)
+    guardarModo(m)
+    setYo(quienSoy())
+    setModo(m)
+    setEditandoNombre(false)
+  }
 
   if (!yo || editandoNombre) {
     return (
@@ -173,12 +203,15 @@ export default function App() {
         <header className="topbar">
           <Marca />
         </header>
-        <main className="main"><QuienEres inicial={yo} onListo={confirmarNombre} /></main>
+        <main className="main">
+          <QuienEres inicial={yo} modoInicial={modo} onListo={confirmarNombre} />
+        </main>
       </div>
     )
   }
 
   return (
+    <ModoContexto value={modo}>
     <div className="app">
       <header className="topbar">
         {vista === 'menu' ? (
@@ -188,8 +221,10 @@ export default function App() {
         )}
         <OfflineDot />
       </header>
-      <div className="quien-bar">
-        <span>Registrando como <b>{yo}</b></span>
+      <div className={'quien-bar' + (modo === 'ver' ? ' mirando' : '')}>
+        <span>
+          <b>{NOMBRE_MODO[modo]}</b> · {yo}
+        </span>
         <button onClick={() => setEditandoNombre(true)}>cambiar</button>
       </div>
       <main className="main">
@@ -213,5 +248,6 @@ export default function App() {
       </main>
       <footer className="app-foot">App United v0.2 · uso interno</footer>
     </div>
+    </ModoContexto>
   )
 }

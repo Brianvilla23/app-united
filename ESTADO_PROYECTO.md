@@ -88,7 +88,20 @@ Tocar el borde = tapa completa agripada. El color del rack se calcula solo.
 
 ---
 
-## 6. Trazabilidad — identidad + historial ✅ (código listo)
+## 6. Trazabilidad — identidad, modo de uso e historial ✅
+
+- **Modo de uso** (11-08-2026): al entrar, además del nombre se elige **Solo
+  mirar** o **Registrar avance**, y queda guardado en ese celular
+  (`united_modo`). En "solo mirar" se ve todo el avance y se descargan los PDF,
+  pero no se puede tocar nada: sin botones de acción, el comentario del rack en
+  solo lectura y las funciones de escritura cortadas por si acaso. La barra de
+  identidad cambia de color para que se note. Se cambia con "cambiar", al lado
+  del nombre.
+  ⚠️ **Esto NO es seguridad**: no hay login y la clave de Supabase va dentro del
+  JS publicado, así que quien sepa lo que hace escribe igual. Lo que evita es lo
+  que pasa de verdad en planta — que alguien que entró a mirar el avance toque
+  una vasija sin querer. Control de acceso real recién con el módulo de login
+  (RLS por `auth.uid()` en vez de acceso libre al rol anon).
 
 - **"¿Quién sos?"**: se pregunta el nombre la primera vez en cada celular
   (`src/identidad.ts`, guardado en localStorage). Antes de esto, TODO salía

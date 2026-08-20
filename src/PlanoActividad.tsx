@@ -18,6 +18,7 @@ import PlanoRack from './PlanoRack'
 import PlanoManifolds, { type EstadoManifold } from './PlanoManifolds'
 import DetalleManifold from './DetalleManifold'
 import { agruparPorFila, generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
+import { usePuedeEditar } from './permisos'
 
 const HECHO = '#22c55e'
 const EMPEZADO = '#d97706'
@@ -30,6 +31,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
   const [lado, setLado] = useState<LadoRack>(actividad.lados[0])
   const [vista, setVista] = useState<Vista>('A')
   const [abierto, setAbierto] = useState<string | null>(null)
+  const puedeEditar = usePuedeEditar()
   const items = useLiveQuery(
     () => db.items.where('actividad').equals(actividad.id).toArray(),
     [actividad.id],
@@ -242,7 +244,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
               tapaRec={new Map()}
               porVasija={new Map()}
               hechos={hechos}
-              onVasija={(id) => void toggle(id)}
+              onVasija={puedeEditar ? (id) => void toggle(id) : undefined}
             />
           </div>
         </>
@@ -250,7 +252,9 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
         <div className="fugas-scroll">
           <PlanoManifolds
             estado={estadoManifold}
-            onTocar={(id) => (actividad.partes ? setAbierto(id) : void toggle(id))}
+            onTocar={actividad.partes
+              ? (id) => setAbierto(id)
+              : puedeEditar ? (id) => void toggle(id) : undefined}
           />
         </div>
       )}
@@ -268,8 +272,10 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
 
       {actividad.tipo === 'manifold' && (
         <div className="row" style={{ gap: 8, marginTop: 10 }}>
-          <button className="btn sm ghost" onClick={() => void marcarTodo(true)}>Marcar todos</button>
-          <button className="btn sm ghost" onClick={() => void marcarTodo(false)}>Limpiar todos</button>
+          {puedeEditar && <>
+            <button className="btn sm ghost" onClick={() => void marcarTodo(true)}>Marcar todos</button>
+            <button className="btn sm ghost" onClick={() => void marcarTodo(false)}>Limpiar todos</button>
+          </>}
         </div>
       )}
 

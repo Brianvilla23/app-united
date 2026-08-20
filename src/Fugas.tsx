@@ -16,6 +16,7 @@ import {
 import { generarPDFTapas, nombreArchivoTapas } from './pdfTapas'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { useComentarioRack } from './ComentarioRack'
+import { usePuedeEditar } from './permisos'
 import { fechaHistorial } from './fecha'
 import PlanoRack, { AZUL, VERDE } from './PlanoRack'
 import FugasManifold from './FugasManifold'
@@ -63,6 +64,7 @@ export default function Fugas({
   const [vista, setVista] = useState<Vista>('A')
   const [sel, setSel] = useState<string | null>(null)
   const [selTapa, setSelTapa] = useState<string | null>(null)
+  const puedeEditar = usePuedeEditar()
   const todas = useLiveQuery(() => db.marcas.toArray(), []) ?? []
   const todasTapas = useLiveQuery(() => db.tapas.toArray(), []) ?? []
 
@@ -85,6 +87,7 @@ export default function Fugas({
   const tapasPorLado = (l: LadoRack) => todasTapas.filter((t) => t.rack === RACK_TAPAS && t.lado === l && t.actividad === actividad).length
 
   const updateTapa = async (vasija: string, patch: Partial<TapaEstado>) => {
+    if (!puedeEditar) return
     const id = tapaId(actividad, lado, rack, vasija)
     const yo = quienSoy()
     const cur = todasTapas.find((t) => t.id === id)
@@ -131,6 +134,7 @@ export default function Fugas({
   }
 
   const limpiarTapa = async (vasija: string) => {
+    if (!puedeEditar) return
     await db.tapas.delete(tapaId(actividad, lado, rack, vasija))
     await encolar('tapas_delete', { actividad, lado, rack, vasija })
     await registrar('tapa', lado, rack, vasija, 'borró el registro de la tapa')
@@ -192,6 +196,7 @@ export default function Fugas({
   }
 
   const toggle = async (vasija: string, componente: ComponenteFuga) => {
+    if (!puedeEditar) return
     const id = `${rack}-${vasija}-${componente}`
     const yo = quienSoy()
     const existe = await db.marcas.get(id)
@@ -543,12 +548,12 @@ export default function Fugas({
                 </div>
               )}
 
-              <div className="row" style={{ marginTop: 12, gap: 8 }}>
+              {puedeEditar && <div className="row" style={{ marginTop: 12, gap: 8 }}>
                 <button className="btn" style={{ flex: 2, borderColor: '#16a34a', color: '#15803d' }} onClick={() => void updateTapa(selTapa, { tapaAgripada: false, segurosAgripados: [], pernosRodados: [], aislada: false })}>
                   {esInstalacion(actividad) ? 'Marcar instalada OK' : 'Marcar retirada OK'}
                 </button>
                 <button className="btn ghost" onClick={() => { void limpiarTapa(selTapa); setSelTapa(null) }}>Limpiar</button>
-              </div>
+              </div>}
             </div>
           </div>
         )

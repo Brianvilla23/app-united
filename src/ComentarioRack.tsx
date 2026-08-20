@@ -12,6 +12,7 @@ import { encolar } from './sync'
 import { quienSoy } from './identidad'
 import { itemId, type LadoRack } from './types'
 import { fechaCorta } from './fecha'
+import { usePuedeEditar } from './permisos'
 
 export const COMENTARIO_RACK = 'comentario_rack'
 // El comentario es del rack completo: el lado no aplica, pero es parte de la
@@ -28,6 +29,7 @@ export function useComentarioRack(rack: number): DatosComentario {
 }
 
 export default function ComentarioRack({ rack }: { rack: number }) {
+  const puedeEditar = usePuedeEditar()
   const id = itemId(COMENTARIO_RACK, LADO, String(rack))
   const guardado = useLiveQuery(() => db.items.get(id), [id])
   const datos = (guardado?.datos as DatosComentario | undefined) ?? {}
@@ -62,7 +64,10 @@ export default function ComentarioRack({ rack }: { rack: number }) {
       <textarea
         value={texto}
         rows={3}
-        placeholder="Anomalías, pendientes o cualquier cosa que el turno siguiente tenga que saber."
+        readOnly={!puedeEditar}
+        placeholder={puedeEditar
+          ? 'Anomalías, pendientes o cualquier cosa que el turno siguiente tenga que saber.'
+          : 'Sin comentario'}
         onChange={(e) => { setEditando(true); setTexto(e.target.value) }}
       />
       <div className="comentario-pie">
@@ -71,9 +76,11 @@ export default function ComentarioRack({ rack }: { rack: number }) {
             ? <>Último: <b>{datos.quien}</b>{datos.fecha ? ` · ${fechaCorta(datos.fecha)}` : ''}</>
             : 'Sin comentario todavía'}
         </small>
-        <button className="btn sm" disabled={!sucio} onClick={() => void guardar()}>
-          {sucio ? 'Guardar' : 'Guardado'}
-        </button>
+        {puedeEditar && (
+          <button className="btn sm" disabled={!sucio} onClick={() => void guardar()}>
+            {sucio ? 'Guardar' : 'Guardado'}
+          </button>
+        )}
       </div>
     </div>
   )

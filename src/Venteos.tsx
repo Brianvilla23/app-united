@@ -11,6 +11,7 @@ import { quienSoy } from './identidad'
 import { itemId, LADOS, RACK_TAPAS, type LadoRack } from './types'
 import { VENTEOS, type Venteo } from './actividades'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
+import { usePuedeEditar } from './permisos'
 
 const HECHO = '#22c55e'
 const PENDIENTE = '#e2e8f0'
@@ -46,6 +47,7 @@ export default function Venteos({ actividad }: { actividad: string }) {
   }
 
   const [generando, setGenerando] = useState(false)
+  const puedeEditar = usePuedeEditar()
 
   const exportarPDF = async () => {
     setGenerando(true)
@@ -97,7 +99,7 @@ export default function Venteos({ actividad }: { actividad: string }) {
       </div>
 
       <div className="fugas-scroll">
-        <PlanoVenteos hechoDe={hechoDe} onTocar={(v) => void toggle(v)} />
+        <PlanoVenteos hechoDe={hechoDe} onTocar={puedeEditar ? (v) => void toggle(v) : undefined} />
       </div>
 
       <div className="leyenda abajo">

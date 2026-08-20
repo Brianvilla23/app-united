@@ -13,6 +13,7 @@ import {
 } from './actividades'
 import { ARQUETIPOS, ARQUETIPO_DE, SPRITE, TILE, type ZonaParte } from './manifoldDetalle'
 import type { DatosManifold } from './types'
+import { usePuedeEditar } from './permisos'
 
 // El mismo detalle sirve para tres cosas, y el color dice cuál: verde = la
 // pieza quedó puesta, plomo = la pieza se retiró, amarillo = filtra (la regla
@@ -64,6 +65,7 @@ export default function DetalleManifold({
   /** Texto extra del título, por ejemplo el rack en el levantamiento. */
   encabezado?: string
 }) {
+  const puedeEditar = usePuedeEditar()
   const arq = ARQUETIPOS[ARQUETIPO_DE[manifold]]
   const vasijas = vasijasDeManifold(manifold)
   const resumen = resumirManifold(manifold, partes, datos)
@@ -76,6 +78,7 @@ export default function DetalleManifold({
     parte === 'manifold' ? !!datos.manifold : !!datos[parte]?.includes(vasija)
 
   const toggle = (parte: ParteManifold, vasija = '') => {
+    if (!puedeEditar) return
     onMarcar((actual) => {
       if (parte === 'manifold') return { ...actual, manifold: !actual.manifold }
       const actuales = actual[parte] ?? []
@@ -89,6 +92,7 @@ export default function DetalleManifold({
   }
 
   const marcarTodo = (valor: boolean) => {
+    if (!puedeEditar) return
     const ids = vasijas.map((v) => v.vasija)
     onMarcar((actual) => {
       const next: DatosManifold = { ...actual }
@@ -184,7 +188,7 @@ export default function DetalleManifold({
           ))}
         </div>
 
-        <div className="row" style={{ gap: 8, marginTop: 12 }}>
+        {puedeEditar && <div className="row" style={{ gap: 8, marginTop: 12 }}>
           {!esFuga && (
             <button className="btn sm" style={{ flex: 1 }} onClick={() => marcarTodo(true)}>
               {esRetiro ? 'Marcar el manifold retirado' : 'Marcar el manifold completo'}
@@ -193,7 +197,7 @@ export default function DetalleManifold({
           <button className="btn sm ghost" style={esFuga ? { flex: 1 } : undefined} onClick={() => marcarTodo(false)}>
             {esFuga ? 'Sin fugas en este manifold' : 'Limpiar'}
           </button>
-        </div>
+        </div>}
       </div>
     </div>
   )

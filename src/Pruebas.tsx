@@ -20,6 +20,7 @@ import {
 import { ALTO, ANCHO, MARCA, MARCA_BORDE, TOTAL_VASIJAS, type Vista } from './rackLayout'
 import PlanoRack from './PlanoRack'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
+import { usePuedeEditar } from './permisos'
 
 const OK = { color: '#22c55e', texto: '#052e16' }
 const FUGA = { color: MARCA, texto: '#3b2a00' }
@@ -33,6 +34,7 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
   const [lado, setLado] = useState<LadoRack>(actividad.lados[0])
   const [vista, setVista] = useState<Vista>('A')
   const [sel, setSel] = useState<string | null>(null)
+  const puedeEditar = usePuedeEditar()
 
   const items = useLiveQuery(
     () => db.items.where('actividad').equals(actividad.id).toArray(), [actividad.id],
@@ -59,6 +61,7 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
 
   /** Lee de la base antes de escribir: dos marcas seguidas no se pisan. */
   const guardar = async (item: string, cambio: (fugas: ComponentePrueba[]) => ComponentePrueba[] | null) => {
+    if (!puedeEditar) return
     const yo = quienSoy()
     const id = itemId(actividad.id, lado, item)
     const datos = await db.transaction('rw', db.items, async () => {
@@ -270,14 +273,14 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
               })}
             </div>
 
-            <div className="row" style={{ gap: 8, marginTop: 12 }}>
+            {puedeEditar && <div className="row" style={{ gap: 8, marginTop: 12 }}>
               <button className="btn sm" style={{ flex: 1 }} onClick={() => { void marcarSinFuga(sel); setSel(null) }}>
                 Revisada, sin fuga
               </button>
               <button className="btn sm ghost" onClick={() => { void dejarSinRevisar(sel); setSel(null) }}>
                 Sin revisar
               </button>
-            </div>
+            </div>}
           </div>
         </div>
       )}

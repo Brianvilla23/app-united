@@ -252,6 +252,24 @@ textarea { resize: vertical; }
 
 .quien-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 14px; font-size: 12.5px; color: var(--muted); background: rgba(13,148,136,.06); border-bottom: 1px solid var(--border); }
 .quien-bar b { color: var(--accent-dark); }
+/* barra de identidad en modo solo lectura: cambia de color para que se note
+   de una que en ese celular no se puede tocar nada */
+.quien-bar.mirando { background: rgba(100,116,139,.1); color: #475569; }
+.quien-bar.mirando b { color: #334155; }
+.quien-bar.mirando button { color: #334155; }
+
+/* elegir modo al entrar */
+.modo-elige { margin: 16px 0 4px; display: flex; flex-direction: column; gap: 8px; }
+.modo-elige > b { font-size: 12.5px; font-weight: 800; letter-spacing: .3px; color: var(--ink); }
+.modo-elige button {
+  font-family: inherit; text-align: left; cursor: pointer;
+  border: 1.5px solid var(--border); border-radius: 12px; background: #f8fafc; padding: 12px 14px;
+}
+.modo-elige button.on { border-color: var(--accent); background: rgba(13,148,136,.08); }
+.modo-elige button span { display: block; font-size: 14.5px; font-weight: 700; color: var(--ink); }
+.modo-elige button small { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.modo-elige button.on span { color: var(--accent-dark); }
+
 .quien-bar button { font-family: inherit; font-size: 12.5px; border: none; background: none; color: var(--accent-dark); text-decoration: underline; cursor: pointer; padding: 2px 4px; }
 
 .historial { margin-top: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
