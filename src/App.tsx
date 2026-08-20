@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { iniciarSync } from './sync'
@@ -7,6 +7,7 @@ import { quienSoy, guardarQuienSoy } from './identidad'
 import {
   ModoContexto, NOMBRE_MODO, guardarModo, modoGuardado, type ModoUso,
 } from './permisos'
+import { cerrarCapaDeArriba, empujarCapa, volver } from './navegacion'
 import AvisoForm from './AvisoForm'
 import AndamioForm from './AndamioForm'
 import Guardados from './Guardados'
@@ -166,24 +167,26 @@ function Menu({ go }: { go: (v: Vista) => void }) {
 export default function App() {
   const [vista, setVista] = useState<Vista>('menu')
   const [actAbierta, setActAbierta] = useState<Actividad | null>(null)
-  // desde dónde se entró, para que el botón de atrás vuelva ahí y no al menú
-  const [volverA, setVolverA] = useState<Vista>('menu')
 
-  // El botón físico de atrás del teléfono cerraba la app en vez de volver a la
-  // pantalla anterior. Cada navegación empuja una entrada al historial y el
-  // popstate nos devuelve, así el gesto de atrás de Android funciona igual que
-  // el botón de la barra.
-  const irA = (v: Vista, desde: Vista = 'menu') => {
-    setVolverA(desde)
+  // De dónde se vino, en el momento de entrar. Va en un ref porque el cierre de
+  // la capa se guarda al navegar y tiene que ver la pantalla de ESE momento,
+  // no la que quede después.
+  const vistaRef = useRef<Vista>('menu')
+  vistaRef.current = vista
+
+  /** Cada pantalla empuja su propia capa: así el atrás desanda de a una y no
+      se salta niveles ni se queda pegado. */
+  const irA = (v: Vista) => {
+    const anterior = vistaRef.current
     setVista(v)
-    if (v !== 'menu') window.history.pushState({ vista: v }, '')
+    empujarCapa(() => setVista(anterior))
   }
 
   useEffect(() => {
-    const alVolver = () => setVista((actual) => (actual === 'menu' ? 'menu' : volverA))
+    const alVolver = () => { cerrarCapaDeArriba() }
     window.addEventListener('popstate', alVolver)
     return () => window.removeEventListener('popstate', alVolver)
-  }, [volverA])
+  }, [])
   const [yo, setYo] = useState(quienSoy())
   const [modo, setModo] = useState<ModoUso>(modoGuardado())
   const [editandoNombre, setEditandoNombre] = useState(false)
@@ -217,7 +220,7 @@ export default function App() {
         {vista === 'menu' ? (
           <Marca />
         ) : (
-          <button className="back" onClick={() => window.history.back()}>‹ {TITULOS[vista]}</button>
+          <button className="back" onClick={volver}>‹ {TITULOS[vista]}</button>
         )}
         <OfflineDot />
       </header>
@@ -228,9 +231,9 @@ export default function App() {
         <button onClick={() => setEditandoNombre(true)}>cambiar</button>
       </div>
       <main className="main">
-        {vista === 'menu' && <Menu go={(v) => irA(v, 'menu')} />}
-        {vista === 'aviso' && <AvisoForm onSaved={() => setVista('guardados')} />}
-        {vista === 'andamio' && <AndamioForm onSaved={() => setVista('guardados')} onCrearSubsecuente={() => setVista('aviso')} />}
+        {vista === 'menu' && <Menu go={irA} />}
+        {vista === 'aviso' && <AvisoForm onSaved={() => irA('guardados')} />}
+        {vista === 'andamio' && <AndamioForm onSaved={() => irA('guardados')} onCrearSubsecuente={() => irA('aviso')} />}
         {vista === 'fugas' && <Fugas />}
         {vista === 'tapas' && <Fugas modoInicial="tapas" actividad={actAbierta?.tipo === 'tapa' ? actAbierta.id : 'retiro_tapas_alim'} titulo={actAbierta?.tipo === 'tapa' ? actAbierta.nombre.toUpperCase() : undefined}
           ladoFijo={actAbierta?.tipo === 'tapa' ? actAbierta.lados[0] : undefined} />}
@@ -239,7 +242,7 @@ export default function App() {
           irA(a.tipo === 'tapa' ? 'tapas'
             : a.tipo === 'venteo' ? 'venteos'
             : a.tipo === 'fugas' ? 'prueba'
-            : 'actividad', 'outage')
+            : 'actividad')
         }} />}
         {vista === 'venteos' && <Venteos actividad="cambio_venteo" />}
         {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} />}

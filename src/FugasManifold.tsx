@@ -21,11 +21,12 @@ import DetalleManifold from './DetalleManifold'
 import PlanoManifolds, { type EstadoManifold } from './PlanoManifolds'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { useComentarioRack } from './ComentarioRack'
+import { useModal } from './useModal'
 
 const LADO = 'descarga' as const   // los manifolds solo existen en descarga
 
 export default function FugasManifold({ rack }: { rack: number }) {
-  const [abierto, setAbierto] = useState<string | null>(null)
+  const [abierto, abrirManifold, cerrarManifold] = useModal<string>()
   const items = useLiveQuery(
     () => db.items.where('actividad').equals(FUGA_MANIFOLD).toArray(), [],
   ) ?? []
@@ -126,7 +127,7 @@ export default function FugasManifold({ rack }: { rack: number }) {
       </div>
 
       <div className="fugas-scroll">
-        <PlanoManifolds estado={estadoManifold} onTocar={(id) => setAbierto(id)} />
+        <PlanoManifolds estado={estadoManifold} onTocar={abrirManifold} />
       </div>
 
       <div className="leyenda abajo">
@@ -156,7 +157,7 @@ export default function FugasManifold({ rack }: { rack: number }) {
           partes={PARTES_FUGA}
           datos={datosDe(abierto)}
           onMarcar={(cambio) => void marcar(abierto, cambio)}
-          onCerrar={() => setAbierto(null)}
+          onCerrar={cerrarManifold}
         />
       )}
     </div>

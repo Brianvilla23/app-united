@@ -17,6 +17,7 @@ import { generarPDFTapas, nombreArchivoTapas } from './pdfTapas'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { useComentarioRack } from './ComentarioRack'
 import { usePuedeEditar } from './permisos'
+import { useModal } from './useModal'
 import { fechaHistorial } from './fecha'
 import PlanoRack, { AZUL, VERDE } from './PlanoRack'
 import FugasManifold from './FugasManifold'
@@ -62,8 +63,8 @@ export default function Fugas({
   const [rackFugas, setRackFugas] = useState(1)
   const [lado, setLado] = useState<LadoRack>(ladoFijo ?? 'alimentacion')
   const [vista, setVista] = useState<Vista>('A')
-  const [sel, setSel] = useState<string | null>(null)
-  const [selTapa, setSelTapa] = useState<string | null>(null)
+  const [sel, abrirVasija, cerrarVasija] = useModal<string>()
+  const [selTapa, abrirTapa, cerrarTapa] = useModal<string>()
   const puedeEditar = usePuedeEditar()
   const todas = useLiveQuery(() => db.marcas.toArray(), []) ?? []
   const todasTapas = useLiveQuery(() => db.tapas.toArray(), []) ?? []
@@ -296,7 +297,7 @@ export default function Fugas({
           espejo={espejo}
           tapaRec={tapaRec}
           porVasija={porVasija}
-          onVasija={(id) => (modo === 'fugas' ? setSel(id) : setSelTapa(id))}
+          onVasija={(id) => (modo === 'fugas' ? abrirVasija(id) : abrirTapa(id))}
         />
       </div>
 
@@ -340,11 +341,11 @@ export default function Fugas({
       </>)}
 
       {sel && (
-        <div className="modal-overlay" onClick={() => setSel(null)}>
+        <div className="modal-overlay" onClick={cerrarVasija}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
               <b>Rack {rack} · Vasija {sel}</b>
-              <button className="modal-x" onClick={() => setSel(null)}>✕</button>
+              <button className="modal-x" onClick={cerrarVasija}>✕</button>
             </div>
             <p className="hint" style={{ margin: '0 0 8px' }}>Toca el componente con fuga · se pinta amarillo</p>
 
@@ -436,11 +437,11 @@ export default function Fugas({
           : '#eef1f4'
         const C = 135
         return (
-          <div className="modal-overlay" onClick={() => setSelTapa(null)}>
+          <div className="modal-overlay" onClick={cerrarTapa}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-head">
                 <b>Rack {rack} · Tapa {selTapa}</b>
-                <button className="modal-x" onClick={() => setSelTapa(null)}>✕</button>
+                <button className="modal-x" onClick={cerrarTapa}>✕</button>
               </div>
               <p className="hint" style={{ margin: '0 0 8px' }}>
                 {LADOS.find((l) => l.codigo === lado)!.nombre} · toca los seguros o pernos con falla. Toca el borde = tapa agripada.
@@ -552,7 +553,7 @@ export default function Fugas({
                 <button className="btn" style={{ flex: 2, borderColor: '#16a34a', color: '#15803d' }} onClick={() => void updateTapa(selTapa, { tapaAgripada: false, segurosAgripados: [], pernosRodados: [], aislada: false })}>
                   {esInstalacion(actividad) ? 'Marcar instalada OK' : 'Marcar retirada OK'}
                 </button>
-                <button className="btn ghost" onClick={() => { void limpiarTapa(selTapa); setSelTapa(null) }}>Limpiar</button>
+                <button className="btn ghost" onClick={() => { void limpiarTapa(selTapa); cerrarTapa() }}>Limpiar</button>
               </div>}
             </div>
           </div>

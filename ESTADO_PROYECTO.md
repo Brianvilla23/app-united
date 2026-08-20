@@ -82,6 +82,14 @@ Tocar el borde = tapa completa agripada. El color del rack se calcula solo.
   manifolds pesaba 1,5 MB y no se manda por WhatsApp; comprimido queda en 96 KB.
   Los planos viven en un solo lugar cada uno — `PlanoRack`, `PlanoManifolds`,
   `PlanoVenteos` — y los usan pantalla y PDF.
+- **Botón de atrás del teléfono** (arreglado 11-08-2026): cada pantalla y cada
+  modal empuja **una capa** (`src/navegacion.ts`), y cada "atrás" cierra la de
+  arriba. Antes se guardaba UNA sola pantalla de retorno: al entrar dos niveles
+  (menú → outage → actividad) el segundo atrás se quedaba pegado y el tercero
+  **cerraba la app**. Los botones ‹ y ✕ de la app también pasan por el
+  historial (`volver()`), así el gesto del teléfono y los botones hacen lo mismo
+  y no se desalinean. Los modales usan `useModal`, que engancha abrir/cerrar a
+  la misma pila.
 - **PWA instalable** + **auto-actualización** (revisa versión nueva cada 60 s y se
   actualiza sola). ⚠️ Cada celular debe tomar UNA vez la versión del 22-07 en
   adelante (abrir en incógnito o reinstalar); después ya se actualiza solo.

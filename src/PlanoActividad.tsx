@@ -19,6 +19,7 @@ import PlanoManifolds, { type EstadoManifold } from './PlanoManifolds'
 import DetalleManifold from './DetalleManifold'
 import { agruparPorFila, generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { usePuedeEditar } from './permisos'
+import { useModal } from './useModal'
 
 const HECHO = '#22c55e'
 const EMPEZADO = '#d97706'
@@ -30,7 +31,7 @@ const RETIRADO_BORDE = '#5b6675'
 export default function PlanoActividad({ actividad }: { actividad: Actividad }) {
   const [lado, setLado] = useState<LadoRack>(actividad.lados[0])
   const [vista, setVista] = useState<Vista>('A')
-  const [abierto, setAbierto] = useState<string | null>(null)
+  const [abierto, abrirManifold, cerrarManifold] = useModal<string>()
   const puedeEditar = usePuedeEditar()
   const items = useLiveQuery(
     () => db.items.where('actividad').equals(actividad.id).toArray(),
@@ -253,7 +254,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
           <PlanoManifolds
             estado={estadoManifold}
             onTocar={actividad.partes
-              ? (id) => setAbierto(id)
+              ? (id) => abrirManifold(id)
               : puedeEditar ? (id) => void toggle(id) : undefined}
           />
         </div>
@@ -266,7 +267,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
           partes={actividad.partes}
           datos={datosDe(abierto)}
           onMarcar={(cambio) => void marcarPiezas(abierto, cambio)}
-          onCerrar={() => setAbierto(null)}
+          onCerrar={cerrarManifold}
         />
       )}
 

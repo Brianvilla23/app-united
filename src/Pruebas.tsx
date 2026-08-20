@@ -21,6 +21,7 @@ import { ALTO, ANCHO, MARCA, MARCA_BORDE, TOTAL_VASIJAS, type Vista } from './ra
 import PlanoRack from './PlanoRack'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { usePuedeEditar } from './permisos'
+import { useModal } from './useModal'
 
 const OK = { color: '#22c55e', texto: '#052e16' }
 const FUGA = { color: MARCA, texto: '#3b2a00' }
@@ -33,7 +34,7 @@ interface DatosPrueba { fugas?: ComponentePrueba[] }
 export default function Pruebas({ actividad }: { actividad: Actividad }) {
   const [lado, setLado] = useState<LadoRack>(actividad.lados[0])
   const [vista, setVista] = useState<Vista>('A')
-  const [sel, setSel] = useState<string | null>(null)
+  const [sel, abrirVasija, cerrarVasija] = useModal<string>()
   const puedeEditar = usePuedeEditar()
 
   const items = useLiveQuery(
@@ -154,7 +155,7 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
 
       <div className="lado-seg">
         {actividad.lados.map((l) => (
-          <button key={l} className={lado === l ? 'on' : ''} onClick={() => { setLado(l); setSel(null) }}>
+          <button key={l} className={lado === l ? 'on' : ''} onClick={() => setLado(l)}>
             {LADOS.find((x) => x.codigo === l)!.corto}
             <small>{items.filter((i) => i.lado === l && i.hecho).length} revisadas</small>
           </button>
@@ -188,7 +189,7 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
           tapaRec={new Map()}
           porVasija={new Map()}
           colores={colores}
-          onVasija={(id) => setSel(id)}
+          onVasija={abrirVasija}
         />
       </div>
 
@@ -238,11 +239,11 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
       </div>
 
       {sel && (
-        <div className="modal-overlay" onClick={() => setSel(null)}>
+        <div className="modal-overlay" onClick={cerrarVasija}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
               <b>Vasija {sel}</b>
-              <button className="modal-x" onClick={() => setSel(null)}>✕</button>
+              <button className="modal-x" onClick={cerrarVasija}>✕</button>
             </div>
             <p className="hint" style={{ margin: '0 0 10px' }}>
               {revisada(sel)
@@ -274,10 +275,10 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
             </div>
 
             {puedeEditar && <div className="row" style={{ gap: 8, marginTop: 12 }}>
-              <button className="btn sm" style={{ flex: 1 }} onClick={() => { void marcarSinFuga(sel); setSel(null) }}>
+              <button className="btn sm" style={{ flex: 1 }} onClick={() => { void marcarSinFuga(sel); cerrarVasija() }}>
                 Revisada, sin fuga
               </button>
-              <button className="btn sm ghost" onClick={() => { void dejarSinRevisar(sel); setSel(null) }}>
+              <button className="btn sm ghost" onClick={() => { void dejarSinRevisar(sel); cerrarVasija() }}>
                 Sin revisar
               </button>
             </div>}
