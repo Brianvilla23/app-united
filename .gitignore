@@ -30,3 +30,4 @@ respaldos/
 
 # Capturas de revisión: se regeneran con `node screenshot.mjs`
 ver_*.png
+modo_elegir.png
