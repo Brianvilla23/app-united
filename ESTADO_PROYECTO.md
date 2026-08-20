@@ -33,8 +33,8 @@ viejas ya guardadas —, inspeccionado por, próxima inspección), foto del anda
 "¿se generó el subsecuente?" sí/no.
 
 ### 3. Diagrama de fugas
-Tres vistas del mismo rack: **Vasijas · Manifold · Tapas**, con el selector
-R1-R12 en las dos primeras.
+Dos vistas del mismo rack: **Vasijas · Manifold**, con el selector R1-R12 en
+las dos.
 
 **Manifold (11-08-2026)**: el plano de los 40 manifolds, marcando dónde filtra
 en vez de qué se avanzó. Se toca un manifold → detalle con sus piezas → se
@@ -63,7 +63,11 @@ Modelo de cañería fiel al plano: 1 victaulic entre vasijas contiguas, **spool*
 no cruza el poste.
 
 ### 4. Estado de tapas
-Mismo esquema del rack. **Solo 2 colores**: 🟠 ámbar = agripada/rodada · 🟢 verde = retirada.
+**Vive dentro del Outage** (11-08-2026): se saca del menú principal y de las
+pestañas del levantamiento, porque ahí mostraba siempre el retiro de
+alimentación — la actividad 1 del outage — y era el mismo dato dos veces. Se
+entra por sus 4 actividades (retiro e instalación, por lado), cada una con su
+propio registro. Mismo esquema del rack. **Solo 2 colores**: 🟠 ámbar = agripada/rodada · 🟢 verde = retirada.
 Detalle = cabeza Protec realista: **3 seguros triples** (arcos) + **3 pernos parker**
 (círculos 1-2-3), se tocan individualmente y quedan en ámbar; los sanos se atenúan.
 Tocar el borde = tapa completa agripada. El color del rack se calcula solo.

@@ -223,7 +223,6 @@ export default function Fugas({
         <div className="vista-seg" style={{ marginBottom: 10 }}>
           <button className={modo === 'fugas' ? 'on' : ''} onClick={() => setModo('fugas')}>Vasijas</button>
           <button className={modo === 'manifold' ? 'on' : ''} onClick={() => setModo('manifold')}>Manifold</button>
-          <button className={modo === 'tapas' ? 'on' : ''} onClick={() => setModo('tapas')}>Tapas</button>
         </div>
       )}
 
@@ -287,7 +286,13 @@ export default function Fugas({
 
       <div className="plano-titulo">
         <b>{titulo ?? `RACK ${rack}`}</b>
-        <span>{modo === 'tapas' ? LADOS.find((l) => l.codigo === lado)!.nombre.toUpperCase() : 'LADO ALIMENTACIÓN'}</span>
+        {/* con `titulo` el nombre de la actividad ya dice el lado ("Retiro de
+            tapas · alimentación"), así que abajo va el rack y no se repite */}
+        <span>
+          {titulo
+            ? `RACK ${rack}`
+            : modo === 'tapas' ? LADOS.find((l) => l.codigo === lado)!.nombre.toUpperCase() : 'LADO ALIMENTACIÓN'}
+        </span>
       </div>
 
       <div className="fugas-scroll">

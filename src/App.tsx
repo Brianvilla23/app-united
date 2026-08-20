@@ -21,6 +21,10 @@ import { fechaLarga } from './fecha'
 
 type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'guardados'
 
+/** Pantallas a las que solo se entra desde una actividad del outage: el rótulo
+    del atrás lleva el nombre de la actividad y no el genérico de la pantalla. */
+const VISTAS_DE_ACTIVIDAD: Vista[] = ['tapas', 'actividad', 'prueba', 'venteos']
+
 const TITULOS: Record<Vista, string> = {
   menu: 'App United',
   aviso: 'Nuevo aviso',
@@ -137,11 +141,6 @@ function Menu({ go }: { go: (v: Vista) => void }) {
           <span className="mc-txt"><b>Diagrama de fugas</b><small>Marca fugas por vasija · lado alimentación</small></span>
           <span className="mc-arrow">›</span>
         </button>
-        <button className="menu-card" onClick={() => go('tapas')}>
-          <span className="mc-ico" style={{ background: 'rgba(225,29,29,.1)' }}>🔩</span>
-          <span className="mc-txt"><b>Estado de tapas</b><small>Rack 12 · agripadas, pernos rodados, normalizadas</small></span>
-          <span className="mc-arrow">›</span>
-        </button>
         <button className="menu-card" onClick={() => go('outage')}>
           <span className="mc-ico" style={{ background: 'rgba(37,99,235,.1)' }}>🗓️</span>
           <span className="mc-txt"><b>Outage Rack 12</b><small>Secuencia completa · {ACTIVIDADES.length} actividades</small></span>
@@ -220,7 +219,9 @@ export default function App() {
         {vista === 'menu' ? (
           <Marca />
         ) : (
-          <button className="back" onClick={volver}>‹ {TITULOS[vista]}</button>
+          <button className="back" onClick={volver}>
+            ‹ {actAbierta && VISTAS_DE_ACTIVIDAD.includes(vista) ? actAbierta.nombre : TITULOS[vista]}
+          </button>
         )}
         <OfflineDot />
       </header>
