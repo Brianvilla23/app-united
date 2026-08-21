@@ -12,6 +12,7 @@ import { itemId, LADOS, RACK_TAPAS, type LadoRack } from './types'
 import { VENTEOS, type Venteo } from './actividades'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { usePuedeEditar } from './permisos'
+import { ordenSemiRacks } from './rackLayout'
 
 const HECHO = '#22c55e'
 const PENDIENTE = '#e2e8f0'
@@ -24,7 +25,7 @@ const W = 340, H = 250
 const MARGEN = 12, HUECO = 14
 const BLOQUE_W = (W - 2 * MARGEN - HUECO) / 2
 const BLOQUE_H = 74
-const X_A = MARGEN, X_B = MARGEN + BLOQUE_W + HUECO
+const X_IZQ = MARGEN, X_DER = MARGEN + BLOQUE_W + HUECO
 
 export default function Venteos({ actividad }: { actividad: string }) {
   const items = useLiveQuery(() => db.items.where('actividad').equals(actividad).toArray(), [actividad]) ?? []
@@ -141,8 +142,9 @@ function PlanoVenteos({
         <text x={W / 2} y={y - 8} textAnchor="middle" fontSize={11} fontWeight={800} fill="#0f172a">
           {LADOS.find((l) => l.codigo === lado)!.nombre.toUpperCase()}
         </text>
-        {(['A', 'B'] as const).map((sr) => {
-          const x = sr === 'A' ? X_A : X_B
+        {/* en descarga se lee B y después A, igual que el plano espejado */}
+        {ordenSemiRacks(lado === 'descarga').map((sr, i) => {
+          const x = i === 0 ? X_IZQ : X_DER
           const propios = delLado.filter((v) => v.semiRack === sr)
           return (
             <g key={sr}>

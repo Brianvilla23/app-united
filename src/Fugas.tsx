@@ -4,7 +4,7 @@ import { db } from './db'
 import { encolar, registrar } from './sync'
 import { quienSoy } from './identidad'
 import {
-  ALTO, ANCHO, COMPONENTES, TOTAL_VASIJAS, RACKS,
+  ALTO, ANCHO, COMPONENTES, TOTAL_VASIJAS, RACKS, ordenSemiRacks,
   MARCA, MARCA_BORDE, PLOMO, PLOMO_BORDE,
   type ComponenteFuga, type Vista,
 } from './rackLayout'
@@ -62,7 +62,8 @@ export default function Fugas({
   const [modo, setModo] = useState<ModoFugas>(modoInicial)
   const [rackFugas, setRackFugas] = useState(1)
   const [lado, setLado] = useState<LadoRack>(ladoFijo ?? 'alimentacion')
-  const [vista, setVista] = useState<Vista>('A')
+  // arranca en el semi rack que va primero en ese lado (en descarga, el B)
+  const [vista, setVista] = useState<Vista>(ordenSemiRacks(ladoFijo === 'descarga')[0])
   const [sel, abrirVasija, cerrarVasija] = useModal<string>()
   const [selTapa, abrirTapa, cerrarTapa] = useModal<string>()
   const puedeEditar = usePuedeEditar()
@@ -279,8 +280,13 @@ export default function Fugas({
       {modo === 'manifold' ? <FugasManifold rack={rack} /> : (<>
 
       <div className="vista-seg">
-        <button className={vista === 'A' ? 'on' : ''} onClick={() => setVista('A')}>Semi Rack A</button>
-        <button className={vista === 'B' ? 'on' : ''} onClick={() => setVista('B')}>Semi Rack B</button>
+        {/* en descarga el plano va espejado y el Semi Rack B queda a la
+            izquierda: el selector se lee en ese mismo orden */}
+        {ordenSemiRacks(espejo).map((sr) => (
+          <button key={sr} className={vista === sr ? 'on' : ''} onClick={() => setVista(sr)}>
+            Semi Rack {sr}
+          </button>
+        ))}
         <button className={vista === 'todo' ? 'on' : ''} onClick={() => setVista('todo')}>Todo</button>
       </div>
 

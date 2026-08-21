@@ -62,6 +62,14 @@ Modelo de cañería fiel al plano: 1 victaulic entre vasijas contiguas, **spool*
 (victaulic + tubo + victaulic) solo contra el **manifold central**, la cañería
 no cruza el poste.
 
+### 📐 Regla de orden en DESCARGA
+En descarga el plano va espejado, así que el **Semi Rack B queda a la izquierda**
+y se nombra y se lista **primero**: `B, A`. Vale para TODOS los diagramas de ese
+lado — selectores de semi rack, bloques de venteos, listas y PDF. Sale de una
+sola función, `ordenSemiRacks(espejo)` en `rackLayout.ts`; antes cada pantalla
+tenía el orden escrito a mano y los selectores quedaban al revés del dibujo.
+En alimentación sigue siendo `A, B`.
+
 ### 4. Estado de tapas
 **Vive dentro del Outage** (11-08-2026): se saca del menú principal y de las
 pestañas del levantamiento, porque ahí mostraba siempre el retiro de

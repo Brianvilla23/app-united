@@ -4,7 +4,7 @@
 // Fuente: hojas manuscritas de Brayan (29-07-2026) + planos de Planificación.
 // El orden del array ES el orden de ejecución. Las marcadas `libre: true` se
 // pueden hacer en cualquier momento sin frenar la secuencia.
-import { TOTAL_VASIJAS } from './rackLayout'
+import { TOTAL_VASIJAS, ordenSemiRacks } from './rackLayout'
 import type { DatosManifold, LadoRack } from './types'
 import { ARQUETIPOS, ARQUETIPO_DE, type FilaTubing } from './manifoldDetalle'
 
@@ -53,9 +53,11 @@ export function componentesDe(
   )
 }
 
-/** Venteos que se revisan en un lado. */
+/** Venteos de un lado, en el orden de lectura de ese lado (en descarga, B antes que A). */
 export function venteosDe(lado: LadoRack): Venteo[] {
+  const orden = ordenSemiRacks(lado === 'descarga')
   return VENTEOS.filter((v) => v.lado === lado)
+    .sort((a, b) => orden.indexOf(a.semiRack) - orden.indexOf(b.semiRack))
 }
 
 /** Piezas que se marcan una por una dentro de un manifold. */

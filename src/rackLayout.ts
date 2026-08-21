@@ -52,6 +52,18 @@ export function vistaDibujo(vista: Vista, espejo: boolean): Vista {
   return vista === 'A' ? 'B' : 'A'
 }
 
+/**
+ * En qué orden se leen los semi racks. En DESCARGA el plano va espejado y el
+ * Semi Rack B queda a la izquierda, así que ahí se nombra y se lista primero.
+ *
+ * Regla para TODOS los diagramas del lado descarga: los selectores, los
+ * bloques de venteos y las listas siguen este orden, no uno fijo A-B. Antes
+ * cada pantalla lo tenía escrito a mano y quedaban al revés del dibujo.
+ */
+export function ordenSemiRacks(espejo: boolean): ('A' | 'B')[] {
+  return espejo ? ['B', 'A'] : ['A', 'B']
+}
+
 /** Rótulo del semi rack que va en cada mitad del plano dibujado. */
 export function semiRackEn(mitad: 'izq' | 'der', espejo: boolean): 'A' | 'B' {
   if (mitad === 'izq') return espejo ? 'B' : 'A'

@@ -13,7 +13,7 @@ import {
   MANIFOLDS, NOMBRE_PARTE, PLANO_MF, piezasPorLado, resumirManifold, vasijasDeManifold,
   type Actividad,
 } from './actividades'
-import { ALTO, ANCHO, CELDAS, TOTAL_VASIJAS, type Vista } from './rackLayout'
+import { ALTO, ANCHO, CELDAS, TOTAL_VASIJAS, ordenSemiRacks, type Vista } from './rackLayout'
 import PlanoRack from './PlanoRack'
 import PlanoManifolds, { type EstadoManifold } from './PlanoManifolds'
 import DetalleManifold from './DetalleManifold'
@@ -30,7 +30,8 @@ const RETIRADO_BORDE = '#5b6675'
 
 export default function PlanoActividad({ actividad }: { actividad: Actividad }) {
   const [lado, setLado] = useState<LadoRack>(actividad.lados[0])
-  const [vista, setVista] = useState<Vista>('A')
+  // arranca en el semi rack que va primero en ese lado (en descarga, el B)
+  const [vista, setVista] = useState<Vista>(ordenSemiRacks(actividad.lados[0] === 'descarga')[0])
   const [abierto, abrirManifold, cerrarManifold] = useModal<string>()
   const puedeEditar = usePuedeEditar()
   const items = useLiveQuery(
@@ -202,7 +203,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
       {actividad.lados.length > 1 && !actividad.sinLado && (
         <div className="lado-seg">
           {actividad.lados.map((l) => (
-            <button key={l} className={lado === l ? 'on' : ''} onClick={() => setLado(l)}>
+            <button key={l} className={lado === l ? 'on' : ''} onClick={() => { setLado(l); setVista(ordenSemiRacks(l === 'descarga')[0]) }}>
               {LADOS.find((x) => x.codigo === l)!.corto}
               <small>{items.filter((i) => i.lado === l && i.hecho).length} hechos</small>
             </button>
@@ -233,8 +234,13 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
       {actividad.tipo === 'simple' ? (
         <>
           <div className="vista-seg">
-            <button className={vista === 'A' ? 'on' : ''} onClick={() => setVista('A')}>Semi Rack A</button>
-            <button className={vista === 'B' ? 'on' : ''} onClick={() => setVista('B')}>Semi Rack B</button>
+            {/* en descarga el plano va espejado y el Semi Rack B queda a la
+                izquierda: el selector se lee en ese mismo orden */}
+            {ordenSemiRacks(lado === 'descarga').map((sr) => (
+              <button key={sr} className={vista === sr ? 'on' : ''} onClick={() => setVista(sr)}>
+                Semi Rack {sr}
+              </button>
+            ))}
             <button className={vista === 'todo' ? 'on' : ''} onClick={() => setVista('todo')}>Todo</button>
           </div>
           <div className="fugas-scroll">
