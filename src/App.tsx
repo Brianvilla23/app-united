@@ -16,10 +16,11 @@ import Outage from './Outage'
 import Venteos from './Venteos'
 import PlanoActividad from './PlanoActividad'
 import Pruebas from './Pruebas'
+import PlanMaestro from './PlanMaestro'
 import { ACTIVIDADES, type Actividad } from './actividades'
 import { fechaLarga } from './fecha'
 
-type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'guardados'
+type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'guardados' | 'plan'
 
 /** Pantallas a las que solo se entra desde una actividad del outage: el rótulo
     del atrás lleva el nombre de la actividad y no el genérico de la pantalla. */
@@ -36,6 +37,7 @@ const TITULOS: Record<Vista, string> = {
   actividad: 'Actividad del outage',
   prueba: 'Prueba de presión',
   guardados: 'Guardados',
+  plan: 'Plan maestro',
 }
 
 function OfflineDot() {
@@ -146,6 +148,11 @@ function Menu({ go }: { go: (v: Vista) => void }) {
           <span className="mc-txt"><b>Outage Rack 12</b><small>Secuencia completa · {ACTIVIDADES.length} actividades</small></span>
           <span className="mc-arrow">›</span>
         </button>
+        <button className="menu-card" onClick={() => go('plan')}>
+          <span className="mc-ico" style={{ background: 'rgba(22,163,74,.12)' }}>📅</span>
+          <span className="mc-txt"><b>Plan maestro</b><small>La planilla de planificacion: semana, horizonte y sugerencias</small></span>
+          <span className="mc-arrow">›</span>
+        </button>
         <button className="menu-card" onClick={() => go('guardados')}>
           <span className="mc-ico slate">🗂️</span>
           <span className="mc-txt"><b>Guardados</b><small>{nAvisos + nAndamios} registros · PDF y respaldo</small></span>
@@ -249,6 +256,7 @@ export default function App() {
         {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} />}
         {vista === 'prueba' && actAbierta && <Pruebas actividad={actAbierta} />}
         {vista === 'guardados' && <Guardados />}
+        {vista === 'plan' && <PlanMaestro />}
       </main>
       <footer className="app-foot">App United v0.2 · uso interno</footer>
     </div>

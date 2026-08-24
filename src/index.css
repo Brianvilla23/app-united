@@ -362,3 +362,138 @@ textarea { resize: vertical; }
 .act-n { background: var(--united-gris); }
 .act.completa .act-n { background: #22c55e; }
 .plano-titulo span { color: var(--united-gris); }
+
+/* ============================================================ plan maestro */
+/* La planilla madre. Los nombres van todos con prefijo .plan- para que no se
+   pisen con el resto de la app, y el ancho de la tabla del horizonte se
+   resuelve con scroll propio: el cuerpo de la página nunca se corre al lado. */
+
+.plan { display: flex; flex-direction: column; gap: 12px; }
+
+.plan-cabecera {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px;
+}
+.plan-cabecera b { display: block; font-size: 15px; }
+.plan-cabecera small { font-size: 12px; color: var(--muted); }
+
+.plan-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.plan .chip, .plan-chips .chip {
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  padding: 8px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+  background: var(--surface); color: var(--muted);
+}
+.plan .chip.on, .plan-chips .chip.on {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+
+.plan-sub { font-size: 12.5px; color: var(--muted); margin: 0; line-height: 1.5; }
+.plan-error { font-size: 13px; color: #b91c1c; font-weight: 600; margin: 8px 0 0; }
+.plan-ok { font-size: 13px; color: #15803d; font-weight: 600; margin: 8px 0 0; }
+.plan-vacio { font-size: 12.5px; color: var(--muted); font-style: italic; margin: 4px 0; }
+.plan-vacio.grande { text-align: center; padding: 28px 12px; font-size: 14px; }
+.pasado { color: #b91c1c; }
+
+.btn.peligro { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+
+/* -------- navegación de semana */
+.plan-nav {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 10px;
+}
+.plan-nav-txt { text-align: center; }
+.plan-nav-txt b { display: block; font-size: 15px; }
+.plan-nav-txt small { font-size: 12px; color: var(--muted); }
+.plan-nav .btn { padding: 10px 16px; font-size: 18px; line-height: 1; }
+
+/* -------- las 7 barras de carga de la semana */
+.plan-resumen { display: flex; gap: 6px; }
+.plan-mini { flex: 1; text-align: center; }
+.plan-mini span { font-size: 11px; color: var(--muted); font-weight: 700; }
+.plan-mini small { font-size: 10.5px; color: var(--muted); display: block; }
+.plan-mini.hoy span { color: var(--accent); }
+.plan-barra { height: 6px; background: #eef2f7; border-radius: 4px; overflow: hidden; margin: 3px 0; }
+.plan-barra-fill { height: 100%; background: var(--accent); }
+.plan-barra-fill.pasado { background: #dc2626; }
+.plan-total { font-size: 12.5px; color: var(--muted); margin: 0; text-align: center; }
+.plan-copiar { display: flex; justify-content: center; }
+
+/* -------- un día */
+.plan-dia {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px;
+}
+.plan-dia.hoy { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(13,148,136,.12); }
+.plan-dia > header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.plan-dia > header b { font-size: 14.5px; }
+.plan-dia > header span { font-size: 12.5px; color: var(--muted); }
+.plan-dia > header small { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+
+.plan-turno { margin-top: 8px; }
+.plan-turno-tit {
+  display: flex; justify-content: space-between; font-size: 11.5px;
+  color: var(--muted); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .4px; border-bottom: 1px solid var(--border); padding-bottom: 3px;
+}
+
+.plan-linea {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  font-family: inherit; font-size: 13.5px; color: var(--ink); cursor: pointer;
+  background: none; border: none; border-bottom: 1px solid #f1f5f9; padding: 9px 2px;
+}
+.plan-linea:active { background: #f8fafc; }
+.plan-punto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.plan-nombre { flex: 1; }
+.plan-nombre small { color: var(--muted); font-size: 11.5px; }
+.plan-hh { font-weight: 700; font-size: 13px; color: var(--muted); }
+
+.plan-agregar {
+  font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  color: var(--accent); background: none; border: none; padding: 8px 2px;
+}
+
+/* -------- editor y sugerencias */
+.plan-fila-2 { display: flex; gap: 10px; }
+.plan-fila-2 > label { flex: 1; }
+.plan-editor label, .plan-cuenta label {
+  display: block; font-size: 13px; font-weight: 600; margin-top: 10px;
+}
+.plan-acciones { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.plan-acciones .btn { flex: 1; }
+
+.plan-sug-caja { margin-top: 8px; }
+.plan-sug-ok {
+  margin-top: 8px; font-size: 13px; background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 11px; padding: 10px 12px; color: #15803d;
+}
+.plan-sug {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px;
+}
+.plan-sug.aceptada { border-left: 3px solid #16a34a; }
+.plan-sug.rechazada { border-left: 3px solid #b91c1c; }
+.plan-sug header { display: flex; justify-content: space-between; align-items: baseline; }
+.plan-sug header small { font-size: 11.5px; color: var(--muted); }
+.plan-sug p { font-size: 13.5px; margin: 6px 0; }
+.plan-respuesta { font-size: 12.5px; color: var(--muted); border-left: 2px solid var(--border); padding-left: 8px; }
+
+/* -------- horizonte: la tabla scrollea sola, la página no */
+.plan-tabla-scroll {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+}
+.plan-tabla { border-collapse: collapse; font-size: 12px; min-width: 100%; }
+.plan-tabla th, .plan-tabla td {
+  border-bottom: 1px solid #f1f5f9; padding: 6px 8px; text-align: center; white-space: nowrap;
+}
+.plan-tabla thead th { font-size: 11px; color: var(--muted); background: #f8fafc; }
+.plan-tabla .pegada {
+  position: sticky; left: 0; background: var(--surface); text-align: left;
+  max-width: 160px; overflow: hidden; text-overflow: ellipsis;
+  border-right: 1px solid var(--border);
+}
+.plan-tabla thead .pegada { background: #f8fafc; }
+.plan-tabla tfoot td { background: #f8fafc; }
+.plan-tabla .plan-tope td { color: var(--muted); font-size: 11px; }

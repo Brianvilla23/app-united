@@ -116,6 +116,16 @@ async function subirPendientes(): Promise<boolean> {
       } else if (it.tabla === 'historial') {
         // upsert por id: si la respuesta se perdió, el reintento no duplica
         ({ error } = await supabase.from('historial').upsert(it.payload))
+      } else if (it.tabla === 'plan_sugerencia') {
+        // Sugerencia al plan escrita en terreno. Va como INSERT y no como
+        // upsert: quien sugiere entra sin cuenta, y esa cuenta solo tiene
+        // permiso de insertar — responder una sugerencia es cosa de un editor.
+        // Si la respuesta se perdió y el registro ya había entrado, el reintento
+        // choca con el id repetido (23505) y eso cuenta como subido: si se
+        // tratara como error, la cola quedaría trancada para siempre y detrás
+        // vienen los avisos y las tapas.
+        const r = await supabase.from('plan_sugerencias').insert(it.payload)
+        error = r.error && r.error.code === '23505' ? null : r.error
       }
       if (error) return true // sin señal o error del servidor: reintenta en el próximo ciclo
       await db.outbox.delete(it.id)

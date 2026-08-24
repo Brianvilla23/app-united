@@ -70,6 +70,10 @@ export const MODOS_FALLA: ModoFalla[] = [
 export type TablaOutbox =
   | 'avisos' | 'andamios' | 'marcas_upsert' | 'marcas_delete'
   | 'tapas_upsert' | 'tapas_delete' | 'historial' | 'item_upsert'
+  // Las sugerencias al plan van por la cola porque se escriben en planta, donde
+  // suele no haber senal: se guardan y suben solas. Editar el plan NO va por
+  // aca — eso pide sesion iniciada y se hace desde la oficina, con senal.
+  | 'plan_sugerencia'
 
 // Avance de las actividades que no usan el plano de tapas (venteos, manifold,
 // pasos simples). Un registro por ítem marcado.

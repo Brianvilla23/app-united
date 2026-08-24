@@ -1,5 +1,5 @@
 # App United — Estado del proyecto
-_Última actualización: 11-08-2026_
+_Última actualización: 24-08-2026_
 
 App móvil (PWA) para los supervisores de la Planta Desaladora United, Coloso.
 Funciona offline en planta y se instala en el celular sin tienda de apps.
@@ -289,6 +289,92 @@ sincroniza contra la base que usa la cuadrilla en planta. `screenshot.mjs` y
 `screenshot_online.mjs` cortan Supabase (`ctx.route(...supabase.co...)`) y dejan
 el nombre puesto: **cualquier script nuevo tiene que hacer lo mismo** o deja
 marcas falsas sobre el rack.
+
+---
+
+## 10. Plan maestro — la planilla de planificación ⚠️ falta cargar la base (24-08-2026)
+
+Pestaña propia en el menú. Reemplaza a `Semana de planificacion.xlsx`
+(`OneDrive\Escritorio\Planificacion\`), que era **56 bloques copiados uno
+debajo del otro**: un bloque por semana, siete días en columnas de a tres, el
+turno noche separado por una fila que dice NOCHE, y las HH libres del día
+calculadas con `=344-SUM(...)` escrito a mano en cada celda.
+
+### Qué se leyó de la planilla
+`scripts/importar_plan.py` la lee y la deja como una tabla: **1.225 líneas de
+actividad, 56 semanas** (W50-2024 a W04-2027) y **253 actividades distintas**.
+Deja además `scripts/plan_diagnostico.txt` con lo que no cuadra.
+
+Lo que apareció al leerla, y que copiando bloques no se ve:
+- **13 semanas seguidas tituladas "Week 28"** (las de noviembre-2026 en
+  adelante): al duplicar el bloque nadie cambió el título.
+- **20 bloques con la misma fecha**, el lunes 07-09-2026, arrastrado del bloque
+  de arriba. La fecha real se recalcula desde la última buena.
+- **Un corte de 399 días** entre el 31-03-2025 y el 04-05-2026. Es real, no un
+  error: la planilla se dejó y se retomó un año después. La primera versión del
+  importador lo "arregló" forzando la cadena y corrió todo 2026 a 2025 — por eso
+  ahora solo se corrige la fecha cuando **no avanza**, nunca cuando salta.
+- **El turno venía pegado al nombre** ("Mejoramiento Patio Energy Dia" /
+  "... noche"), y con eso una misma actividad contaba como dos. Ahora el turno es
+  su propia columna.
+- Nombres que eran el mismo trabajo escrito distinto ("Filtro CIP 1-2" /
+  "Filtro CiP 1-2", "Apoyo outage" / "Apoyo de outage") y los tipeos que se
+  repetían cada semana ("Houskeeping", "Dimencionamiento", "presurisadores").
+
+### Las tres vistas
+| Vista | Para qué |
+|---|---|
+| **Semana** | la grilla de siempre: 7 días, turno día y noche, HH y cuánto queda de las 344 del día. Es lo que ya conocía la cuadrilla. |
+| **Horizonte** | actividad contra semanas (12 / 26 / 52), con la carga de cada semana contra las 2.408 HH disponibles. Es lo que en el Excel no se podía mirar sin saltar entre 56 bloques. |
+| **Sugerencias** | lo que manda la cuadrilla desde planta y qué se resolvió. |
+
+Las **344 HH del día** ya no van escritas dentro de las fórmulas: viven en
+`plan_config`, y cambiarlas es un registro y no cientos de celdas.
+
+### Quién puede qué — acá sí hay seguridad de verdad
+A diferencia del resto de la app, el plan **no** se cuida por honor:
+
+- **Dos editores**, con correo y clave (Supabase Auth). Escribir el plan exige
+  sesión iniciada **y** estar en la tabla `plan_editores`. Lo comprueba la
+  política RLS con `es_editor_plan()`, no la pantalla: aunque alguien abra la
+  consola del navegador con la clave anon, el servidor le rechaza la escritura.
+- **El resto de la cuadrilla** entra sin cuenta, ve el plan y manda sugerencias.
+  Las sugerencias van por la cola de subida, porque se escriben en terreno sin
+  señal; editar el plan **no** va por la cola a propósito (dos celulares
+  subirían cambios viejos encima de los nuevos horas después).
+- ⚠️ **Leer el plan sigue abierto** para cualquiera que tenga la URL de la app,
+  igual que el resto de los módulos hoy. Si el plan no puede quedar a la vista,
+  hay que cerrar también el `select` de `plan_actividades` a `authenticated`.
+
+⚠️ **`sql/07` arregla de paso una trampa que se venía encima**: las políticas
+viejas están escritas `for all to anon`, y un usuario con sesión **no** es
+`anon` sino `authenticated`. Sin ese arreglo, en cuanto uno de los editores
+iniciara sesión, marcar una tapa o guardar un aviso empezaría a fallar en
+silencio desde la pantalla de siempre.
+
+### Lo que falta para que quede andando
+1. Correr `sql/07_plan_maestro.sql` en el SQL Editor de Supabase (crea las 6
+   tablas, las políticas y la función). Es idempotente.
+2. Correr `sql/08_plan_semilla.sql` — lo genera `scripts/plan_a_sql.py`, son las
+   1.225 líneas ya limpias. **No está en el repo a propósito: el repo es público
+   y eso es plan de operación de United.** Se regenera con los dos scripts.
+3. Crear las **2 cuentas** en Supabase → Authentication → Users (la clave la pone
+   su dueño; Claude no crea cuentas ni maneja claves) y dejar los dos correos en
+   `plan_editores`. El de Brayan ya va sembrado en `sql/07`.
+
+Hasta que eso esté, la app muestra el plan vacío y el Excel limpio
+(`Plan_Maestro_Limpio.xlsx`, lo genera `scripts/plan_a_excel.py`) sirve de
+puente: hoja Plan filtrable, hoja Carga con los días pasados en rojo, hoja
+Catálogo y hoja Revisar.
+
+### Verificado por captura
+`node screenshot_plan.mjs` (solo lectura) y `node screenshot_plan_editor.mjs`
+(editor). El segundo monta un **doble de Supabase**: contesta con JSON de
+mentira y **no deja salir ni una petición** a la base real, así que se puede ver
+la mitad de editor sin una cuenta y sin tocar los datos de la cuadrilla.
+⚠️ Ojo con `fullPage` de Playwright acá: el que scrollea es el **body** (tiene
+`overflow-x: hidden` y `height: 100%`, y eso le pone `overflow-y: auto`), así que
+`window.scrollTo` no mueve nada y el fullPage sale con la mitad en blanco.
 
 ---
 

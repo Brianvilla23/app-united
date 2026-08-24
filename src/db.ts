@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type { Aviso, Andamio, MarcaFuga, TapaEstado, OutboxItem, HistorialItem, ItemAvance } from './types'
+import type { ActividadPlan, SugerenciaPlan } from './planTipos'
 
 export class UnitedDB extends Dexie {
   avisos!: Table<Aviso, string>
@@ -8,6 +9,8 @@ export class UnitedDB extends Dexie {
   tapas!: Table<TapaEstado, string>
   historial!: Table<HistorialItem, string>
   items!: Table<ItemAvance, string>
+  plan!: Table<ActividadPlan, string>
+  sugerencias!: Table<SugerenciaPlan, string>
   outbox!: Table<OutboxItem, string>
 
   constructor() {
@@ -103,6 +106,20 @@ export class UnitedDB extends Dexie {
       tapas: 'id, lado, rack, vasija, [lado+rack+vasija]',
       historial: 'id, rack, vasija, createdAt, tipo',
       items: 'id, actividad, lado, item, [actividad+lado]',
+      outbox: 'id, createdAt, tabla',
+    })
+    // v14: la planilla madre. Es una COPIA local para poder verla sin senal —
+    // la fuente de verdad es Supabase, porque el plan lo editan dos personas y
+    // aca no habria como decidir cual de las dos versiones vale. Solo agrega.
+    this.version(14).stores({
+      avisos: 'id, folio, createdAt, estado, sincronizado',
+      andamios: 'id, folio, createdAt, sincronizado',
+      marcas: 'id, rack, vasija, componente, createdAt, [rack+vasija+componente]',
+      tapas: 'id, lado, rack, vasija, [lado+rack+vasija]',
+      historial: 'id, rack, vasija, createdAt, tipo',
+      items: 'id, actividad, lado, item, [actividad+lado]',
+      plan: 'id, fecha, actividad, [anio+semana], [fecha+turno]',
+      sugerencias: 'id, estado, createdAt, [anio+semana]',
       outbox: 'id, createdAt, tabla',
     })
   }
