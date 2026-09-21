@@ -31,3 +31,12 @@ respaldos/
 # Capturas de revisión: se regeneran con `node screenshot.mjs`
 ver_*.png
 modo_elegir.png
+
+# La planilla madre cargada: son datos de operación de United y el repo es
+# público. El esquema (sql/07) sí va; los datos (sql/08 y la semilla) no.
+# Van también en main aunque el Plan maestro viva en su rama: los archivos
+# generados quedan en disco y un `git add -A` los subiría a GitHub.
+scripts/plan_semilla.json
+scripts/plan_diagnostico.txt
+sql/08_plan_semilla.sql
+Plan_Maestro_*.xlsx
