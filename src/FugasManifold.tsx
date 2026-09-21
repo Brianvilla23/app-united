@@ -27,9 +27,10 @@ const LADO = 'descarga' as const   // los manifolds solo existen en descarga
 
 export default function FugasManifold({ rack }: { rack: number }) {
   const [abierto, abrirManifold, cerrarManifold] = useModal<string>()
-  const items = useLiveQuery(
+  const todosLosRacks = useLiveQuery(
     () => db.items.where('actividad').equals(FUGA_MANIFOLD).toArray(), [],
   ) ?? []
+  const items = todosLosRacks.filter((i) => i.rack === rack)
 
   const datosDe = (mid: string): DatosManifold =>
     (items.find((i) => i.item === itemFugaManifold(rack, mid))?.datos as DatosManifold | undefined) ?? {}
@@ -42,19 +43,21 @@ export default function FugasManifold({ rack }: { rack: number }) {
   const marcar = async (mid: string, cambio: (actual: DatosManifold) => DatosManifold) => {
     const yo = quienSoy()
     const item = itemFugaManifold(rack, mid)
-    const id = itemId(FUGA_MANIFOLD, LADO, item)
+    const id = itemId(FUGA_MANIFOLD, rack, LADO, item)
     const datos = await db.transaction('rw', db.items, async () => {
       const actual = ((await db.items.get(id))?.datos as DatosManifold | undefined) ?? {}
       const next = cambio(actual)
       await db.items.put({
-        id, actividad: FUGA_MANIFOLD, lado: LADO, item, datos: next,
+        id, actividad: FUGA_MANIFOLD, rack, lado: LADO, item, datos: next,
         hecho: resumirManifold(mid, PARTES_FUGA, next).hechas > 0,
         creadoPor: yo, createdAt: Date.now(), sincronizado: false,
       })
       return next
     })
+    // `item` sigue trayendo el rack ('7-DE1') para caer sobre la fila que ya
+    // existe en Supabase; ahora además va en su propia columna.
     await encolar('item_upsert', {
-      actividad: FUGA_MANIFOLD, lado: LADO, item, datos, creado_por: yo,
+      actividad: FUGA_MANIFOLD, rack, lado: LADO, item, datos, creado_por: yo,
       hecho: resumirManifold(mid, PARTES_FUGA, datos).hechas > 0,
     })
   }

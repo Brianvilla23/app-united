@@ -8,7 +8,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
 import { quienSoy } from './identidad'
-import { itemId, LADOS, RACK_TAPAS, type DatosManifold, type LadoRack } from './types'
+import { itemId, LADOS, type DatosManifold, type LadoRack } from './types'
 import {
   MANIFOLDS, NOMBRE_PARTE, PLANO_MF, piezasPorLado, resumirManifold, vasijasDeManifold,
   type Actividad,
@@ -28,16 +28,17 @@ const EMPEZADO = '#d97706'
 const RETIRADO = '#8e99a8'
 const RETIRADO_BORDE = '#5b6675'
 
-export default function PlanoActividad({ actividad }: { actividad: Actividad }) {
+export default function PlanoActividad({ actividad, rack }: { actividad: Actividad; rack: number }) {
   const [lado, setLado] = useState<LadoRack>(actividad.lados[0])
   // arranca en el semi rack que va primero en ese lado (en descarga, el B)
   const [vista, setVista] = useState<Vista>(ordenSemiRacks(actividad.lados[0] === 'descarga')[0])
   const [abierto, abrirManifold, cerrarManifold] = useModal<string>()
   const puedeEditar = usePuedeEditar()
-  const items = useLiveQuery(
+  const todosLosRacks = useLiveQuery(
     () => db.items.where('actividad').equals(actividad.id).toArray(),
     [actividad.id],
   ) ?? []
+  const items = todosLosRacks.filter((i) => i.rack === rack)
 
   const delLado = items.filter((i) => i.lado === lado)
   const hechos = new Set(delLado.filter((i) => i.hecho).map((i) => i.item))
@@ -82,8 +83,8 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
       const doc = await generarPDFDiagrama({
         titulo: actividad.nombre,
         subtitulo: actividad.sinLado
-          ? `Rack ${RACK_TAPAS}`
-          : `Rack ${RACK_TAPAS} · ${LADOS.find((l) => l.codigo === lado)!.nombre}`,
+          ? `Rack ${rack}`
+          : `Rack ${rack} · ${LADOS.find((l) => l.codigo === lado)!.nombre}`,
         hoja: esManifold ? 'compacta' : 'ancha',
         vb: esManifold ? PLANO_MF : { ancho: ANCHO, alto: ALTO },
         diagrama: esManifold
@@ -106,7 +107,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
           : [{ titulo: 'Vasijas pendientes', lineas: agruparPorFila(CELDAS.filter((c) => !hechos.has(c.id)).map((c) => c.id)) }],
         generadoPor: quienSoy(),
       })
-      doc.save(nombreArchivo(actividad.nombre, `Rack${RACK_TAPAS}`, actividad.sinLado ? '' : lado))
+      doc.save(nombreArchivo(actividad.nombre, `Rack${rack}`, actividad.sinLado ? '' : lado))
     } finally {
       setGenerando(false)
     }
@@ -139,12 +140,12 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
   const guardar = async (item: string, hecho: boolean, datos: DatosManifold = {}) => {
     const yo = quienSoy()
     await db.items.put({
-      id: itemId(actividad.id, lado, item),
-      actividad: actividad.id, lado, item, hecho, datos,
+      id: itemId(actividad.id, rack, lado, item),
+      actividad: actividad.id, rack, lado, item, hecho, datos,
       creadoPor: yo, createdAt: Date.now(), sincronizado: false,
     })
     await encolar('item_upsert', {
-      actividad: actividad.id, lado, item, hecho, datos, creado_por: yo,
+      actividad: actividad.id, rack, lado, item, hecho, datos, creado_por: yo,
     })
   }
 
@@ -159,19 +160,19 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
    */
   const marcarPiezas = async (item: string, cambio: (actual: DatosManifold) => DatosManifold) => {
     const yo = quienSoy()
-    const id = itemId(actividad.id, lado, item)
+    const id = itemId(actividad.id, rack, lado, item)
     const datos = await db.transaction('rw', db.items, async () => {
       const actual = ((await db.items.get(id))?.datos as DatosManifold | undefined) ?? {}
       const next = cambio(actual)
       await db.items.put({
-        id, actividad: actividad.id, lado, item, datos: next,
+        id, actividad: actividad.id, rack, lado, item, datos: next,
         hecho: resumirManifold(item, actividad.partes!, next).completo,
         creadoPor: yo, createdAt: Date.now(), sincronizado: false,
       })
       return next
     })
     await encolar('item_upsert', {
-      actividad: actividad.id, lado, item, datos, creado_por: yo,
+      actividad: actividad.id, rack, lado, item, datos, creado_por: yo,
       hecho: resumirManifold(item, actividad.partes!, datos).completo,
     })
   }
@@ -197,7 +198,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
     <div>
       <div className="plano-titulo">
         <b>{actividad.nombre.toUpperCase()}</b>
-        <span>{actividad.sinLado ? 'RACK 12' : LADOS.find((l) => l.codigo === lado)!.nombre.toUpperCase()}</span>
+        <span>{actividad.sinLado ? `RACK ${rack}` : LADOS.find((l) => l.codigo === lado)!.nombre.toUpperCase()}</span>
       </div>
 
       {actividad.lados.length > 1 && !actividad.sinLado && (

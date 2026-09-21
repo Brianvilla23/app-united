@@ -8,7 +8,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
 import { quienSoy } from './identidad'
-import { itemId, LADOS, RACK_TAPAS, type LadoRack } from './types'
+import { itemId, LADOS, type LadoRack } from './types'
 import { VENTEOS, type Venteo } from './actividades'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { usePuedeEditar } from './permisos'
@@ -27,22 +27,23 @@ const BLOQUE_W = (W - 2 * MARGEN - HUECO) / 2
 const BLOQUE_H = 74
 const X_IZQ = MARGEN, X_DER = MARGEN + BLOQUE_W + HUECO
 
-export default function Venteos({ actividad }: { actividad: string }) {
-  const items = useLiveQuery(() => db.items.where('actividad').equals(actividad).toArray(), [actividad]) ?? []
+export default function Venteos({ actividad, rack }: { actividad: string; rack: number }) {
+  const todosLosRacks = useLiveQuery(() => db.items.where('actividad').equals(actividad).toArray(), [actividad]) ?? []
+  const items = todosLosRacks.filter((i) => i.rack === rack)
   const hechoDe = (v: Venteo) => items.find((i) => i.item === v.id && i.lado === v.lado)?.hecho ?? false
   const hechos = VENTEOS.filter(hechoDe).length
 
   const toggle = async (v: Venteo) => {
     const yo = quienSoy()
-    const id = itemId(actividad, v.lado, v.id)
+    const id = itemId(actividad, rack, v.lado, v.id)
     const next = !hechoDe(v)
     await db.items.put({
-      id, actividad, lado: v.lado, item: v.id, hecho: next,
+      id, actividad, rack, lado: v.lado, item: v.id, hecho: next,
       datos: { presion: v.presion, semiRack: v.semiRack },
       creadoPor: yo, createdAt: Date.now(), sincronizado: false,
     })
     await encolar('item_upsert', {
-      actividad, lado: v.lado, item: v.id, hecho: next,
+      actividad, rack, lado: v.lado, item: v.id, hecho: next,
       datos: { presion: v.presion, semiRack: v.semiRack }, creado_por: yo,
     })
   }
@@ -55,7 +56,7 @@ export default function Venteos({ actividad }: { actividad: string }) {
     try {
       const doc = await generarPDFDiagrama({
         titulo: 'Cambio de venteos',
-        subtitulo: `Rack ${RACK_TAPAS} · los 6 venteos`,
+        subtitulo: `Rack ${rack} · los 6 venteos`,
         hoja: 'compacta',
         vb: { ancho: W, alto: H },
         diagrama: createElement(PlanoVenteos, { hechoDe, paraPdf: true }),
@@ -73,7 +74,7 @@ export default function Venteos({ actividad }: { actividad: string }) {
         }],
         generadoPor: quienSoy(),
       })
-      doc.save(nombreArchivo('Venteos', `Rack${RACK_TAPAS}`))
+      doc.save(nombreArchivo('Venteos', `Rack${rack}`))
     } finally {
       setGenerando(false)
     }

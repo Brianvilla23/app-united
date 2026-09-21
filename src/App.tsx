@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { iniciarSync } from './sync'
-import { seedTapasRack12 } from './seedTapas'
 import { quienSoy, guardarQuienSoy } from './identidad'
 import {
   ModoContexto, NOMBRE_MODO, guardarModo, modoGuardado, type ModoUso,
@@ -16,14 +15,16 @@ import Outage from './Outage'
 import Venteos from './Venteos'
 import PlanoActividad from './PlanoActividad'
 import Pruebas from './Pruebas'
-import { ACTIVIDADES, type Actividad } from './actividades'
+import Pasos from './Pasos'
+import type { Actividad } from './actividades'
+import { OUTAGE_ACTIVO, outageDe, type Outage as OutageDef } from './racks'
 import { fechaLarga } from './fecha'
 
-type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'guardados'
+type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'pasos' | 'guardados'
 
 /** Pantallas a las que solo se entra desde una actividad del outage: el rótulo
     del atrás lleva el nombre de la actividad y no el genérico de la pantalla. */
-const VISTAS_DE_ACTIVIDAD: Vista[] = ['tapas', 'actividad', 'prueba', 'venteos']
+const VISTAS_DE_ACTIVIDAD: Vista[] = ['tapas', 'actividad', 'prueba', 'venteos', 'pasos']
 
 const TITULOS: Record<Vista, string> = {
   menu: 'App United',
@@ -31,10 +32,11 @@ const TITULOS: Record<Vista, string> = {
   andamio: 'Levantamiento de andamio',
   fugas: 'Diagrama de fugas',
   tapas: 'Estado de tapas',
-  outage: 'Outage Rack 12',
+  outage: 'Outage',
   venteos: 'Cambio de venteos',
   actividad: 'Actividad del outage',
   prueba: 'Prueba de presión',
+  pasos: 'Pasos de la actividad',
   guardados: 'Guardados',
 }
 
@@ -113,7 +115,7 @@ function QuienEres({
   )
 }
 
-function Menu({ go }: { go: (v: Vista) => void }) {
+function Menu({ go, outage }: { go: (v: Vista) => void; outage: OutageDef }) {
   const nAvisos = useLiveQuery(() => db.avisos.count(), []) ?? 0
   const nAndamios = useLiveQuery(() => db.andamios.count(), []) ?? 0
   const fecha = fechaLarga()
@@ -143,7 +145,10 @@ function Menu({ go }: { go: (v: Vista) => void }) {
         </button>
         <button className="menu-card" onClick={() => go('outage')}>
           <span className="mc-ico" style={{ background: 'rgba(37,99,235,.1)' }}>🗓️</span>
-          <span className="mc-txt"><b>Outage Rack 12</b><small>Secuencia completa · {ACTIVIDADES.length} actividades</small></span>
+          <span className="mc-txt">
+            <b>Outage Rack {outage.rack}</b>
+            <small>{outage.alcance} · {outage.actividades.length} actividades</small>
+          </span>
           <span className="mc-arrow">›</span>
         </button>
         <button className="menu-card" onClick={() => go('guardados')}>
@@ -166,6 +171,10 @@ function Menu({ go }: { go: (v: Vista) => void }) {
 export default function App() {
   const [vista, setVista] = useState<Vista>('menu')
   const [actAbierta, setActAbierta] = useState<Actividad | null>(null)
+  // Qué outage se está mirando. Arranca en el que está en curso (Rack 3); el
+  // selector de la pantalla del outage permite volver al 12 para consultarlo.
+  const [rackOutage, setRackOutage] = useState(OUTAGE_ACTIVO.rack)
+  const outage = outageDe(rackOutage)
 
   // De dónde se vino, en el momento de entrar. Va en un ref porque el cierre de
   // la capa se guarda al navegar y tiene que ver la pantalla de ESE momento,
@@ -189,7 +198,7 @@ export default function App() {
   const [yo, setYo] = useState(quienSoy())
   const [modo, setModo] = useState<ModoUso>(modoGuardado())
   const [editandoNombre, setEditandoNombre] = useState(false)
-  useEffect(() => { iniciarSync(); void seedTapasRack12() }, [])
+  useEffect(() => { iniciarSync() }, [])
 
   const confirmarNombre = (n: string, m: ModoUso) => {
     guardarQuienSoy(n)
@@ -220,7 +229,9 @@ export default function App() {
           <Marca />
         ) : (
           <button className="back" onClick={volver}>
-            ‹ {actAbierta && VISTAS_DE_ACTIVIDAD.includes(vista) ? actAbierta.nombre : TITULOS[vista]}
+            ‹ {actAbierta && VISTAS_DE_ACTIVIDAD.includes(vista)
+              ? actAbierta.nombre
+              : vista === 'outage' ? `Outage Rack ${outage.rack}` : TITULOS[vista]}
           </button>
         )}
         <OfflineDot />
@@ -232,22 +243,29 @@ export default function App() {
         <button onClick={() => setEditandoNombre(true)}>cambiar</button>
       </div>
       <main className="main">
-        {vista === 'menu' && <Menu go={irA} />}
+        {vista === 'menu' && <Menu go={irA} outage={outage} />}
         {vista === 'aviso' && <AvisoForm onSaved={() => irA('guardados')} />}
         {vista === 'andamio' && <AndamioForm onSaved={() => irA('guardados')} onCrearSubsecuente={() => irA('aviso')} />}
         {vista === 'fugas' && <Fugas />}
-        {vista === 'tapas' && <Fugas modoInicial="tapas" actividad={actAbierta?.tipo === 'tapa' ? actAbierta.id : 'retiro_tapas_alim'} titulo={actAbierta?.tipo === 'tapa' ? actAbierta.nombre.toUpperCase() : undefined}
+        {vista === 'tapas' && <Fugas modoInicial="tapas" rackTapas={rackOutage}
+          actividad={actAbierta?.tipo === 'tapa' ? actAbierta.id : 'retiro_tapas_alim'}
+          titulo={actAbierta?.tipo === 'tapa' ? actAbierta.nombre.toUpperCase() : undefined}
           ladoFijo={actAbierta?.tipo === 'tapa' ? actAbierta.lados[0] : undefined} />}
-        {vista === 'outage' && <Outage onAbrir={(a: Actividad) => {
-          setActAbierta(a)
-          irA(a.tipo === 'tapa' ? 'tapas'
-            : a.tipo === 'venteo' ? 'venteos'
-            : a.tipo === 'fugas' ? 'prueba'
-            : 'actividad')
-        }} />}
-        {vista === 'venteos' && <Venteos actividad="cambio_venteo" />}
-        {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} />}
-        {vista === 'prueba' && actAbierta && <Pruebas actividad={actAbierta} />}
+        {vista === 'outage' && <Outage
+          outage={outage}
+          onCambiarRack={setRackOutage}
+          onAbrir={(a: Actividad) => {
+            setActAbierta(a)
+            irA(a.tipo === 'tapa' ? 'tapas'
+              : a.tipo === 'venteo' ? 'venteos'
+              : a.tipo === 'fugas' ? 'prueba'
+              : a.tipo === 'pasos' ? 'pasos'
+              : 'actividad')
+          }} />}
+        {vista === 'venteos' && actAbierta && <Venteos actividad={actAbierta.id} rack={rackOutage} />}
+        {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} rack={rackOutage} />}
+        {vista === 'prueba' && actAbierta && <Pruebas actividad={actAbierta} rack={rackOutage} />}
+        {vista === 'pasos' && actAbierta && <Pasos actividad={actAbierta} rack={rackOutage} />}
         {vista === 'guardados' && <Guardados />}
       </main>
       <footer className="app-foot">App United v0.2 · uso interno</footer>

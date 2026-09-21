@@ -12,7 +12,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
 import { quienSoy } from './identidad'
-import { itemId, LADOS, RACK_TAPAS, type LadoRack } from './types'
+import { itemId, LADOS, type LadoRack } from './types'
 import {
   COMPONENTES_PRUEBA, componentesDe, venteosDe,
   type Actividad, type ComponentePrueba,
@@ -31,16 +31,17 @@ const ITEM_VENTEO = 'venteo:'
 
 interface DatosPrueba { fugas?: ComponentePrueba[] }
 
-export default function Pruebas({ actividad }: { actividad: Actividad }) {
+export default function Pruebas({ actividad, rack }: { actividad: Actividad; rack: number }) {
   const [lado, setLado] = useState<LadoRack>(actividad.lados[0])
   // arranca en el semi rack que va primero en ese lado (en descarga, el B)
   const [vista, setVista] = useState<Vista>(ordenSemiRacks(actividad.lados[0] === 'descarga')[0])
   const [sel, abrirVasija, cerrarVasija] = useModal<string>()
   const puedeEditar = usePuedeEditar()
 
-  const items = useLiveQuery(
+  const todosLosRacks = useLiveQuery(
     () => db.items.where('actividad').equals(actividad.id).toArray(), [actividad.id],
   ) ?? []
+  const items = todosLosRacks.filter((i) => i.rack === rack)
   const delLado = items.filter((i) => i.lado === lado)
   const registro = new Map(delLado.map((i) => [i.item, i]))
   const fugasDe = (item: string): ComponentePrueba[] =>
@@ -65,26 +66,26 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
   const guardar = async (item: string, cambio: (fugas: ComponentePrueba[]) => ComponentePrueba[] | null) => {
     if (!puedeEditar) return
     const yo = quienSoy()
-    const id = itemId(actividad.id, lado, item)
+    const id = itemId(actividad.id, rack, lado, item)
     const datos = await db.transaction('rw', db.items, async () => {
       const actual = ((await db.items.get(id))?.datos as DatosPrueba | undefined)?.fugas ?? []
       const next = cambio(actual)
       // null = "sin revisar": se borra el registro en vez de dejarlo en blanco
       if (next === null) { await db.items.delete(id); return null }
       await db.items.put({
-        id, actividad: actividad.id, lado, item, hecho: true, datos: { fugas: next },
+        id, actividad: actividad.id, rack, lado, item, hecho: true, datos: { fugas: next },
         creadoPor: yo, createdAt: Date.now(), sincronizado: false,
       })
       return next
     })
     if (datos === null) {
       await encolar('item_upsert', {
-        actividad: actividad.id, lado, item, hecho: false, datos: {}, creado_por: yo,
+        actividad: actividad.id, rack, lado, item, hecho: false, datos: {}, creado_por: yo,
       })
       return
     }
     await encolar('item_upsert', {
-      actividad: actividad.id, lado, item, hecho: true, datos: { fugas: datos }, creado_por: yo,
+      actividad: actividad.id, rack, lado, item, hecho: true, datos: { fugas: datos }, creado_por: yo,
     })
   }
 
@@ -105,7 +106,7 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
         COMPONENTES_PRUEBA.find((x) => x.codigo === c)?.nombre ?? c
       const doc = await generarPDFDiagrama({
         titulo: actividad.nombre,
-        subtitulo: `Rack ${RACK_TAPAS} · ${LADOS.find((l) => l.codigo === lado)!.nombre}`,
+        subtitulo: `Rack ${rack} · ${LADOS.find((l) => l.codigo === lado)!.nombre}`,
         hoja: 'ancha',
         vb: { ancho: ANCHO, alto: ALTO },
         diagrama: createElement(PlanoRack, {
@@ -137,7 +138,7 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
         ],
         generadoPor: quienSoy(),
       })
-      doc.save(nombreArchivo(actividad.nombre, `Rack${RACK_TAPAS}`, lado))
+      doc.save(nombreArchivo(actividad.nombre, `Rack${rack}`, lado))
     } finally {
       setGenerando(false)
     }

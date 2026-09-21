@@ -110,7 +110,10 @@ async function subirPendientes(): Promise<boolean> {
       } else if (it.tabla === 'item_upsert') {
         ({ error } = await supabase.from('avance_item').upsert(it.payload))
         if (!error) {
-          const id = itemId(it.payload.actividad as string, it.payload.lado as LadoRack, String(it.payload.item))
+          const id = itemId(
+            it.payload.actividad as string, Number(it.payload.rack ?? 12),
+            it.payload.lado as LadoRack, String(it.payload.item),
+          )
           await db.items.update(id, { sincronizado: true })
         }
       } else if (it.tabla === 'historial') {
@@ -208,8 +211,11 @@ export async function pullItems(): Promise<void> {
   await db.transaction('rw', db.items, async () => {
     await db.items.clear()
     await db.items.bulkAdd(data.map((r) => ({
-      id: itemId(r.actividad, r.lado, r.item),
+      // `rack` puede venir nulo si la migración 07 todavía no corrió: en ese
+      // caso todo lo que hay es del Rack 12.
+      id: itemId(r.actividad, r.rack ?? 12, r.lado, r.item),
       actividad: r.actividad,
+      rack: r.rack ?? 12,
       lado: r.lado,
       item: r.item,
       hecho: !!r.hecho,

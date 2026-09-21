@@ -346,6 +346,32 @@ textarea { resize: vertical; }
 .act-pct { flex-shrink: 0; font-size: 13px; font-weight: 800; color: var(--ink); margin-top: 1px; }
 .act.bloqueada .act-pct { color: var(--muted); }
 
+/* selector de outage: qué rack se está mirando (Rack 3 en curso / Rack 12 cerrado) */
+.rack-sel { display: flex; gap: 8px; margin: 4px 0 10px; }
+.rack-sel button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: inherit; font-size: 14px; font-weight: 700; padding: 9px 8px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.rack-sel button small { font-size: 10.5px; font-weight: 600; opacity: .8; }
+.rack-sel button.on { border-color: var(--united-rojo); background: rgba(225,37,27,.07); color: var(--ink); box-shadow: 0 2px 8px rgba(225,37,27,.13); }
+
+/* planta · alcance · ventana del outage abierto */
+.outage-sub { text-align: center; font-size: 11.5px; font-weight: 600; color: var(--muted); margin: 0 0 10px; }
+
+/* ventana planificada de la Carta Gantt, en la lista de actividades */
+.act-meta em.ventana { color: #0369a1; background: rgba(2,132,199,.1); }
+
+/* ---------- actividades de tipo "pasos": checklist sin plano ---------- */
+.pasos-ventana { margin: 10px 0 2px; font-size: 11.5px; font-weight: 700; color: #0369a1; }
+.pasos-nota { margin: 2px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.pasos-bloque { margin-top: 14px; }
+.pasos-lado { display: block; font-size: 11px; font-weight: 800; letter-spacing: .6px; color: var(--united-gris); margin-bottom: 6px; }
+.pasos-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.paso > button { display: flex; align-items: flex-start; gap: 11px; width: 100%; text-align: left; font-family: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 13px; cursor: pointer; box-shadow: var(--shadow); }
+.paso > button:disabled { cursor: default; }
+.paso.hecho > button { border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.05); }
+.paso-check { flex-shrink: 0; width: 24px; height: 24px; border-radius: 7px; border: 2px solid #cbd5e1; background: #fff; color: #fff; font-size: 14px; font-weight: 800; line-height: 20px; text-align: center; margin-top: 1px; }
+.paso.hecho .paso-check { background: #22c55e; border-color: #15803d; }
+.paso-txt { flex: 1; font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.3; min-width: 0; }
+.paso-txt small { display: block; margin-top: 3px; font-size: 11px; font-weight: 500; color: var(--muted); }
+
 /* campo de shim en la instalación de tapas */
 .shim { margin-top: 12px; background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; }
 .shim label { display: block; font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }

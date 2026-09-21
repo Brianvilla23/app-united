@@ -2,8 +2,9 @@
 _Última actualización: 21-09-2026_
 
 > 👉 **Para retomar: leer primero `TRASPASO_OUTAGE_RACK3.md`.** El Rack 12
-> terminó y lo que sigue es el outage del Rack 3 (Planta 0), que NO es una
-> copia del 12. Ahí están las trampas y las preguntas abiertas.
+> terminó y el outage del Rack 3 (EWS **Planta 1**, no Planta 0 como se creyó
+> al principio) ya está construido. Ahí están las trampas, el orden de
+> publicación y lo único que falta decidir: cómo cerrar el Rack 12.
 
 App móvil (PWA) para los supervisores de la Planta Desaladora United, Coloso.
 Funciona offline en planta y se instala en el celular sin tienda de apps.
@@ -296,7 +297,60 @@ marcas falsas sobre el rack.
 
 ---
 
+## 10. Outage Rack 3 — solo el cambio de membrana ✅ (21-09-2026)
+
+Segundo outage de la app, y el que obligó a sacarle al código el supuesto de
+que existía un solo rack.
+
+**Fuente**: `OCDN2502_Rack_03_P1_-_EWS_-_Carta_Gantt.pdf` (18-09-2026), paquete
+«36M Mec Camb Membrana Hydranaut Rack 3»: **22-09 10:30 → 03-10 06:21**, que
+cierra con «Desbloqueo y 2da prueba controlada en alta presion, Entrega de Rack
+a operaciones». Brayan pidió **solo el cambio de membrana**, así que quedaron
+fuera los preparativos, el Rump Down, el cambio de válvulas de venteo (que es
+otro paquete de trabajo) y el RUN UP posterior a la entrega.
+
+**El Rack 3 es EWS igual que el 12**: mismas 295 vasijas (A-S × 1-16) y mismos
+40 manifolds de **PVC de permeado** — lo confirma el nombre de cada tarea de la
+Gantt. Por eso `rackLayout.ts`, `manifoldDetalle.ts`, `PlanoRack` y
+`PlanoManifolds` se reusan sin tocar nada.
+
+Las **24 actividades** están en `src/actividadesRack3.ts`, en el orden de
+inicio real de la Gantt, cada una con su fila de origen en el comentario y su
+**ventana planificada** visible en la lista.
+
+### El rack dejó de estar escrito a mano
+- `avance_item` **ya tiene columna `rack`** (`sql/07_rack_en_avance_item.sql`,
+  `default 12`, PK `(actividad, rack, lado, item)`). No reescribe ninguna fila
+  de las que ya existían. `fuga_manifold` y `comentario_rack`, que metían el
+  rack dentro del `item`, quedan con su rack real backfilleado — y el `item`
+  intacto, así que los upserts siguen cayendo sobre las mismas filas.
+- Dexie **v14** reescribe los ids locales para incluir el rack. **No borra
+  nada** (las migraciones viejas usaban `.clear()`; esta no).
+- Murió `RACK_TAPAS = 12`. El rack baja por prop desde el outage abierto, que
+  vive en **`src/racks.ts`**, y la pantalla del outage trae un selector
+  Rack 3 / Rack 12.
+- ⚠️ **La migración 07 va ANTES de publicar.** Si se publica primero, el upsert
+  manda `rack`, falla porque la columna no existe y **la cola se detiene**,
+  trancando también avisos, andamios y tapas.
+
+### Tipo de diagrama nuevo: `pasos`
+11 de las 24 actividades no caen sobre una vasija ni sobre un manifold —armar y
+retirar andamios por nivel, verificar el bloqueo, recibir materiales, entregar
+el rack—, así que no tienen plano: `src/Pasos.tsx` las muestra como checklist,
+se tildan de a una, quedan firmadas con quién y cuándo, y tienen su PDF.
+
+### Se retiró el seed de tapas
+`src/seedTapas.ts` reinyectaba el snapshot del 21/07 (63 filas firmadas «Turno
+noche 21/07») en cada celular nuevo. Con dos racks solo empeoraba, y era
+redundante: esos datos están en Supabase y bajan con `pullTapas`. Eliminado.
+
+---
+
 ## 📋 Otros pendientes
+- **Cierre del Rack 12**: falta que Brayan decida entre un estado «outage
+  cerrado» —que lo muestre al 100 % sin fabricar registros— o marcarlo ítem por
+  ítem. Rellenar vasija por vasija inventaría datos (295 «revisada sin fuga» en
+  pruebas que pudieron tener fugas), así que no se tocó nada.
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
 - **Materiales por modo de falla**: el generador `scripts/gen_catalogo.py` nunca

@@ -24,13 +24,13 @@ type DatosComentario = { texto?: string; quien?: string; fecha?: number }
 
 /** El comentario del rack, para mostrarlo y para meterlo en los PDF. */
 export function useComentarioRack(rack: number): DatosComentario {
-  const g = useLiveQuery(() => db.items.get(itemId(COMENTARIO_RACK, LADO, String(rack))), [rack])
+  const g = useLiveQuery(() => db.items.get(itemId(COMENTARIO_RACK, rack, LADO, String(rack))), [rack])
   return (g?.datos as DatosComentario | undefined) ?? {}
 }
 
 export default function ComentarioRack({ rack }: { rack: number }) {
   const puedeEditar = usePuedeEditar()
-  const id = itemId(COMENTARIO_RACK, LADO, String(rack))
+  const id = itemId(COMENTARIO_RACK, rack, LADO, String(rack))
   const guardado = useLiveQuery(() => db.items.get(id), [id])
   const datos = (guardado?.datos as DatosComentario | undefined) ?? {}
 
@@ -47,12 +47,14 @@ export default function ComentarioRack({ rack }: { rack: number }) {
     const limpio = texto.trim()
     const nuevos: DatosComentario = { texto: limpio, quien: yo, fecha: Date.now() }
     await db.items.put({
-      id, actividad: COMENTARIO_RACK, lado: LADO, item: String(rack),
+      id, actividad: COMENTARIO_RACK, rack, lado: LADO, item: String(rack),
       hecho: limpio.length > 0, datos: nuevos,
       creadoPor: yo, createdAt: Date.now(), sincronizado: false,
     })
+    // `item` sigue siendo el número de rack, como antes de que la tabla tuviera
+    // columna: así el upsert cae sobre la misma fila que ya existe en Supabase.
     await encolar('item_upsert', {
-      actividad: COMENTARIO_RACK, lado: LADO, item: String(rack),
+      actividad: COMENTARIO_RACK, rack, lado: LADO, item: String(rack),
       hecho: limpio.length > 0, datos: nuevos, creado_por: yo,
     })
     setEditando(false)

@@ -74,8 +74,11 @@ export type TablaOutbox =
 // Avance de las actividades que no usan el plano de tapas (venteos, manifold,
 // pasos simples). Un registro por ítem marcado.
 export interface ItemAvance {
-  id: string          // `${actividad}-${lado}-${item}`
+  id: string          // `${actividad}-${rack}-${lado}-${item}`
   actividad: string
+  /** Rack al que pertenece el avance. Hasta el outage del Rack 3 la tabla no
+      tenía esta dimensión y todo lo que guardaba se daba por Rack 12. */
+  rack: number
   lado: LadoRack
   item: string        // id del venteo / manifold / vasija
   hecho: boolean
@@ -85,8 +88,8 @@ export interface ItemAvance {
   sincronizado: boolean
 }
 
-export function itemId(actividad: string, lado: LadoRack, item: string): string {
-  return `${actividad}-${lado}-${item}`
+export function itemId(actividad: string, rack: number, lado: LadoRack, item: string): string {
+  return `${actividad}-${rack}-${lado}-${item}`
 }
 
 /** `datos` de un manifold: qué piezas suyas ya están puestas.
@@ -141,8 +144,10 @@ export const LADOS: { codigo: LadoRack; nombre: string; corto: string }[] = [
   { codigo: 'descarga', nombre: 'Lado descarga', corto: 'Descarga' },
 ]
 
-// El rack de tapas es siempre el 12 (es el único en intervención).
-export const RACK_TAPAS = 12
+// Antes existía acá `RACK_TAPAS = 12`, porque el 12 era el único rack en
+// intervención y tapas, outage y PDF lo daban por sentado. Con el Rack 3 el
+// rack pasa a ser un dato que baja desde el outage abierto (`src/racks.ts`):
+// cada pantalla lo recibe por prop en vez de leerlo de una constante.
 
 export type EstadoTapa = 'aislada' | 'agripada' | 'seguros' | 'pernos' | 'pendiente' | 'retirada'
 
@@ -195,15 +200,18 @@ export interface TapaEstado {
   sincronizado: boolean
 }
 
-/** La instalación de tapas pide tapón central y shim; el retiro no. */
+/** La instalación de tapas pide tapón central y shim; el retiro no.
+    `includes` y no `startsWith`: cada rack prefija sus actividades
+    (`instalacion_tapas_alim` en el 12, `r3_instalacion_tapas_alim` en el 3). */
 export function esInstalacion(actividad: string): boolean {
-  return actividad.startsWith('instalacion_tapas')
+  return actividad.includes('instalacion_tapas')
 }
 
 /** En el retiro NO va la vasija aislada (ya no aplica) y sí va el pendiente
-    de retiro; en la instalación es al revés. */
+    de retiro; en la instalación es al revés. Mismo motivo que arriba para
+    `includes`: el id del Rack 3 va prefijado. */
 export function esRetiroTapas(actividad: string): boolean {
-  return actividad.startsWith('retiro_tapas')
+  return actividad.includes('retiro_tapas')
 }
 
 export function tapaId(actividad: string, lado: LadoRack, rack: number, vasija: string): string {

@@ -105,7 +105,45 @@ export class UnitedDB extends Dexie {
       items: 'id, actividad, lado, item, [actividad+lado]',
       outbox: 'id, createdAt, tabla',
     })
+    // v14: el avance del outage pasa a tener RACK propio (outage del Rack 3).
+    // OJO: esta migración NO borra nada — reescribe el id de cada ítem para
+    // que incluya el rack. Todo lo guardado hasta hoy es del Rack 12, salvo
+    // `fuga_manifold` y `comentario_rack`, que venían metiendo el rack dentro
+    // del `item` para esquivar la falta de columna: a esos se les lee de ahí.
+    this.version(14).stores({
+      avisos: 'id, folio, createdAt, estado, sincronizado',
+      andamios: 'id, folio, createdAt, sincronizado',
+      marcas: 'id, rack, vasija, componente, createdAt, [rack+vasija+componente]',
+      tapas: 'id, lado, rack, vasija, [lado+rack+vasija]',
+      historial: 'id, rack, vasija, createdAt, tipo',
+      items: 'id, actividad, lado, item, rack, [actividad+rack]',
+      outbox: 'id, createdAt, tabla',
+    }).upgrade(async (tx) => {
+      const tabla = tx.table('items')
+      const viejos = await tabla.toArray()
+      if (viejos.length === 0) return
+      await tabla.clear()
+      await tabla.bulkAdd(viejos.map((i: Record<string, unknown>) => {
+        const rack = rackDeItemViejo(String(i.actividad), String(i.item))
+        return { ...i, rack, id: `${i.actividad}-${rack}-${i.lado}-${i.item}` }
+      }))
+    })
   }
+}
+
+/** Rack de un ítem guardado antes de que `avance_item` tuviera la columna.
+    `fuga_manifold` lo traía como '7-DE1' y `comentario_rack` como '7'; todo
+    lo demás era del Rack 12, el único que se intervenía entonces. */
+function rackDeItemViejo(actividad: string, item: string): number {
+  if (actividad === 'fuga_manifold') {
+    const n = Number(item.split('-')[0])
+    if (Number.isInteger(n) && n > 0) return n
+  }
+  if (actividad === 'comentario_rack') {
+    const n = Number(item)
+    if (Number.isInteger(n) && n > 0) return n
+  }
+  return 12
 }
 
 export const db = new UnitedDB()

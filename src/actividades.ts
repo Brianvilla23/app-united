@@ -1,5 +1,7 @@
 // Catálogo del Outage del Rack 12: qué actividades hay, en qué orden van y
-// con qué diagrama se marca cada una.
+// con qué diagrama se marca cada una. El del Rack 3 vive en
+// `actividadesRack3.ts` y los dos se enganchan en `racks.ts`; los tipos y las
+// funciones de este archivo son comunes a ambos.
 //
 // Fuente: hojas manuscritas de Brayan (29-07-2026) + planos de Planificación.
 // El orden del array ES el orden de ejecución. Las marcadas `libre: true` se
@@ -14,6 +16,7 @@ export type TipoDiagrama =
   | 'simple'     // plano de 295, se marca hecho / no hecho
   | 'fugas'      // plano de 295 marcando el componente que filtra
   | 'venteo'     // los 6 venteos del rack
+  | 'pasos'      // lista de pasos con nombre, sin plano (andamios, bloqueo, entrega)
 
 // --- pruebas de presión: dónde puede aparecer una fuga ---
 export type ComponentePrueba =
@@ -47,8 +50,10 @@ const EN_BAJA: ComponentePrueba[] = ['tapon', 'tapa', 'interconector', 'venteo']
 export function componentesDe(
   actividad: string, lado: LadoRack, donde: 'vasija' | 'rack',
 ): ComponentePruebaDef[] {
+  // `endsWith` y no `===`: cada rack prefija sus actividades (prueba_alta,
+  // r3_prueba_alta), y lo que distingue a la de alta es el sufijo.
   return COMPONENTES_PRUEBA.filter(
-    (c) => (actividad === 'prueba_alta' || EN_BAJA.includes(c.codigo))
+    (c) => (actividad.endsWith('prueba_alta') || EN_BAJA.includes(c.codigo))
       && c.lados.includes(lado) && c.donde === donde,
   )
 }
@@ -88,8 +93,14 @@ export interface Actividad {
   tipo: TipoDiagrama
   /** Lados sobre los que se ejecuta. */
   lados: LadoRack[]
-  /** Sub-pasos dentro de la actividad, en orden. */
+  /** Sub-pasos dentro de la actividad, en orden. Es solo texto de ayuda: no se
+      marcan uno por uno. Para eso está `checklist`. */
   pasos?: string[]
+  /** Tipo 'pasos': los ítems que SÍ se marcan, en orden. Son las tareas de la
+      Carta Gantt que no caen sobre una vasija ni sobre un manifold —armar y
+      retirar andamios, verificar el bloqueo, entregar el rack—, así que no
+      tienen plano: se tildan de a una. */
+  checklist?: string[]
   /** Piezas del manifold que lleva esta actividad. Con `partes`, tocar un
       manifold abre su detalle en vez de marcarlo entero de una. */
   partes?: ParteManifold[]
@@ -100,6 +111,8 @@ export interface Actividad {
   libre?: boolean
   /** true = es del rack completo, el lado no aplica (ej. las membranas). */
   sinLado?: boolean
+  /** Ventana planificada en la Carta Gantt, para ubicarse en terreno. */
+  ventana?: string
   nota?: string
 }
 
@@ -222,6 +235,7 @@ export const ACTIVIDADES: Actividad[] = [
 
 /** Cuántos ítems tiene una actividad (para calcular su avance). */
 export function itemsDe(a: Actividad): number {
+  if (a.tipo === 'pasos') return (a.checklist?.length ?? 0) * a.lados.length
   if (a.tipo === 'venteo') return VENTEOS.filter((v) => a.lados.includes(v.lado)).length
   // la prueba revisa las vasijas del lado más los venteos de ese lado
   if (a.tipo === 'fugas') {
@@ -242,7 +256,7 @@ export function piezasPorLado(partes: ParteManifold[]): number {
 /** Diagramas ya construidos. El resto se muestra pero todavía no se puede abrir. */
 // 'fugas' NO se enlaza al módulo de fugas existente: ese es del rack completo
 // y marca otros componentes. Las pruebas de baja y alta llevan diagrama propio.
-export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo', 'simple', 'manifold', 'fugas']
+export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo', 'simple', 'manifold', 'fugas', 'pasos']
 
 // --- los 6 venteos del rack ---
 // 2 en alimentación (uno por semi rack, al medio), 2 en descarga, y 2 más
@@ -263,11 +277,14 @@ export const VENTEOS: Venteo[] = [
   { id: 'desc-B-baja', lado: 'descarga', semiRack: 'B', presion: 'baja' },
 ]
 
-/** Actividad bloqueada: falta terminar alguna secuencial anterior. */
-export function estaBloqueada(i: number, avance: (id: string) => number): boolean {
-  const a = ACTIVIDADES[i]
+/** Actividad bloqueada: falta terminar alguna secuencial anterior. Recibe la
+    lista porque cada rack tiene su propio catálogo. */
+export function estaBloqueada(
+  lista: Actividad[], i: number, avance: (id: string) => number,
+): boolean {
+  const a = lista[i]
   if (a.libre) return false
-  return ACTIVIDADES.slice(0, i).some((prev) => !prev.libre && avance(prev.id) < 100)
+  return lista.slice(0, i).some((prev) => !prev.libre && avance(prev.id) < 100)
 }
 
 // --- layout de los 40 manifolds ---

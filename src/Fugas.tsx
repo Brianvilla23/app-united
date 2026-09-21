@@ -9,7 +9,7 @@ import {
   type ComponenteFuga, type Vista,
 } from './rackLayout'
 import {
-  ESTADOS_TAPA, LADOS, RACK_TAPAS, defEstadoTapa, estadoTapaDe, esInstalacion, esRetiroTapas,
+  ESTADOS_TAPA, LADOS, defEstadoTapa, estadoTapaDe, esInstalacion, esRetiroTapas,
   resumirTapas, tapaId, PERNOS_POR_TAPA, SEGUROS_POR_TAPA,
   type TapaEstado, type LadoRack, type FallaTapa,
 } from './types'
@@ -49,7 +49,7 @@ function arco(cx0: number, cy0: number, r: number, a0: number, a1: number): stri
 export type ModoFugas = 'fugas' | 'tapas' | 'manifold'
 
 export default function Fugas({
-  modoInicial = 'fugas', actividad = 'retiro_tapas_alim', titulo, ladoFijo,
+  modoInicial = 'fugas', actividad = 'retiro_tapas_alim', titulo, ladoFijo, rackTapas = 12,
 }: {
   modoInicial?: ModoFugas
   actividad?: string
@@ -58,6 +58,9 @@ export default function Fugas({
       y no hay nada que elegir: se ocultan el conmutador Fugas/Tapas y el
       selector de lado, que ahí solo confunden. */
   ladoFijo?: LadoRack
+  /** Rack que se interviene en modo tapas. Viene del outage abierto; en modo
+      fugas no se usa, porque ahí se eligen los 12 racks con el selector. */
+  rackTapas?: number
 }) {
   const [modo, setModo] = useState<ModoFugas>(modoInicial)
   const [rackFugas, setRackFugas] = useState(1)
@@ -70,8 +73,8 @@ export default function Fugas({
   const todas = useLiveQuery(() => db.marcas.toArray(), []) ?? []
   const todasTapas = useLiveQuery(() => db.tapas.toArray(), []) ?? []
 
-  // En tapas solo se interviene el Rack 12; en fugas siguen los 12 racks.
-  const rack = modo === 'tapas' ? RACK_TAPAS : rackFugas
+  // En tapas se interviene el rack del outage abierto; en fugas siguen los 12.
+  const rack = modo === 'tapas' ? rackTapas : rackFugas
   const espejo = modo === 'tapas' && lado === 'descarga'
 
   const marcas = todas.filter((m) => m.rack === rack)
@@ -86,7 +89,7 @@ export default function Fugas({
   const tapaRec = new Map<string, TapaEstado>()
   for (const t of todasTapas) if (t.rack === rack && t.lado === lado && t.actividad === actividad) tapaRec.set(t.vasija, t)
   const resumen = resumirTapas([...tapaRec.values()], TOTAL_VASIJAS)
-  const tapasPorLado = (l: LadoRack) => todasTapas.filter((t) => t.rack === RACK_TAPAS && t.lado === l && t.actividad === actividad).length
+  const tapasPorLado = (l: LadoRack) => todasTapas.filter((t) => t.rack === rackTapas && t.lado === l && t.actividad === actividad).length
 
   const updateTapa = async (vasija: string, patch: Partial<TapaEstado>) => {
     if (!puedeEditar) return
