@@ -2,8 +2,8 @@
 _Última actualización: 21-09-2026_
 
 > 👉 **Para retomar: leer primero `TRASPASO_OUTAGE_RACK3.md`.** El Rack 12
-> terminó y lo que sigue es el outage del Rack 3 (Planta 0), que NO es una
-> copia del 12. Ahí están las trampas y las preguntas abiertas.
+> terminó y lo que sigue es el outage del Rack 3, también de EWS (no de
+> Planta 0). Ahí están las trampas y las preguntas abiertas.
 
 App móvil (PWA) para los supervisores de la Planta Desaladora United, Coloso.
 Funciona offline en planta y se instala en el celular sin tienda de apps.

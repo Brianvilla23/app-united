@@ -1,7 +1,8 @@
 # Traspaso — Outage del Rack 3 (y cierre del Rack 12)
 
-_Escrito el 21-09-2026 al cerrar una conversación saturada. Léelo entero antes
-de tocar nada: tiene tres trampas que ya costaron caro._
+_Escrito el 21-09-2026 al cerrar una conversación saturada; corregido el 22-09
+(el Rack 3 es de EWS, no de Planta 0). Léelo entero antes de tocar nada: tiene
+tres trampas que ya costaron caro._
 
 El estado general de la app está en `ESTADO_PROYECTO.md`. Este archivo es solo
 lo nuevo: qué pidió Brayan, qué hay que decidir antes de construir y qué no hay
@@ -16,32 +17,41 @@ que romper.
 
 ---
 
-## ⚠️ Antes de construir: el Rack 3 NO es una copia del Rack 12
+## El Rack 3 es de EWS, igual que el Rack 12
 
-**El Rack 12 es de EWS; el Rack 3 es de Planta 0.** Todo lo que la app dibuja
-hoy es EWS: las 295 vasijas (`rackLayout.ts`, sacado de "Vasijas lado
-Alimentación enumeradas"), el plano de los 40 manifolds (`Manifold pvc lado
-descarga enumerados.pdf`), los 6 venteos. Planta 0 puede tener otra cantidad de
-vasijas, otro fabricante y otro manifold. **Verificarlo contra los planos antes
-de escribir una línea.**
+**Corrección de Brayan (22-09): el Rack 3 es de EWS, no de Planta 0.** La
+primera versión de este traspaso se equivocó porque en `Planificacion\` hay
+documentos de un "Rack 3 Planta 0" (Cartas Gantt de 36 y 60 h, informe QAQC,
+mantención, alta conductividad). **Son de otro rack que tiene el mismo número:
+no sirven para este outage.**
+
+La buena noticia: EWS usa los mismos planos en todos sus racks (las Plantas 1,
+2 y 3 comparten plano de vasija, y los planos enumerados ya se usaron en el
+Rack 9). O sea, **lo que la app dibuja hoy para el Rack 12 debería servir tal
+cual para el Rack 3**: las 295 vasijas (`rackLayout.ts`), los 40 manifolds y
+los 6 venteos. Igual hay que confirmarlo con Brayan (pregunta 1).
 
 Fuentes en `C:\Users\braya\OneDrive\Escritorio\Planificacion\`:
 
 | Qué | Archivo |
 |---|---|
-| **Plano de vasijas de Planta 0** | `Planos\Plano Vasijas Planta 0.pdf` · `Extractor\Plano Vasija Planta 0.pdf` |
-| Vasijas de las tres plantas | `Planos\Plano de las vasijas EWS, EWSE y Planta 0.docx` · `Planos\Plano de Vasijas BEL, CODELINE y PROTEC.pdf` |
-| **Secuencia del outage** | `Descarga\Propuesta de carta Gannt\Carta Gantt Rack 3 Planta Cero 36 HORAS.xlsx` y `… 60 HORAS.xlsx` |
-| Mantención e inspección | `Mantenimiento Rack 3 P0.pdf` · `Informe Inspeccion Terreno QAQC-IN-MEL-6001-106 RACK 3 PLANTA 0.pdf` · `Alta conductividad Rack 3 P0.docx` |
-| Materiales | `Materiales Outage Rack Planta 0.xlsx` · `Descarga\Materiales rack Planta 0 2.0.xlsx` |
-| Manifold (si es flexible) | `Rack EWS\Manifold Flexible Rack RO Tipo A Planta 1.docx` |
+| **De donde salió el Rack 12** | `Vasijas lado Alimentacion enumeradas.pdf` · `Vasijas lado Descarga enumeradas.pdf` · `Manifold pvc lado descarga enumerados.pdf` |
+| Plano de la vasija EWS | `Extractor\Plano Vasija Planta 1,2,3 EWS.pdf` |
+| Secuencia de un outage EWS | `Rack EWS\Pauta de Outage.pdf` · `Rack EWS\Carta Gantt.xlsx` · `Carta Gantt RACK 10 EWS.pdf_ Brayan Villalobos - UNITED.pdf` |
+| Lo registrado del Rack 12 | `Rack 12.xlsx` · `Componentes Outage Rack 12.xlsx` |
+| Manifold flexible (si el Rack 3 lo lleva) | `Rack EWS\Manifold Flexible Rack RO Tipo A Planta 1.docx` · `Rack EWS\SC Manifold Flexible Planta 1-2-3.eml` · `Materiales de Rack\Costo manifold flexible EWS.xlsx` |
+
+⛔ **No usar** nada que diga "Rack 3 Planta Cero" o "Rack 3 P0".
 
 ### Preguntas para Brayan (no adivinar ninguna)
 
-1. **¿La secuencia de actividades del Rack 3 es la misma del Rack 12?** La
-   Carta Gantt es la fuente; confirmar si hay que usar la de 36 h o la de 60 h.
-2. **¿Planta 0 tiene manifold PVC como EWS, o flexible?** Cambia todo el
-   detalle de manifold (stub end, brazo, tubing se sacaron del plano de EWS).
+1. **¿El Rack 3 es igual al 12?** Mismas 295 vasijas, 40 manifolds, 6 venteos
+   y las mismas 14 actividades. Si es así, no hay nada que dibujar: el trabajo
+   es enseñarle a la app a manejar dos racks.
+2. **¿Lleva el mismo manifold PVC, o el flexible?** Hay una solicitud de compra
+   de manifold flexible para las Plantas 1-2-3 de EWS. Si el Rack 3 lo lleva,
+   el detalle de manifold (stub end, brazo, tubing) sale del plano del PVC y
+   habría que rehacerlo.
 3. **"Marcar que todo está cambiado" en el Rack 12**: hoy quedan en cero
    instalación de tapas · alimentación, carguío de membrana, cambio de
    venteos, las dos pruebas de presión, limpieza exterior e instalación de
@@ -65,6 +75,9 @@ O sea: soportar un segundo rack es **agregarle la dimensión de rack al
 outage**, no duplicar pantallas. Lo sano es una migración que agregue `rack`
 a `avance_item` con `default 12` (así los 969 registros del Rack 12 quedan
 como están) y lo sume a la llave primaria.
+
+Si Brayan confirma que el Rack 3 es igual al 12 (pregunta 1), esto es casi todo
+el trabajo: los dibujos ya existen y sirven para los dos.
 
 ---
 
