@@ -36,23 +36,21 @@ img, svg { max-width: 100%; }
 .topbar {
   position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; justify-content: space-between;
-  background: var(--slate); color: #fff;
+  background: var(--surface); color: var(--ink);
+  border-bottom: 3px solid var(--accent);
   padding: calc(12px + env(safe-area-inset-top)) 18px 12px;
 }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand b { font-size: 16px; font-weight: 700; display: block; line-height: 1.15; }
-.brand small { font-size: 11px; color: #94a3b8; display: block; }
-.brand-logo {
-  height: 26px; width: auto; display: block;
-  background: #fff; border-radius: 6px; padding: 3px 5px;
-}
+.brand small { font-size: 11px; color: var(--muted); display: block; }
+.brand-logo { height: 30px; width: auto; display: block; }
 .net { font-size: 11.5px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
-.net.on { background: rgba(34,197,94,.22); color: #86efac; }
-.net.off { background: rgba(217,119,6,.22); color: #fcd34d; }
-.back { background: none; border: none; color: #fff; font-size: 15px; font-weight: 600; padding: 4px 0; cursor: pointer; }
+.net.on { background: rgba(22,163,74,.12); color: #15803d; }
+.net.off { background: rgba(217,119,6,.15); color: #92400e; }
+.back { background: none; border: none; color: var(--ink); font-size: 15px; font-weight: 600; padding: 4px 0; cursor: pointer; }
 
 .main { padding: 16px; flex: 1; }
-.app-foot { text-align: center; font-size: 11px; color: #94a3b8; padding: 14px 0 calc(16px + env(safe-area-inset-bottom)); }
+.app-foot { text-align: center; font-size: 11px; color: var(--muted); padding: 14px 0 calc(16px + env(safe-area-inset-bottom)); }
 
 /* ---------- Menú ---------- */
 .hero { padding: 10px 4px 18px; }

@@ -55,10 +55,10 @@ function OfflineDot() {
   )
 }
 
-// El logo real de United, extraído de la plantilla del programa semanal
-// (`Plantilla_Maestra_MN55-M04.xls`). Va sobre una placa blanca porque el
-// isotipo es rojo sobre blanco: sobre el azul de la barra el rojo queda apagado
-// y la barra gris del logo desaparece.
+// El logo de United, el mismo del escáner de membranas (fondo transparente).
+// La barra de arriba es blanca con filo rojo, como la del escáner, así que el
+// isotipo va directo: antes iba sobre una placa blanca porque el fondo era azul
+// oscuro y ahí el rojo se apagaba y la barra gris del logo desaparecía.
 function Marca() {
   return (
     <div className="brand">
@@ -148,7 +148,7 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
           const cerrado = cierres.get(r.numero)
           return (
             <button key={r.numero} className="menu-card" onClick={() => abrirOutage(r.numero)}>
-              <span className="mc-ico" style={{ background: 'rgba(37,99,235,.1)' }}>🗓️</span>
+              <span className="mc-ico rojo">🗓️</span>
               <span className="mc-txt">
                 <b>Outage Rack {r.numero}{cerrado ? ' · cerrado' : ''}</b>
                 <small>
