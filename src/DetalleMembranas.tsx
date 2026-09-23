@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import { quienSoy } from './identidad'
 import { usePuedeRegistrar } from './rackOutage'
 import { useModal } from './useModal'
-import EscanerMembrana from './EscanerMembrana'
+import EscanerMembrana, { type Respuesta } from './EscanerMembrana'
 import {
   MARCAS, MARCA_POR_DEFECTO, MEMBRANAS_POR_VASIJA, POSICIONES,
   completa, conMembrana, membranaEn, modeloPorDefecto, modelosDe, puestas,
@@ -67,16 +67,27 @@ export default function DetalleMembranas({
     return ''
   }
 
-  /** Cada lectura de la cámara cae en la siguiente posición que falte. */
-  const alLeer = (serie: string, formato: string): boolean => {
+  /** Cada lectura de la cámara cae en la siguiente posición que falte, y
+      contesta qué mostrar: el escáner avisa "listo" y cuál viene. */
+  const alLeer = (serie: string, formato: string): Respuesta => {
     const problema = revisar(serie)
-    if (problema) { setAviso(problema); return false }
+    if (problema) { setAviso(problema); return { ok: false, mensaje: problema } }
     const pos = pendientes.current.shift()
-    if (pos === undefined) { setAviso('Esta vasija ya tiene sus 7 membranas.'); return false }
+    if (pos === undefined) {
+      const m = 'Esta vasija ya tiene sus 7 membranas.'
+      setAviso(m)
+      return { ok: false, mensaje: m }
+    }
     setAviso('')
     guardar(pos, serie, 'camara', formato)
-    if (pendientes.current.length === 0) setTimeout(cerrarCamara, 700)
-    return true
+    const sigue = pendientes.current[0]
+    if (sigue === undefined) setTimeout(cerrarCamara, 1600)
+    return {
+      ok: true,
+      mensaje: sigue === undefined
+        ? `Posición ${pos}: ${serie.trim().toUpperCase()} · las 7 membranas quedaron registradas`
+        : `Posición ${pos}: ${serie.trim().toUpperCase()} · sigue la posición ${sigue}`,
+    }
   }
 
   const escribir = (pos: number) => {

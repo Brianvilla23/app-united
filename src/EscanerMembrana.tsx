@@ -67,12 +67,19 @@ async function cargarLector(): Promise<ApiLector> {
   return window.LECTOR
 }
 
+/** Lo que contesta el dueño del escáner después de cada lectura: si la tomó y
+    qué mostrarle a quien está escaneando. */
+export interface Respuesta {
+  ok: boolean
+  /** "Listo · posición 7 — sigue la 6", o el motivo del rechazo. */
+  mensaje: string
+}
+
 export default function EscanerMembrana({
   titulo, onCodigo, onCerrar,
 }: {
   titulo: string
-  /** Devolver false rechaza la lectura (serie repetida, por ejemplo). */
-  onCodigo: (texto: string, formato: string) => boolean
+  onCodigo: (texto: string, formato: string) => Respuesta
   onCerrar: () => void
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -80,12 +87,34 @@ export default function EscanerMembrana({
   const [estado, setEstado] = useState('Preparando la cámara…')
   const [error, setError] = useState('')
   const [destello, setDestello] = useState(false)
+  // el cartel grande que confirma la lectura y dice cuál viene
+  const [cartel, setCartel] = useState<Respuesta | null>(null)
   const [info, setInfo] = useState<InfoLector | null>(null)
   const [luz, setLuz] = useState(false)
   // el callback vive en un ref: el lector se inicia una sola vez y no puede
   // quedarse con una versión vieja de la función
   const cb = useRef(onCodigo)
   cb.current = onCodigo
+
+  // el temporizador del cartel, para poder cancelarlo: escaneando rápido, el
+  // temporizador de la lectura anterior borraba el cartel de la siguiente
+  const borrarCartel = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(borrarCartel.current), [])
+
+  /** Una lectura, venga de la cámara o de una foto: avisa y deja el cartel. */
+  const procesar = (texto: string, formato: string) => {
+    const r = cb.current(texto, formato)
+    setCartel(r)
+    window.clearTimeout(borrarCartel.current)
+    // el rechazo queda más rato: hay que alcanzar a leer por qué
+    borrarCartel.current = window.setTimeout(() => setCartel(null), r.ok ? 1800 : 3000)
+    if (navigator.vibrate) navigator.vibrate(r.ok ? 60 : [60, 70, 60])
+    if (!r.ok) return
+    setDestello(true)
+    setTimeout(() => setDestello(false), 600)
+  }
+  const procesarRef = useRef(procesar)
+  procesarRef.current = procesar
 
   useEffect(() => {
     let vivo = true
@@ -98,12 +127,7 @@ export default function EscanerMembrana({
           video: videoRef.current,
           mira: miraRef.current,
           onEstado: (t) => { if (vivo) setEstado(t) },
-          onCodigo: (texto, formato) => {
-            if (!cb.current(texto, formato)) return
-            setDestello(true)
-            setTimeout(() => setDestello(false), 600)
-            if (navigator.vibrate) navigator.vibrate(60)
-          },
+          onCodigo: (texto, formato) => procesarRef.current(texto, formato),
         })
         if (vivo) setInfo(i)
       } catch (e) {
@@ -117,7 +141,7 @@ export default function EscanerMembrana({
     if (!archivo || !window.LECTOR) return
     setEstado('Leyendo la foto…')
     const r = await window.LECTOR.decodificarImagen(archivo)
-    if (r) { cb.current(r.texto, r.formato); setEstado('Listo') }
+    if (r) { procesar(r.texto, r.formato); setEstado('Apunte al código de barras') }
     else setEstado('No se pudo leer el código en esa foto. Prueba con más luz o más cerca.')
   }
 
@@ -131,6 +155,12 @@ export default function EscanerMembrana({
       <div className={'escaner-cam' + (destello ? ' leido' : '')}>
         <video ref={videoRef} playsInline muted autoPlay />
         <div className="escaner-mira" ref={miraRef} />
+        {cartel && (
+          <div className={'escaner-cartel' + (cartel.ok ? '' : ' malo')}>
+            <b>{cartel.ok ? '✔ LISTO' : '✕ NO SE TOMÓ'}</b>
+            <span>{cartel.mensaje}</span>
+          </div>
+        )}
         <div className="escaner-msj">{error || estado}</div>
       </div>
 
