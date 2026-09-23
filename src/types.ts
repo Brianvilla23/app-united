@@ -74,9 +74,11 @@ export type TablaOutbox =
 // Avance de las actividades que no usan el plano de tapas (venteos, manifold,
 // pasos simples). Un registro por ítem marcado.
 export interface ItemAvance {
-  id: string          // `${actividad}-${lado}-${item}`
+  id: string          // `${actividad}-${lado}-${rack}-${item}`
   actividad: string
   lado: LadoRack
+  /** De qué rack es este avance. Hasta el Rack 12 se daba por supuesto. */
+  rack: number
   item: string        // id del venteo / manifold / vasija
   hecho: boolean
   datos: Record<string, unknown>
@@ -85,8 +87,8 @@ export interface ItemAvance {
   sincronizado: boolean
 }
 
-export function itemId(actividad: string, lado: LadoRack, item: string): string {
-  return `${actividad}-${lado}-${item}`
+export function itemId(actividad: string, lado: LadoRack, rack: number, item: string): string {
+  return `${actividad}-${lado}-${rack}-${item}`
 }
 
 /** `datos` de un manifold: qué piezas suyas ya están puestas.
@@ -141,8 +143,7 @@ export const LADOS: { codigo: LadoRack; nombre: string; corto: string }[] = [
   { codigo: 'descarga', nombre: 'Lado descarga', corto: 'Descarga' },
 ]
 
-// El rack de tapas es siempre el 12 (es el único en intervención).
-export const RACK_TAPAS = 12
+// El rack en intervención ya no es uno solo: está en `rackOutage.ts`.
 
 export type EstadoTapa = 'aislada' | 'agripada' | 'seguros' | 'pernos' | 'pendiente' | 'retirada'
 

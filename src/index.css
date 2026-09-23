@@ -339,6 +339,8 @@ textarea { resize: vertical; }
 .act-meta em.libre { color: #1d4ed8; background: rgba(37,99,235,.1); }
 .act-meta em.candado { color: #92400e; background: rgba(245,158,11,.14); }
 .act-meta em.porhacer { color: #7c3aed; background: rgba(124,58,237,.1); }
+.act-meta em.cerrada { color: #334155; background: rgba(100,116,139,.15); }
+.act.cerrada .act-pct { color: var(--muted); font-weight: 600; }
 .act-pasos { font-size: 11.5px; color: var(--accent-dark); font-weight: 600; }
 .act-nota { font-size: 11px; color: var(--muted); line-height: 1.4; }
 .act-bar { display: block; height: 5px; border-radius: 3px; background: #e2e8f0; overflow: hidden; margin-top: 3px; }
@@ -362,3 +364,18 @@ textarea { resize: vertical; }
 .act-n { background: var(--united-gris); }
 .act.completa .act-n { background: #22c55e; }
 .plano-titulo span { color: var(--united-gris); }
+
+/* outage cerrado: el rack terminó y queda de solo lectura */
+.cerrado-aviso {
+  display: flex; flex-direction: column; gap: 3px;
+  background: #f1f5f9; border: 1px solid #cbd5e1; border-left: 4px solid #64748b;
+  border-radius: var(--radius); padding: 11px 14px; margin-bottom: 10px;
+}
+.cerrado-aviso b { font-size: 12.5px; font-weight: 800; letter-spacing: .3px; color: #334155; }
+.cerrado-aviso span { font-size: 13px; color: var(--ink); }
+.cerrado-aviso small { font-size: 11.5px; color: var(--muted); }
+.cerrar-outage {
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+  margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border);
+}
+.cerrar-outage span { font-size: 13px; color: var(--ink); }

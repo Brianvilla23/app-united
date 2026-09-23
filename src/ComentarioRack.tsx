@@ -16,21 +16,23 @@ import { usePuedeEditar } from './permisos'
 
 export const COMENTARIO_RACK = 'comentario_rack'
 // El comentario es del rack completo: el lado no aplica, pero es parte de la
-// llave de avance_item, así que va fijo.
+// llave de avance_item, así que va fijo. El rack iba dentro del ítem hasta que
+// `avance_item` tuvo columna propia (migración 7); ahora el ítem es fijo.
 const LADO: LadoRack = 'alimentacion'
+const ITEM = 'comentario'
 
 // `type` y no `interface` para que entre en el `datos: Record<string, unknown>`
 type DatosComentario = { texto?: string; quien?: string; fecha?: number }
 
 /** El comentario del rack, para mostrarlo y para meterlo en los PDF. */
 export function useComentarioRack(rack: number): DatosComentario {
-  const g = useLiveQuery(() => db.items.get(itemId(COMENTARIO_RACK, LADO, String(rack))), [rack])
+  const g = useLiveQuery(() => db.items.get(itemId(COMENTARIO_RACK, LADO, rack, ITEM)), [rack])
   return (g?.datos as DatosComentario | undefined) ?? {}
 }
 
 export default function ComentarioRack({ rack }: { rack: number }) {
   const puedeEditar = usePuedeEditar()
-  const id = itemId(COMENTARIO_RACK, LADO, String(rack))
+  const id = itemId(COMENTARIO_RACK, LADO, rack, ITEM)
   const guardado = useLiveQuery(() => db.items.get(id), [id])
   const datos = (guardado?.datos as DatosComentario | undefined) ?? {}
 
@@ -47,12 +49,12 @@ export default function ComentarioRack({ rack }: { rack: number }) {
     const limpio = texto.trim()
     const nuevos: DatosComentario = { texto: limpio, quien: yo, fecha: Date.now() }
     await db.items.put({
-      id, actividad: COMENTARIO_RACK, lado: LADO, item: String(rack),
+      id, actividad: COMENTARIO_RACK, lado: LADO, rack, item: ITEM,
       hecho: limpio.length > 0, datos: nuevos,
       creadoPor: yo, createdAt: Date.now(), sincronizado: false,
     })
     await encolar('item_upsert', {
-      actividad: COMENTARIO_RACK, lado: LADO, item: String(rack),
+      actividad: COMENTARIO_RACK, lado: LADO, rack, item: ITEM,
       hecho: limpio.length > 0, datos: nuevos, creado_por: yo,
     })
     setEditando(false)

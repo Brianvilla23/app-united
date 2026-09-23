@@ -1,9 +1,9 @@
 // Manifold dentro del levantamiento de fuga: el mismo plano de los 40, pero
 // marcando dónde FILTRA en vez de qué se avanzó.
 //
-// Va por rack (R1-R12) igual que el resto del levantamiento. Como `avance_item`
-// no tiene columna de rack —todo lo demás que guarda es del Rack 12— el rack va
-// dentro del `item` (`itemFugaManifold`).
+// Va por rack (R1-R12) igual que el resto del levantamiento, en la columna
+// `rack` de `avance_item` (antes de la migración 7 el rack viajaba dentro del
+// ítem, porque la tabla no tenía dónde ponerlo).
 //
 // Acá el brazo SÍ se marca: en el outage no se registra, pero filtrar puede.
 import { createElement, useState } from 'react'
@@ -13,8 +13,7 @@ import { encolar } from './sync'
 import { quienSoy } from './identidad'
 import { itemId, type DatosManifold } from './types'
 import {
-  FUGA_MANIFOLD, MANIFOLDS, NOMBRE_PARTE, PARTES_FUGA, PLANO_MF,
-  itemFugaManifold, resumirManifold,
+  FUGA_MANIFOLD, MANIFOLDS, NOMBRE_PARTE, PARTES_FUGA, PLANO_MF, resumirManifold,
 } from './actividades'
 import { MARCA, MARCA_BORDE } from './rackLayout'
 import DetalleManifold from './DetalleManifold'
@@ -28,11 +27,11 @@ const LADO = 'descarga' as const   // los manifolds solo existen en descarga
 export default function FugasManifold({ rack }: { rack: number }) {
   const [abierto, abrirManifold, cerrarManifold] = useModal<string>()
   const items = useLiveQuery(
-    () => db.items.where('actividad').equals(FUGA_MANIFOLD).toArray(), [],
+    () => db.items.where('[actividad+rack]').equals([FUGA_MANIFOLD, rack]).toArray(), [rack],
   ) ?? []
 
   const datosDe = (mid: string): DatosManifold =>
-    (items.find((i) => i.item === itemFugaManifold(rack, mid))?.datos as DatosManifold | undefined) ?? {}
+    (items.find((i) => i.item === mid)?.datos as DatosManifold | undefined) ?? {}
 
   const fugasDe = (mid: string) => resumirManifold(mid, PARTES_FUGA, datosDe(mid)).hechas
   const conFuga = MANIFOLDS.filter((m) => fugasDe(m.id) > 0)
@@ -41,20 +40,19 @@ export default function FugasManifold({ rack }: { rack: number }) {
   /** Lee de la base dentro de la transacción: dos marcas seguidas no se pisan. */
   const marcar = async (mid: string, cambio: (actual: DatosManifold) => DatosManifold) => {
     const yo = quienSoy()
-    const item = itemFugaManifold(rack, mid)
-    const id = itemId(FUGA_MANIFOLD, LADO, item)
+    const id = itemId(FUGA_MANIFOLD, LADO, rack, mid)
     const datos = await db.transaction('rw', db.items, async () => {
       const actual = ((await db.items.get(id))?.datos as DatosManifold | undefined) ?? {}
       const next = cambio(actual)
       await db.items.put({
-        id, actividad: FUGA_MANIFOLD, lado: LADO, item, datos: next,
+        id, actividad: FUGA_MANIFOLD, lado: LADO, rack, item: mid, datos: next,
         hecho: resumirManifold(mid, PARTES_FUGA, next).hechas > 0,
         creadoPor: yo, createdAt: Date.now(), sincronizado: false,
       })
       return next
     })
     await encolar('item_upsert', {
-      actividad: FUGA_MANIFOLD, lado: LADO, item, datos, creado_por: yo,
+      actividad: FUGA_MANIFOLD, lado: LADO, rack, item: mid, datos, creado_por: yo,
       hecho: resumirManifold(mid, PARTES_FUGA, datos).hechas > 0,
     })
   }

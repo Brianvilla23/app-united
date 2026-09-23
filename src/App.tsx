@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { iniciarSync } from './sync'
-import { seedTapasRack12 } from './seedTapas'
 import { quienSoy, guardarQuienSoy } from './identidad'
 import {
   ModoContexto, NOMBRE_MODO, guardarModo, modoGuardado, type ModoUso,
 } from './permisos'
+import { RACKS_OUTAGE, RACK_INICIAL, RackContexto, useCierres } from './rackOutage'
 import { cerrarCapaDeArriba, empujarCapa, volver } from './navegacion'
 import AvisoForm from './AvisoForm'
 import AndamioForm from './AndamioForm'
@@ -17,7 +17,7 @@ import Venteos from './Venteos'
 import PlanoActividad from './PlanoActividad'
 import Pruebas from './Pruebas'
 import { ACTIVIDADES, type Actividad } from './actividades'
-import { fechaLarga } from './fecha'
+import { fechaCorta, fechaLarga } from './fecha'
 
 type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'guardados'
 
@@ -31,7 +31,7 @@ const TITULOS: Record<Vista, string> = {
   andamio: 'Levantamiento de andamio',
   fugas: 'Diagrama de fugas',
   tapas: 'Estado de tapas',
-  outage: 'Outage Rack 12',
+  outage: 'Outage',
   venteos: 'Cambio de venteos',
   actividad: 'Actividad del outage',
   prueba: 'Prueba de presión',
@@ -113,9 +113,10 @@ function QuienEres({
   )
 }
 
-function Menu({ go }: { go: (v: Vista) => void }) {
+function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack: number) => void }) {
   const nAvisos = useLiveQuery(() => db.avisos.count(), []) ?? 0
   const nAndamios = useLiveQuery(() => db.andamios.count(), []) ?? 0
+  const cierres = useCierres()
   const fecha = fechaLarga()
 
   return (
@@ -141,11 +142,25 @@ function Menu({ go }: { go: (v: Vista) => void }) {
           <span className="mc-txt"><b>Diagrama de fugas</b><small>Marca fugas por vasija · lado alimentación</small></span>
           <span className="mc-arrow">›</span>
         </button>
-        <button className="menu-card" onClick={() => go('outage')}>
-          <span className="mc-ico" style={{ background: 'rgba(37,99,235,.1)' }}>🗓️</span>
-          <span className="mc-txt"><b>Outage Rack 12</b><small>Secuencia completa · {ACTIVIDADES.length} actividades</small></span>
-          <span className="mc-arrow">›</span>
-        </button>
+        {/* una tarjeta por rack: el outage en curso primero, los cerrados
+            después. Agregar un rack es agregarlo en `rackOutage.ts`. */}
+        {RACKS_OUTAGE.map((r) => {
+          const cerrado = cierres.get(r.numero)
+          return (
+            <button key={r.numero} className="menu-card" onClick={() => abrirOutage(r.numero)}>
+              <span className="mc-ico" style={{ background: 'rgba(37,99,235,.1)' }}>🗓️</span>
+              <span className="mc-txt">
+                <b>Outage Rack {r.numero}{cerrado ? ' · cerrado' : ''}</b>
+                <small>
+                  {cerrado
+                    ? `Terminado${cerrado.fecha ? ` el ${fechaCorta(cerrado.fecha)}` : ''} · solo lectura`
+                    : `Secuencia completa · ${ACTIVIDADES.length} actividades`}
+                </small>
+              </span>
+              <span className="mc-arrow">›</span>
+            </button>
+          )
+        })}
         <button className="menu-card" onClick={() => go('guardados')}>
           <span className="mc-ico slate">🗂️</span>
           <span className="mc-txt"><b>Guardados</b><small>{nAvisos + nAndamios} registros · PDF y respaldo</small></span>
@@ -166,6 +181,8 @@ function Menu({ go }: { go: (v: Vista) => void }) {
 export default function App() {
   const [vista, setVista] = useState<Vista>('menu')
   const [actAbierta, setActAbierta] = useState<Actividad | null>(null)
+  // el rack que se está viendo: lo elige la tarjeta del menú
+  const [rack, setRack] = useState(RACK_INICIAL)
 
   // De dónde se vino, en el momento de entrar. Va en un ref porque el cierre de
   // la capa se guarda al navegar y tiene que ver la pantalla de ESE momento,
@@ -189,7 +206,7 @@ export default function App() {
   const [yo, setYo] = useState(quienSoy())
   const [modo, setModo] = useState<ModoUso>(modoGuardado())
   const [editandoNombre, setEditandoNombre] = useState(false)
-  useEffect(() => { iniciarSync(); void seedTapasRack12() }, [])
+  useEffect(() => { iniciarSync() }, [])
 
   const confirmarNombre = (n: string, m: ModoUso) => {
     guardarQuienSoy(n)
@@ -214,13 +231,15 @@ export default function App() {
 
   return (
     <ModoContexto value={modo}>
+    <RackContexto value={rack}>
     <div className="app">
       <header className="topbar">
         {vista === 'menu' ? (
           <Marca />
         ) : (
           <button className="back" onClick={volver}>
-            ‹ {actAbierta && VISTAS_DE_ACTIVIDAD.includes(vista) ? actAbierta.nombre : TITULOS[vista]}
+            ‹ {actAbierta && VISTAS_DE_ACTIVIDAD.includes(vista) ? actAbierta.nombre
+              : vista === 'outage' ? `Outage Rack ${rack}` : TITULOS[vista]}
           </button>
         )}
         <OfflineDot />
@@ -232,7 +251,7 @@ export default function App() {
         <button onClick={() => setEditandoNombre(true)}>cambiar</button>
       </div>
       <main className="main">
-        {vista === 'menu' && <Menu go={irA} />}
+        {vista === 'menu' && <Menu go={irA} abrirOutage={(r) => { setRack(r); irA('outage') }} />}
         {vista === 'aviso' && <AvisoForm onSaved={() => irA('guardados')} />}
         {vista === 'andamio' && <AndamioForm onSaved={() => irA('guardados')} onCrearSubsecuente={() => irA('aviso')} />}
         {vista === 'fugas' && <Fugas />}
@@ -252,6 +271,7 @@ export default function App() {
       </main>
       <footer className="app-foot">App United v0.2 · uso interno</footer>
     </div>
+    </RackContexto>
     </ModoContexto>
   )
 }

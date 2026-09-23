@@ -1,9 +1,10 @@
 # App United — Estado del proyecto
-_Última actualización: 21-09-2026_
+_Última actualización: 23-09-2026_
 
 > 👉 **Para retomar: leer primero `TRASPASO_OUTAGE_RACK3.md`.** El Rack 12
-> terminó y lo que sigue es el outage del Rack 3, también de EWS (no de
-> Planta 0). Ahí están las trampas y las preguntas abiertas.
+> cerró y el outage del **Rack 3** (también de EWS, no de Planta 0) ya está
+> abierto en la app: ver la sección 10. Ahí están las trampas que ya costaron
+> caro.
 
 App móvil (PWA) para los supervisores de la Planta Desaladora United, Coloso.
 Funciona offline en planta y se instala en el celular sin tienda de apps.
@@ -293,6 +294,41 @@ sincroniza contra la base que usa la cuadrilla en planta. `screenshot.mjs` y
 `screenshot_online.mjs` cortan Supabase (`ctx.route(...supabase.co...)`) y dejan
 el nombre puesto: **cualquier script nuevo tiene que hacer lo mismo** o deja
 marcas falsas sobre el rack.
+
+---
+
+## 10. Dos racks: el outage del Rack 3 ✅ (22/23-09-2026)
+
+El Rack 12 terminó y Brayan pidió abrir el **Rack 3**, que también es de EWS
+(no de Planta 0: hay documentos de un "Rack 3 Planta Cero" que son de otro rack
+con el mismo número). Confirmó que es **igual al 12** —295 vasijas, 40
+manifolds, 6 venteos y las mismas 14 actividades—, así que los diagramas se
+reusan tal cual. El manifold sí cambia: es **flexible**, con la misma forma que
+el de PVC.
+
+- **`src/rackOutage.ts`**: el catálogo de racks (`RACKS_OUTAGE`), el rack activo
+  por contexto (`useRack`) y el cierre del outage. Agregar un rack es agregar
+  una línea ahí; el primero de la lista es el que está en curso.
+- **El menú muestra una tarjeta por rack**, con el cerrado abajo y marcado.
+- **`avance_item` ahora tiene `rack`** (migración `sql/07`, corrida el 22-09).
+  La llave pasó a `(actividad, lado, rack, item)` y los 969 registros del Rack
+  12 quedaron donde estaban (`default 12`). De paso, el rack que viajaba dentro
+  del ítem (`fuga_manifold` = "7-DE1", `comentario_rack` = "12") se mudó a la
+  columna. Lo mismo hace la versión 14 de Dexie en el celular.
+- **Cierre del outage**: un rack terminado NO se rellena ítem por ítem —eso
+  inventaría registros que nadie marcó, por ejemplo 295 vasijas "revisadas sin
+  fuga" en una prueba que sí tuvo fugas. Se guarda **una** marca de cierre
+  (`outage_cerrado`): el rack se ve al 100%, cada actividad queda con el chip
+  "✓ cerrada" y el rack pasa a solo lectura, con el porcentaje real de lo que
+  alcanzó a registrarse a la vista. Se puede reabrir.
+- **Se sacó el seed de tapas** (`src/seedTapas.ts`): reinyectaba el snapshot del
+  21/07 en cada celular nuevo (63 filas con `creado_por = 'Turno noche 21/07'`).
+  Con dos racks eso era pólvora; los datos ya viven en Supabase.
+- Probado de verdad con las dos versiones: se compiló la anterior, se marcó
+  avance del Rack 12 y se sirvió la nueva **en el mismo origen** para que
+  corriera la migración v13→v14 del IndexedDB. Los 17 chequeos pasaron: el
+  avance viejo sobrevivió, el Rack 3 entra en cero y no se mezcla, y el cierre
+  deja el rack de solo lectura.
 
 ---
 

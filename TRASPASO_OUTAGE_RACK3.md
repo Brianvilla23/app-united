@@ -10,10 +10,21 @@ que romper.
 
 ---
 
-## Lo que pidió Brayan
+## Lo que pidió Brayan — ✅ hecho el 22/23-09-2026
 
 1. **El outage del Rack 12 terminó** → marcar que todo está cambiado.
 2. **Crear el outage del Rack 3.**
+
+**Las dos cosas están construidas y desplegadas.** El detalle está en la
+sección 10 de `ESTADO_PROYECTO.md`. Lo que Brayan respondió:
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿El Rack 3 es igual al 12? | **Sí**: 295 vasijas, 40 manifolds, 6 venteos, las mismas 14 actividades |
+| ¿Manifold? | **Flexible**, pero con la misma forma que el de PVC → mismo diagrama |
+| ¿Cómo cerrar el Rack 12? | Estado **"outage cerrado"**, sin inventar registros |
+
+Lo que sigue abajo se deja como referencia de dónde salió cada cosa.
 
 ---
 

@@ -9,7 +9,7 @@ import {
   type ComponenteFuga, type Vista,
 } from './rackLayout'
 import {
-  ESTADOS_TAPA, LADOS, RACK_TAPAS, defEstadoTapa, estadoTapaDe, esInstalacion, esRetiroTapas,
+  ESTADOS_TAPA, LADOS, defEstadoTapa, estadoTapaDe, esInstalacion, esRetiroTapas,
   resumirTapas, tapaId, PERNOS_POR_TAPA, SEGUROS_POR_TAPA,
   type TapaEstado, type LadoRack, type FallaTapa,
 } from './types'
@@ -17,6 +17,7 @@ import { generarPDFTapas, nombreArchivoTapas } from './pdfTapas'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { useComentarioRack } from './ComentarioRack'
 import { usePuedeEditar } from './permisos'
+import { useCierre, useRack } from './rackOutage'
 import { useModal } from './useModal'
 import { fechaHistorial } from './fecha'
 import PlanoRack, { AZUL, VERDE } from './PlanoRack'
@@ -66,12 +67,16 @@ export default function Fugas({
   const [vista, setVista] = useState<Vista>(ordenSemiRacks(ladoFijo === 'descarga')[0])
   const [sel, abrirVasija, cerrarVasija] = useModal<string>()
   const [selTapa, abrirTapa, cerrarTapa] = useModal<string>()
-  const puedeEditar = usePuedeEditar()
+  const rackOutage = useRack()
+  const cerrado = useCierre(rackOutage)
+  // El levantamiento de fugas es aparte del outage y sigue editable siempre;
+  // las tapas son una actividad del outage, así que un rack cerrado se mira.
+  const puedeEditar = usePuedeEditar() && !(modo === 'tapas' && cerrado)
   const todas = useLiveQuery(() => db.marcas.toArray(), []) ?? []
   const todasTapas = useLiveQuery(() => db.tapas.toArray(), []) ?? []
 
-  // En tapas solo se interviene el Rack 12; en fugas siguen los 12 racks.
-  const rack = modo === 'tapas' ? RACK_TAPAS : rackFugas
+  // En tapas se trabaja el rack del outage; en fugas siguen los 12 racks.
+  const rack = modo === 'tapas' ? rackOutage : rackFugas
   const espejo = modo === 'tapas' && lado === 'descarga'
 
   const marcas = todas.filter((m) => m.rack === rack)
@@ -86,7 +91,7 @@ export default function Fugas({
   const tapaRec = new Map<string, TapaEstado>()
   for (const t of todasTapas) if (t.rack === rack && t.lado === lado && t.actividad === actividad) tapaRec.set(t.vasija, t)
   const resumen = resumirTapas([...tapaRec.values()], TOTAL_VASIJAS)
-  const tapasPorLado = (l: LadoRack) => todasTapas.filter((t) => t.rack === RACK_TAPAS && t.lado === l && t.actividad === actividad).length
+  const tapasPorLado = (l: LadoRack) => todasTapas.filter((t) => t.rack === rackOutage && t.lado === l && t.actividad === actividad).length
 
   const updateTapa = async (vasija: string, patch: Partial<TapaEstado>) => {
     if (!puedeEditar) return

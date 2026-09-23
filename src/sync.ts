@@ -110,7 +110,10 @@ async function subirPendientes(): Promise<boolean> {
       } else if (it.tabla === 'item_upsert') {
         ({ error } = await supabase.from('avance_item').upsert(it.payload))
         if (!error) {
-          const id = itemId(it.payload.actividad as string, it.payload.lado as LadoRack, String(it.payload.item))
+          const id = itemId(
+            it.payload.actividad as string, it.payload.lado as LadoRack,
+            Number(it.payload.rack ?? 12), String(it.payload.item),
+          )
           await db.items.update(id, { sincronizado: true })
         }
       } else if (it.tabla === 'historial') {
@@ -208,9 +211,11 @@ export async function pullItems(): Promise<void> {
   await db.transaction('rw', db.items, async () => {
     await db.items.clear()
     await db.items.bulkAdd(data.map((r) => ({
-      id: itemId(r.actividad, r.lado, r.item),
+      // `rack` puede faltar si la fila la escribió una versión vieja de la app
+      id: itemId(r.actividad, r.lado, r.rack ?? 12, r.item),
       actividad: r.actividad,
       lado: r.lado,
+      rack: r.rack ?? 12,
       item: r.item,
       hecho: !!r.hecho,
       datos: (r.datos as Record<string, unknown>) ?? {},

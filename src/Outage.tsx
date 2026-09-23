@@ -1,10 +1,17 @@
-// Pestaña "Outage Rack 12": la secuencia completa de actividades del outage.
+// Pestaña "Outage Rack N": la secuencia completa de actividades del outage.
 // Cada actividad tiene su propio diagrama; acá se ve el orden, el avance y qué
 // está bloqueado por lo que falta terminar antes.
+//
+// El rack sale del contexto (`useRack`), no de una constante: la misma pantalla
+// sirve para el Rack 3 y para el 12.
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
-import { RACK_TAPAS, estaExtraida, type DatosManifold } from './types'
+import { estaExtraida, type DatosManifold } from './types'
 import { TOTAL_VASIJAS } from './rackLayout'
+import { NOMBRE_MANIFOLD, cerrarOutage, rackDe, useCierre, useRack } from './rackOutage'
+import { usePuedeEditar } from './permisos'
+import { fechaCorta } from './fecha'
 import {
   ACTIVIDADES, TIPOS_LISTOS, estaBloqueada, itemsDe, resumirManifold,
   type Actividad, type TipoDiagrama,
@@ -19,8 +26,15 @@ const ETIQUETA_TIPO: Record<TipoDiagrama, string> = {
 }
 
 export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void }) {
+  const rack = useRack()
+  const info = rackDe(rack)
+  const cierre = useCierre(rack)
+  const puedeEditar = usePuedeEditar()
+  const [confirmando, setConfirmando] = useState(false)
   const tapas = useLiveQuery(() => db.tapas.toArray(), []) ?? []
   const itemsAv = useLiveQuery(() => db.items.toArray(), []) ?? []
+
+  const delRack = itemsAv.filter((i) => i.rack === rack)
 
   // Avance por actividad. Cada tipo guarda en su propia tabla, así que el
   // avance se lee de donde corresponda.
@@ -34,13 +48,13 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
     if (act?.tipo === 'tapa') {
       const lado = act.lados[0]
       const hechas = tapas.filter(
-        (t) => t.rack === RACK_TAPAS && t.lado === lado && t.actividad === id && estaExtraida(t),
+        (t) => t.rack === rack && t.lado === lado && t.actividad === id && estaExtraida(t),
       ).length
       return Math.round((hechas / TOTAL_VASIJAS) * 1000) / 10
     }
     if (act?.partes) {
       // acá el avance son las piezas puestas, no los manifolds terminados
-      const propios = itemsAv.filter((i) => i.actividad === id)
+      const propios = delRack.filter((i) => i.actividad === id)
       const hechas = propios.reduce(
         (n, i) => n + resumirManifold(i.item, act.partes!, i.datos as DatosManifold).hechas, 0,
       )
@@ -48,7 +62,7 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
       return total > 0 ? Math.round((hechas / total) * 1000) / 10 : 0
     }
     if (act) {
-      const hechos = itemsAv.filter((i) => i.actividad === id && i.hecho).length
+      const hechos = delRack.filter((i) => i.actividad === id && i.hecho).length
       const total = itemsDe(act)
       if (total > 0 && hechos > 0) return Math.round((hechos / total) * 1000) / 10
     }
@@ -57,29 +71,48 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
 
   const total = ACTIVIDADES.reduce((n, a) => n + itemsDe(a), 0)
   const hecho = ACTIVIDADES.reduce((n, a) => n + (avanceDe(a.id) / 100) * itemsDe(a), 0)
-  const global = Math.round((hecho / total) * 1000) / 10
+  const registrado = Math.round((hecho / total) * 1000) / 10
+  // Un outage cerrado se muestra terminado aunque no todo haya quedado
+  // registrado en la app: el trabajo se hizo, lo que faltó fue anotarlo.
+  const global = cierre ? 100 : registrado
+
+  const cerrar = async (valor: boolean) => {
+    setConfirmando(false)
+    await cerrarOutage(rack, valor)
+  }
 
   return (
     <div>
       <div className="plano-titulo">
-        <b>OUTAGE · RACK {RACK_TAPAS}</b>
-        <span>{ACTIVIDADES.length} ACTIVIDADES</span>
+        <b>OUTAGE · RACK {rack}</b>
+        <span>{info.planta} · {NOMBRE_MANIFOLD[info.manifold].toUpperCase()}</span>
       </div>
+
+      {cierre && (
+        <div className="cerrado-aviso">
+          <b>✓ OUTAGE CERRADO</b>
+          <span>
+            Rack terminado{cierre.fecha ? ` el ${fechaCorta(cierre.fecha)}` : ''}
+            {cierre.quien ? ` por ${cierre.quien}` : ''}. Queda de solo lectura.
+          </span>
+          <small>Lo que alcanzó a registrarse en la app fue el {registrado}%.</small>
+        </div>
+      )}
 
       <div className="avance">
         <div className="avance-top">
           <b>{global}%</b>
-          <span>avance total del outage</span>
+          <span>{cierre ? 'outage cerrado' : 'avance total del outage'}</span>
         </div>
         <div className="avance-bar">
-          <span style={{ width: `${global}%`, background: '#22c55e' }} />
+          <span style={{ width: `${global}%`, background: cierre ? '#64748b' : '#22c55e' }} />
         </div>
       </div>
 
       <ol className="actividades">
         {ACTIVIDADES.map((a, i) => {
           const pct = avanceDe(a.id)
-          const bloqueada = estaBloqueada(i, avanceDe)
+          const bloqueada = !cierre && estaBloqueada(i, avanceDe)
           // El candado AVISA el orden, no lo impone: en terreno las cuadrillas
           // se traslapan y la app no puede impedir registrar lo que ya se hizo.
           const listo = TIPOS_LISTOS.includes(a.tipo)
@@ -87,13 +120,17 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
           return (
             <li
               key={a.id}
-              className={'act' + (bloqueada ? ' bloqueada' : '') + (pct >= 100 ? ' completa' : '')}
+              className={'act' + (bloqueada ? ' bloqueada' : '')
+                + (pct >= 100 ? ' completa' : '') + (cierre ? ' cerrada' : '')}
             >
               <button disabled={!abrible} onClick={() => abrible && onAbrir(a)}>
                 <span className="act-n">{i + 1}</span>
                 <span className="act-cuerpo">
                   <b>{a.nombre}</b>
                   <span className="act-meta">
+                    {/* con el outage cerrado el % que queda es lo que se
+                        alcanzó a anotar, no lo que se hizo: el chip lo dice */}
+                    {cierre && <em className="cerrada">✓ cerrada</em>}
                     <em>{ETIQUETA_TIPO[a.tipo]}</em>
                     <em>{itemsDe(a)} ítems</em>
                     {a.libre && <em className="libre">sin orden</em>}
@@ -110,6 +147,28 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
           )
         })}
       </ol>
+
+      {puedeEditar && (
+        <div className="cerrar-outage">
+          {confirmando ? (
+            <>
+              <span>
+                {cierre
+                  ? `¿Reabrir el outage del Rack ${rack}? Vuelve a quedar editable.`
+                  : `¿Cerrar el outage del Rack ${rack}? Queda como terminado y de solo lectura.`}
+              </span>
+              <div className="row" style={{ gap: 8 }}>
+                <button className="btn sm" onClick={() => void cerrar(!cierre)}>Sí</button>
+                <button className="btn sm ghost" onClick={() => setConfirmando(false)}>No</button>
+              </div>
+            </>
+          ) : (
+            <button className="btn sm ghost" onClick={() => setConfirmando(true)}>
+              {cierre ? 'Reabrir outage' : 'Cerrar outage'}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

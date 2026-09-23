@@ -1,5 +1,7 @@
-// Catálogo del Outage del Rack 12: qué actividades hay, en qué orden van y
-// con qué diagrama se marca cada una.
+// Catálogo del outage de un rack EWS: qué actividades hay, en qué orden van y
+// con qué diagrama se marca cada una. Es el mismo para todos los racks de EWS
+// (se levantó con el Rack 12 y el Rack 3 lo reusa tal cual, confirmado por
+// Brayan el 22-09-2026); los racks van en `rackOutage.ts`.
 //
 // Fuente: hojas manuscritas de Brayan (29-07-2026) + planos de Planificación.
 // El orden del array ES el orden de ejecución. Las marcadas `libre: true` se
@@ -75,12 +77,8 @@ export const NOMBRE_PARTE: Record<ParteManifold, string> = {
 export const PARTES_FUGA: ParteManifold[] = ['manifold', 'stubend', 'brazo', 'tubing']
 
 /** Actividad y lado con que se guardan las fugas de manifold en `avance_item`.
-    El rack va dentro del `item` porque la tabla no tiene columna de rack y
-    todo lo demás que guarda es del Rack 12. */
+    El rack va en su columna desde la migración 7. */
 export const FUGA_MANIFOLD = 'fuga_manifold'
-export function itemFugaManifold(rack: number, manifold: string): string {
-  return `${rack}-${manifold}`
-}
 
 export interface Actividad {
   id: string
