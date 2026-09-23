@@ -129,12 +129,46 @@ async function subirPendientes(): Promise<boolean> {
 
 // ---------- pull del diagrama compartido ----------
 
+/**
+ * Baja una tabla COMPLETA, de a mil filas.
+ *
+ * Supabase corta toda respuesta en 1.000 filas. Mientras hubo un solo rack eso
+ * no se notaba (las tapas eran 965), pero al abrir el Rack 3 las tablas
+ * pasaron las 1.000 y el pull empezó a traer solo las primeras mil: como el
+ * pull borra lo local y lo reemplaza por lo que bajó, **lo marcado se veía
+ * desaparecer al minuto** aunque en la base estuviera intacto (23-09-2026).
+ *
+ * El orden es obligatorio: sin `order` cada página puede venir en otro orden y
+ * se pierden o repiten filas entre páginas.
+ */
+const PAGINA = 1000
+const MAX_PAGINAS = 50
+
+/** Fila tal cual viene de Supabase: sin tipos generados de la base las columnas
+    llegan sueltas y se convierten al mapear, igual que antes de paginar. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FilaRemota = Record<string, any>
+
+async function bajarTabla(tabla: string, orden: string[]): Promise<FilaRemota[] | null> {
+  const filas: FilaRemota[] = []
+  for (let p = 0; p < MAX_PAGINAS; p++) {
+    let q = supabase.from(tabla).select('*')
+    for (const col of orden) q = q.order(col)
+    const { data, error } = await q.range(p * PAGINA, (p + 1) * PAGINA - 1)
+    // sin señal o con error: se devuelve null y NO se pisa lo local con algo a medias
+    if (error || !data) return null
+    filas.push(...data)
+    if (data.length < PAGINA) return filas
+  }
+  return filas
+}
+
 export async function pullMarcas(): Promise<void> {
   if (!navigator.onLine) return
   const pendientes = await db.outbox.where('tabla').anyOf(['marcas_upsert', 'marcas_delete']).count()
   if (pendientes > 0) return // primero subir lo local, después bajar
-  const { data, error } = await supabase.from('marcas_fuga').select('*')
-  if (error || !data) return
+  const data = await bajarTabla('marcas_fuga', ['rack', 'vasija', 'componente'])
+  if (!data) return
   await db.transaction('rw', db.marcas, async () => {
     await db.marcas.clear()
     await db.marcas.bulkAdd(data.map((r) => ({
@@ -153,8 +187,8 @@ export async function pullTapas(): Promise<void> {
   if (!navigator.onLine) return
   const pend = await db.outbox.where('tabla').anyOf(['tapas_upsert', 'tapas_delete']).count()
   if (pend > 0) return
-  const { data, error } = await supabase.from('estado_tapas').select('*')
-  if (error || !data || data.length === 0) return // no pisar la data local con una tabla vacía
+  const data = await bajarTabla('estado_tapas', ['actividad', 'lado', 'rack', 'vasija'])
+  if (!data || data.length === 0) return // no pisar la data local con una tabla vacía
   await db.transaction('rw', db.tapas, async () => {
     await db.tapas.clear()
     await db.tapas.bulkAdd(data.map((r) => {
@@ -206,8 +240,8 @@ export async function pullHistorial(): Promise<void> {
 export async function pullItems(): Promise<void> {
   if (!navigator.onLine) return
   if (await db.outbox.where('tabla').equals('item_upsert').count() > 0) return
-  const { data, error } = await supabase.from('avance_item').select('*')
-  if (error || !data) return
+  const data = await bajarTabla('avance_item', ['actividad', 'lado', 'rack', 'item'])
+  if (!data) return
   await db.transaction('rw', db.items, async () => {
     await db.items.clear()
     await db.items.bulkAdd(data.map((r) => ({

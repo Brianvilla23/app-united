@@ -329,6 +329,16 @@ el de PVC.
 - **Se sacó el seed de tapas** (`src/seedTapas.ts`): reinyectaba el snapshot del
   21/07 en cada celular nuevo (63 filas con `creado_por = 'Turno noche 21/07'`).
   Con dos racks eso era pólvora; los datos ya viven en Supabase.
+- 🔴 **Bug que trajo el segundo rack: lo marcado se veía desaparecer.**
+  Supabase corta **toda respuesta en 1.000 filas**. Con un solo rack no se
+  notaba (965 tapas), pero al abrir el Rack 3 las tablas pasaron las 1.000 y el
+  pull traía solo las primeras mil; como el pull **borra lo local y lo
+  reemplaza**, al minuto se borraban de la pantalla marcas que en la base
+  estaban intactas. Arreglado paginando de a mil (`bajarTabla` en `sync.ts`,
+  con `order` obligatorio para que las páginas no se pisen). Medido: la versión
+  con el bug bajaba 1.000 filas (35 tapas del Rack 3); la corregida, las 1.045.
+  **Regla: cualquier `select('*')` que reemplace datos locales tiene que
+  paginar.**
 - Probado de verdad con las dos versiones: se compiló la anterior, se marcó
   avance del Rack 12 y se sirvió la nueva **en el mismo origen** para que
   corriera la migración v13→v14 del IndexedDB. Los 17 chequeos pasaron: el
