@@ -6,7 +6,7 @@ import { ANCHO, ALTO } from './rackLayout'
 import PlanoRack from './PlanoRack'
 import {
   ESTADOS_TAPA, LADOS, defEstadoTapa, estadoTapaDe, resumirTapas,
-  type EstadoTapa, type LadoRack, type TapaEstado,
+  type EstadoTapa, type EstadoTapaDef, type LadoRack, type TapaEstado,
 } from './types'
 import { fechaHora } from './fecha'
 
@@ -27,6 +27,10 @@ export interface DatosPdfTapas {
   rack: number
   tapas: TapaEstado[]
   totalVasijas: number
+  /** Estados que se muestran en la leyenda. En un rack cuya tapa no lleva
+      seguros ni pernos (el Rack 3) va solo "retirada": listar los otros en
+      cero hace leer una hoja que no corresponde. Por defecto, todos. */
+  estados?: EstadoTapaDef[]
   generadoPor: string
   ot?: string
 }
@@ -99,7 +103,7 @@ export async function generarPDFTapas(d: DatosPdfTapas): Promise<jsPDF> {
 
   // en una fila, repartida a lo ancho de la hoja
   const items = [
-    ...ESTADOS_TAPA.map((e) => ({
+    ...(d.estados ?? ESTADOS_TAPA).map((e) => ({
       color: rgb(e.color), borde: [120, 130, 145] as [number, number, number],
       nombre: e.nombre, desc: e.descripcion, n: resumen.porEstado[e.codigo],
     })),

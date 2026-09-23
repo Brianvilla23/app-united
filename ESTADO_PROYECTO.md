@@ -310,6 +310,11 @@ el de PVC.
   por contexto (`useRack`) y el cierre del outage. Agregar un rack es agregar
   una línea ahí; el primero de la lista es el que está en curso.
 - **El menú muestra una tarjeta por rack**, con el cerrado abajo y marcado.
+- **La tapa del Rack 3 no lleva seguros triples ni pernos parker** (ahí está la
+  diferencia con el 12): su retiro es **un toque y queda retirada**, sin abrir
+  el detalle pieza por pieza, y la leyenda y el PDF muestran solo ese estado.
+  Va por rack en `retiroTapas: 'simple' | 'detallado'`. La **instalación** sí es
+  igual en los dos: tapón al centro y shim en milímetros.
 - **`avance_item` ahora tiene `rack`** (migración `sql/07`, corrida el 22-09).
   La llave pasó a `(actividad, lado, rack, item)` y los 969 registros del Rack
   12 quedaron donde estaban (`default 12`). De paso, el rack que viajaba dentro

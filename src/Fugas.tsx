@@ -17,7 +17,7 @@ import { generarPDFTapas, nombreArchivoTapas } from './pdfTapas'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { useComentarioRack } from './ComentarioRack'
 import { usePuedeEditar } from './permisos'
-import { useCierre, useRack } from './rackOutage'
+import { rackDe, useCierre, useRack } from './rackOutage'
 import { useModal } from './useModal'
 import { fechaHistorial } from './fecha'
 import PlanoRack, { AZUL, VERDE } from './PlanoRack'
@@ -77,6 +77,13 @@ export default function Fugas({
 
   // En tapas se trabaja el rack del outage; en fugas siguen los 12 racks.
   const rack = modo === 'tapas' ? rackOutage : rackFugas
+  // En el Rack 3 la tapa no lleva seguros triples ni pernos parker: el retiro
+  // es un toque y queda retirada, sin abrir el detalle pieza por pieza.
+  const retiroSimple = modo === 'tapas' && esRetiroTapas(actividad)
+    && rackDe(rackOutage).retiroTapas === 'simple'
+  const estadosVisibles = retiroSimple
+    ? ESTADOS_TAPA.filter((e) => e.codigo === 'retirada')
+    : ESTADOS_TAPA
   const espejo = modo === 'tapas' && lado === 'descarga'
 
   const marcas = todas.filter((m) => m.rack === rack)
@@ -140,6 +147,14 @@ export default function Fugas({
     void updateTapa(vasija, { pendienteRetiro: !(tapaRec.get(vasija)?.pendienteRetiro ?? false) })
   }
 
+  /** Retiro simple: toca y queda retirada; vuelve a tocar y se borra el
+      registro. Un registro sin fallas ES una tapa retirada. */
+  const toggleRetirada = async (vasija: string) => {
+    if (!puedeEditar) return
+    if (tapaRec.has(vasija)) await limpiarTapa(vasija)
+    else await updateTapa(vasija, {})
+  }
+
   const limpiarTapa = async (vasija: string) => {
     if (!puedeEditar) return
     await db.tapas.delete(tapaId(actividad, lado, rack, vasija))
@@ -194,6 +209,7 @@ export default function Fugas({
         lado, rack,
         tapas: [...tapaRec.values()],
         totalVasijas: TOTAL_VASIJAS,
+        estados: estadosVisibles,
         generadoPor: quienSoy(),
       })
       doc.save(nombreArchivoTapas(lado, rack))
@@ -306,6 +322,12 @@ export default function Fugas({
         </span>
       </div>
 
+      {retiroSimple && (
+        <p className="hint" style={{ margin: '0 0 8px' }}>
+          Toca la vasija y la tapa queda retirada · tócala de nuevo para deshacer
+        </p>
+      )}
+
       <div className="fugas-scroll">
         <PlanoRack
           modo={modo}
@@ -313,7 +335,8 @@ export default function Fugas({
           espejo={espejo}
           tapaRec={tapaRec}
           porVasija={porVasija}
-          onVasija={(id) => (modo === 'fugas' ? abrirVasija(id) : abrirTapa(id))}
+          onVasija={(id) => (modo === 'fugas' ? abrirVasija(id)
+            : retiroSimple ? void toggleRetirada(id) : abrirTapa(id))}
         />
       </div>
 
@@ -328,7 +351,7 @@ export default function Fugas({
         ) : (
           <>
             <b className="leg-titulo">LEYENDA</b>
-            {ESTADOS_TAPA.map((e) => (
+            {estadosVisibles.map((e) => (
               <span key={e.codigo} className="leg-item">
                 <span className="leg-dot" style={{ background: e.color }} /> {e.nombre}
                 <em>{e.descripcion}</em>

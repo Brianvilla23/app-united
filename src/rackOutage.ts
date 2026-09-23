@@ -16,17 +16,25 @@ import { usePuedeEditar } from './permisos'
     se marcan son las mismas (stub end, brazo, tubing); cambia el material. */
 export type TipoManifold = 'pvc' | 'flexible'
 
+/** Qué tiene la tapa por fuera. En el Rack 12 hay que sacar seguros triples y
+    pernos parker antes de la tapa, y cada uno se registra; en el Rack 3 la tapa
+    no lleva nada de eso, así que el retiro es un toque y queda retirada
+    (corrección de Brayan, 23-09-2026). La INSTALACIÓN es igual en los dos:
+    lleva tapón al centro y shim en milímetros. */
+export type TipoRetiroTapas = 'detallado' | 'simple'
+
 export interface RackOutage {
   numero: number
   /** EWS son las Plantas 1, 2 y 3; EWSE la 4. El Rack 3 y el 12 son de EWS. */
   planta: string
   manifold: TipoManifold
+  retiroTapas: TipoRetiroTapas
 }
 
 /** El primero de la lista es el outage en curso. */
 export const RACKS_OUTAGE: RackOutage[] = [
-  { numero: 3, planta: 'EWS', manifold: 'flexible' },
-  { numero: 12, planta: 'EWS', manifold: 'pvc' },
+  { numero: 3, planta: 'EWS', manifold: 'flexible', retiroTapas: 'simple' },
+  { numero: 12, planta: 'EWS', manifold: 'pvc', retiroTapas: 'detallado' },
 ]
 
 export const NOMBRE_MANIFOLD: Record<TipoManifold, string> = {
@@ -38,7 +46,7 @@ export const RACK_INICIAL = RACKS_OUTAGE[0].numero
 
 export function rackDe(numero: number): RackOutage {
   return RACKS_OUTAGE.find((r) => r.numero === numero)
-    ?? { numero, planta: 'EWS', manifold: 'pvc' }
+    ?? { numero, planta: 'EWS', manifold: 'pvc', retiroTapas: 'detallado' }
 }
 
 /** El rack que se está viendo. Todas las pantallas del outage leen de acá en
