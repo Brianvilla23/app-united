@@ -364,7 +364,7 @@ export default function Fugas({
             <span className="leg-item" style={{ fontWeight: 800, color: '#8a6d03' }}>
               <span className="leg-dot" style={{ background: MARCA }} /> Amarillo = fuga
             </span>
-            <span className="leg-item">{`Rack ${rack} · ${marcas.length} marcas`}</span>
+            <span className="leg-item suelto">{`Rack ${rack} · ${marcas.length} marcas`}</span>
           </>
         ) : (
           <>

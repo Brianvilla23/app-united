@@ -303,6 +303,7 @@ textarea { resize: vertical; }
 
 .leyenda.abajo { flex-direction: column; align-items: stretch; gap: 0; margin: 12px 0 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
 .leyenda.abajo .leg-titulo { font-size: 11px; font-weight: 800; letter-spacing: .8px; color: var(--ink); padding-bottom: 7px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.leyenda.abajo .leg-item.suelto { display: block; }
 .leyenda.abajo .leg-item { display: grid; grid-template-columns: 12px minmax(88px, auto) 1fr auto; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px; color: var(--ink); font-weight: 700; }
 .leyenda.abajo .leg-item em { font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); }
 .leyenda.abajo .leg-item i { font-weight: 800; color: var(--ink); font-size: 13px; margin: 0; }
