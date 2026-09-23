@@ -20,6 +20,12 @@ import DetalleManifold from './DetalleManifold'
 import { agruparPorFila, generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { usePuedeRegistrar, useRack } from './rackOutage'
 import { useModal } from './useModal'
+import DetalleMembranas from './DetalleMembranas'
+import {
+  MEMBRANAS_POR_VASIJA, completa as membranasCompleta, filasDe,
+  puestas as membranasPuestas, type DatosMembranas,
+} from './membranas'
+import { fechaCorta } from './fecha'
 
 const HECHO = '#22c55e'
 const EMPEZADO = '#d97706'
@@ -33,6 +39,8 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
   // arranca en el semi rack que va primero en ese lado (en descarga, el B)
   const [vista, setVista] = useState<Vista>(ordenSemiRacks(actividad.lados[0] === 'descarga')[0])
   const [abierto, abrirManifold, cerrarManifold] = useModal<string>()
+  const [vasijaAbierta, abrirVasija, cerrarVasija] = useModal<string>()
+  const esMembranas = !!actividad.membranas
   const rack = useRack()
   const puedeEditar = usePuedeRegistrar()
   const items = useLiveQuery(
@@ -44,13 +52,30 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
   const hechos = new Set(delLado.filter((i) => i.hecho).map((i) => i.item))
   const datosDe = (item: string): DatosManifold =>
     (delLado.find((i) => i.item === item)?.datos as DatosManifold | undefined) ?? {}
-  // manifolds empezados pero no terminados: se ven distinto en el plano general
+  // manifolds (o vasijas) empezados pero no terminados: se ven distinto
   const empezados = new Set(
     actividad.partes
       ? delLado.filter((i) => !i.hecho && resumirManifold(i.item, actividad.partes!, i.datos as DatosManifold).hechas > 0)
         .map((i) => i.item)
-      : [],
+      : esMembranas
+        ? delLado.filter((i) => {
+          const d = i.datos as DatosMembranas
+          return !membranasCompleta(d) && membranasPuestas(d) > 0
+        }).map((i) => i.item)
+        : [],
   )
+
+  /** Las membranas de cada vasija, para el detalle y para avisar de series repetidas. */
+  const membranasPorVasija = new Map<string, DatosMembranas>(
+    esMembranas ? delLado.map((i) => [i.item, i.datos as DatosMembranas]) : [],
+  )
+  const membranasPuestasTotal = esMembranas
+    ? delLado.reduce((n, i) => n + membranasPuestas(i.datos as DatosMembranas), 0)
+    : 0
+  // la vasija empezada (1 a 6 membranas) se pinta ámbar; la completa, verde
+  const coloresMembranas = esMembranas
+    ? new Map([...empezados].map((v) => [v, { color: '#fcd34d', texto: '#422006' }]))
+    : undefined
   const totalLado = actividad.tipo === 'manifold' ? MANIFOLDS.length : TOTAL_VASIJAS
   const color = actividad.retira ? RETIRADO : HECHO
   const colorBorde = actividad.retira ? RETIRADO_BORDE : '#15803d'
@@ -63,7 +88,9 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
       ),
       unidad: 'piezas',
     }
-    : { total: totalLado, hechas: hechos.size, unidad: 'hechos' }
+    : esMembranas
+      ? { total: totalLado * MEMBRANAS_POR_VASIJA, hechas: membranasPuestasTotal, unidad: 'membranas' }
+      : { total: totalLado, hechas: hechos.size, unidad: 'hechos' }
   const pct = Math.round((avance.hechas / avance.total) * 1000) / 10
 
   /** Cómo se pinta cada manifold en el plano general. */
@@ -91,13 +118,19 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
           ? createElement(PlanoManifolds, { estado: estadoManifold, paraPdf: true })
           : createElement(PlanoRack, {
             modo: 'simple' as const, vista: 'todo' as const, espejo: lado === 'descarga',
-            tapaRec: new Map(), porVasija: new Map(), hechos, paraPdf: true,
+            tapaRec: new Map(), porVasija: new Map(), hechos, colores: coloresMembranas,
+            paraPdf: true,
           }),
         avance: { pct, detalle: `${avance.hechas} de ${avance.total} ${avance.unidad}`, color },
         leyenda: [
           { color, nombre: hecho, desc: actividad.retira ? 'Ya salió del rack' : 'Ya ejecutado', n: hechos.size },
-          ...(actividad.partes
-            ? [{ color: EMPEZADO, nombre: 'Empezado', desc: 'Con piezas puestas, pero incompleto', n: empezados.size }]
+          ...(actividad.partes || esMembranas
+            ? [{
+              color: esMembranas ? '#fcd34d' : EMPEZADO,
+              nombre: 'Empezado',
+              desc: esMembranas ? 'Con membranas puestas, pero incompleta' : 'Con piezas puestas, pero incompleto',
+              n: empezados.size,
+            }]
             : []),
           { color: '#ffffff', hueco: true, nombre: 'Pendiente', desc: 'Todavía no se hace', n: totalLado - hechos.size - empezados.size },
           { color: '#ffffff', hueco: true, nombre: 'TOTAL', desc: esManifold ? 'Manifolds del rack' : 'Vasijas del rack', n: totalLado },
@@ -177,6 +210,50 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
     })
   }
 
+  /** Igual que `marcarPiezas`, pero para las 7 membranas de una vasija: lee lo
+      guardado dentro de la transacción para que dos lecturas seguidas de la
+      cámara no se pisen. La vasija queda hecha con las 7 puestas. */
+  const marcarMembranas = async (vasija: string, cambio: (actual: DatosMembranas) => DatosMembranas) => {
+    const yo = quienSoy()
+    const id = itemId(actividad.id, lado, rack, vasija)
+    const datos = await db.transaction('rw', db.items, async () => {
+      const actual = ((await db.items.get(id))?.datos as DatosMembranas | undefined) ?? {}
+      const next = cambio(actual)
+      await db.items.put({
+        id, actividad: actividad.id, lado, rack, item: vasija, datos: next,
+        hecho: membranasCompleta(next),
+        creadoPor: yo, createdAt: Date.now(), sincronizado: false,
+      })
+      return next
+    })
+    await encolar('item_upsert', {
+      actividad: actividad.id, lado, rack, item: vasija, datos, creado_por: yo,
+      hecho: membranasCompleta(datos),
+    })
+  }
+
+  /** Planilla de trazabilidad: una fila por membrana. Va en CSV con `;` y BOM
+      porque es lo que Excel abre de una en los computadores de la planta. */
+  const exportarCSV = () => {
+    const orden = new Map(CELDAS.map((c, i) => [c.id, i]))
+    const filas = delLado
+      .flatMap((i) => filasDe(rack, i.item, i.datos as DatosMembranas, (ts) => (ts ? fechaCorta(ts) : '')))
+      .sort((a, b) => (orden.get(a.vasija) ?? 0) - (orden.get(b.vasija) ?? 0) || b.posicion - a.posicion)
+    const cab = ['RACK', 'VASIJA', 'POSICION', 'TIPO', 'MARCA', 'MODELO', 'SERIE', 'METODO', 'REGISTRO', 'FECHA']
+    const texto = [
+      cab.join(';'),
+      ...filas.map((f) => [
+        f.rack, f.vasija, f.posicion, f.tipo, f.marca, f.modelo, f.serie, f.metodo, f.quien, f.fecha,
+      ].join(';')),
+    ].join('\r\n')
+    const url = URL.createObjectURL(new Blob(['﻿' + texto], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Membranas_Rack${rack}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 2000)
+  }
+
   const marcarTodo = async (valor: boolean) => {
     if (actividad.tipo !== 'manifold') return
     for (const m of MANIFOLDS) {
@@ -226,6 +303,9 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
           <button className="btn sm ghost" disabled={generando} onClick={() => void exportarPDF()}>
             {generando ? 'Generando…' : 'PDF'}
           </button>
+          {esMembranas && (
+            <button className="btn sm ghost" onClick={exportarCSV}>Planilla</button>
+          )}
         </div>
         <div className="avance-bar">
           <span style={{ width: `${pct}%`, background: color }} />
@@ -252,7 +332,12 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
               tapaRec={new Map()}
               porVasija={new Map()}
               hechos={hechos}
-              onVasija={puedeEditar ? (id) => void toggle(id) : undefined}
+              colores={coloresMembranas}
+              // con membranas la vasija se abre siempre: en modo lectura sirve
+              // para consultar qué series quedaron puestas
+              onVasija={esMembranas
+                ? (id) => abrirVasija(id)
+                : puedeEditar ? (id) => void toggle(id) : undefined}
             />
           </div>
         </>
@@ -265,6 +350,17 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
               : puedeEditar ? (id) => void toggle(id) : undefined}
           />
         </div>
+      )}
+
+      {vasijaAbierta && esMembranas && (
+        <DetalleMembranas
+          rack={rack}
+          vasija={vasijaAbierta}
+          datos={(delLado.find((i) => i.item === vasijaAbierta)?.datos as DatosMembranas | undefined) ?? {}}
+          porVasija={membranasPorVasija}
+          onMarcar={(cambio) => void marcarMembranas(vasijaAbierta, cambio)}
+          onCerrar={cerrarVasija}
+        />
       )}
 
       {abierto && actividad.partes && (
@@ -294,10 +390,10 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
           <em>{actividad.retira ? 'Ya salió del rack' : 'Ya ejecutado'}</em>
           <i>{hechos.size}</i>
         </span>
-        {actividad.partes && (
+        {(actividad.partes || esMembranas) && (
           <span className="leg-item">
-            <span className="leg-dot" style={{ background: EMPEZADO }} /> Empezado
-            <em>Con piezas puestas, pero incompleto</em>
+            <span className="leg-dot" style={{ background: esMembranas ? '#fcd34d' : EMPEZADO }} /> Empezado
+            <em>{esMembranas ? 'Con membranas puestas, pero incompleta' : 'Con piezas puestas, pero incompleto'}</em>
             <i>{empezados.size}</i>
           </span>
         )}

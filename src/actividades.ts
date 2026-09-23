@@ -7,6 +7,7 @@
 // El orden del array ES el orden de ejecución. Las marcadas `libre: true` se
 // pueden hacer en cualquier momento sin frenar la secuencia.
 import { TOTAL_VASIJAS, ordenSemiRacks } from './rackLayout'
+import { MEMBRANAS_POR_VASIJA } from './membranas'
 import type { DatosManifold, LadoRack } from './types'
 import { ARQUETIPOS, ARQUETIPO_DE, type FilaTubing } from './manifoldDetalle'
 
@@ -94,6 +95,9 @@ export interface Actividad {
   /** true = la actividad SACA la pieza. Lo marcado no se pinta verde sino
       plomo: verde dice "está puesto", y algo retirado justamente ya no está. */
   retira?: boolean
+  /** true = cada vasija lleva sus 7 membranas con la serie escaneada, así que
+      tocarla abre el detalle en vez de marcarla entera. */
+  membranas?: boolean
   /** true = no forma parte de la cadena secuencial. */
   libre?: boolean
   /** true = es del rack completo, el lado no aplica (ej. las membranas). */
@@ -165,6 +169,9 @@ export const ACTIVIDADES: Actividad[] = [
     nombre: 'Carguío de membrana',
     tipo: 'simple',
     lados: ['alimentacion'],
+    membranas: true,
+    pasos: ['Escanear de la posición 7 a la 1'],
+    nota: 'Cada vasija lleva 7 membranas: 4 C6 al fondo y 3 C5 hacia el lado mar.',
   },
   {
     id: 'instalacion_tapas_alim',
@@ -220,6 +227,9 @@ export const ACTIVIDADES: Actividad[] = [
 
 /** Cuántos ítems tiene una actividad (para calcular su avance). */
 export function itemsDe(a: Actividad): number {
+  // el carguío se mide en membranas y no en vasijas: son 7 por vasija y cada
+  // una es trabajo que se registra por separado
+  if (a.membranas) return TOTAL_VASIJAS * MEMBRANAS_POR_VASIJA
   if (a.tipo === 'venteo') return VENTEOS.filter((v) => a.lados.includes(v.lado)).length
   // la prueba revisa las vasijas del lado más los venteos de ese lado
   if (a.tipo === 'fugas') {

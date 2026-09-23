@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { estaExtraida, type DatosManifold } from './types'
+import { puestas as membranasPuestas, type DatosMembranas } from './membranas'
 import { TOTAL_VASIJAS } from './rackLayout'
 import { NOMBRE_MANIFOLD, cerrarOutage, rackDe, useCierre, useRack } from './rackOutage'
 import { usePuedeEditar } from './permisos'
@@ -51,6 +52,13 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
         (t) => t.rack === rack && t.lado === lado && t.actividad === id && estaExtraida(t),
       ).length
       return Math.round((hechas / TOTAL_VASIJAS) * 1000) / 10
+    }
+    // el carguío cuenta membranas puestas, no vasijas terminadas
+    if (act?.membranas) {
+      const puestas = delRack.filter((i) => i.actividad === id)
+        .reduce((n, i) => n + membranasPuestas(i.datos as DatosMembranas), 0)
+      const total = itemsDe(act)
+      return total > 0 ? Math.round((puestas / total) * 1000) / 10 : 0
     }
     if (act?.partes) {
       // acá el avance son las piezas puestas, no los manifolds terminados

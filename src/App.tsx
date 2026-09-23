@@ -128,7 +128,7 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
 
       <div className="menu-grid">
         <button className="menu-card destacada" onClick={() => go('aviso')}>
-          <span className="mc-ico teal">📋</span>
+          <span className="mc-ico rojo">📋</span>
           <span className="mc-txt"><b>Nuevo aviso</b><small>Informe técnico para la OT</small></span>
           <span className="mc-arrow">›</span>
         </button>

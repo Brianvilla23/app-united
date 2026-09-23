@@ -47,14 +47,14 @@ marca barra, stub end, **brazo** o tubing. Acá el brazo SÍ se registra: en el
 outage no se marca, pero filtrar puede. En el plano general el manifold con
 fuga queda amarillo con el número de piezas que filtran. Reusa el detalle del
 outage con `modo="fuga"`. Se guarda en `avance_item` con
-`actividad='fuga_manifold'` y el **rack dentro del `item`** (`7-DE1`), porque
-esa tabla no tiene columna de rack.
+`actividad='fuga_manifold'`; el rack va en su **columna** desde la migración 7
+(antes viajaba dentro del `item`, como `7-DE1`, porque la tabla no la tenía).
 
 **Comentario por rack (11-08-2026)**: caja de texto libre al pie del
 levantamiento, una por rack, para las anomalías que no caben en ninguna
 casilla del diagrama. Queda firmada con quién y cuándo, y sincroniza para toda
-la cuadrilla. También va en `avance_item` (`actividad='comentario_rack'`,
-`item` = el número de rack) y **no** en una tabla nueva a propósito: la cola de
+la cuadrilla. También va en `avance_item` (`actividad='comentario_rack'`, con
+su columna `rack`) y **no** en una tabla nueva a propósito: la cola de
 subida se procesa en orden y se detiene al primer error, así que una tabla que
 falte en Supabase dejaría trancados también los avisos y las tapas.
 
@@ -347,6 +347,47 @@ el de PVC.
 
 ---
 
+## 11. Membranas: el escáner entra al carguío ✅ (23-09-2026)
+
+Brayan pasó el proyecto **escáner de membranas** de United
+(`escaner-membranas.pages.dev`, Cloudflare Pages + D1) para meterlo acá, y
+decidió que va **dentro de la actividad "Carguío de membrana"** del outage: la
+vasija ya está en el plano, así que tocarla abre sus 7 membranas.
+
+- **Cada vasija lleva 7 membranas**: las 4 del fondo son C6 y las 3 del lado mar
+  son C5. Se escanean en el orden en que se instalan, de la **posición 7 a la
+  1**. Catálogo de modelos igual al del escáner (LG SW 440 R / 400 SR / 400 R
+  G2 · SWC6-LD / SWC5-LD), en `src/membranas.ts`.
+- **Se guardan en `avance_item.datos`**, sin tabla nueva: la vasija queda
+  `hecho` con las 7 puestas, y el avance de la actividad se mide en membranas
+  (295 × 7 = **2.065**), no en vasijas. En el plano, vasija completa en verde y
+  a medio cargar en ámbar.
+- **La serie no se puede repetir**: avisa si ya está en otra posición de la
+  misma vasija o en otra vasija del rack.
+- **El lector de códigos NO se reescribió**: se copiaron `lector.js` y
+  `zxing.js` del escáner a `public/vendor/` y se cargan recién al abrir la
+  cámara (350 KB que no tienen por qué pesar en cada arranque). Ese lector ya
+  venía afinado para estas etiquetas: prueba el **canal rojo** además del de
+  luminancia porque la "G2" naranja impresa sobre las barras borra la lectura
+  normal, y usa BarcodeDetector nativo con ZXing de respaldo. También lee
+  **desde una foto** y permite escribir la serie a mano.
+- **Planilla**: botón que baja un CSV (`;` + BOM, Excel lo abre directo) con una
+  fila por membrana — rack, vasija, posición, tipo, marca, modelo, serie, cómo
+  se registró, quién y cuándo.
+- ⚠️ La cámara **exige HTTPS**: en la app publicada funciona; en local, solo por
+  `localhost`.
+- Lo que **no** se trajo: los registros que ya están en la base D1 del escáner y
+  la exportación a `.xlsx`. La app del escáner sigue publicada aparte.
+
+### Marca: rojo United rgb(192,0,0)
+Por decisión de Brayan (23-09) toda la app pasó al rojo corporativo del escáner
+—`--accent: #c00000`— y al **logo nuevo** (1738×595 con fondo transparente, el
+mismo `logo-united.png` del escáner) en vez del de 179×60 sacado del Excel. El
+chip de "en línea" quedó verde a propósito: con el acento en rojo se leía como
+alarma.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
@@ -371,11 +412,11 @@ el de PVC.
 ## 🛠 Notas técnicas
 - **Stack**: Vite + React + TypeScript · Dexie/IndexedDB (offline) · jsPDF ·
   vite-plugin-pwa · Supabase (sync) · deploy con `npm run deploy` a GitHub Pages.
-- **Identidad visual**: paleta corporativa United en `index.css`
-  (`--united-rojo #e1251b`, `--united-gris #7f7f7f`) y el logo real en la barra
-  superior (`public/united.png`, sacado de `Plantilla_Maestra_MN55-M04.xls`).
-  Va sobre placa blanca: el isotipo es rojo sobre blanco y en el azul de la
-  barra el rojo se apaga y la barra gris del logo desaparece.
+- **Identidad visual**: rojo corporativo `rgb(192,0,0)` (`--accent`), el mismo
+  del escáner de membranas, y el logo de United en la barra superior
+  (`public/united.png`, 1738×595 con fondo transparente). Va sobre placa
+  blanca: el isotipo es rojo sobre blanco y en el azul de la barra el rojo se
+  apaga y la barra gris del logo desaparece.
 - **Claude puede ver la app**: Playwright instalado. `node screenshot.mjs` saca
   captura del local; `screenshot_online.mjs`, de la versión publicada.
   Regla aprendida: **capturar y mirar antes de decir que está listo.**
