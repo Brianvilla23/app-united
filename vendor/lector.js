@@ -9,6 +9,10 @@
    · Foto: decodifica una imagen a resolución completa probando
      recortes, escalas, canales y pequeñas rotaciones.
    ============================================================= */
+//
+// Copiado del escáner de membranas de United y ajustado acá (ver NATIVOS y
+// serieValida). ZXing NO viene en esta carpeta: lo carga la app desde el
+// paquete `@zxing/library` y lo deja en `window.ZXing` antes de este archivo.
 (function (global) {
   'use strict';
 
