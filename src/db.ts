@@ -127,7 +127,34 @@ export class UnitedDB extends Dexie {
         return { ...i, rack, item, id: `${i.actividad}-${i.lado}-${rack}-${item}` }
       }))
     })
+    // v15: la marca de fuga pasa a tener lado. La base ya lo tenía desde la
+    // migración 2 (`marcas_fuga.lado`), pero la app solo marcaba alimentación,
+    // así que lo local no lo guardaba. Lo que había es de alimentación.
+    this.version(15).stores({
+      avisos: 'id, folio, createdAt, estado, sincronizado',
+      andamios: 'id, folio, createdAt, sincronizado',
+      marcas: 'id, lado, rack, vasija, componente, createdAt, [lado+rack+vasija]',
+      tapas: 'id, lado, rack, vasija, [lado+rack+vasija]',
+      historial: 'id, rack, vasija, createdAt, tipo',
+      items: 'id, actividad, lado, rack, item, [actividad+rack]',
+      outbox: 'id, createdAt, tabla',
+    }).upgrade(async (tx) => {
+      const tabla = tx.table('marcas')
+      const viejas = await tabla.toArray()
+      if (viejas.length === 0) return
+      await tabla.clear()
+      await tabla.bulkPut(viejas.map((m: Record<string, unknown>) => ({
+        ...m,
+        lado: m.lado ?? 'alimentacion',
+        id: marcaId(String(m.lado ?? 'alimentacion'), Number(m.rack), String(m.vasija), String(m.componente)),
+      })))
+    })
   }
+}
+
+/** Igual que en la base: la marca de fuga es de un lado del rack. */
+export function marcaId(lado: string, rack: number, vasija: string, componente: string): string {
+  return `${lado}-${rack}-${vasija}-${componente}`
 }
 
 /** Antes de que `items` tuviera rack, dos actividades lo metían dentro del

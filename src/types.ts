@@ -124,6 +124,8 @@ export interface OutboxItem {
 
 export interface MarcaFuga {
   id: string
+  /** La misma vasija tiene un plano por lado y las fugas son distintas. */
+  lado: LadoRack
   rack: number
   vasija: string
   componente: import('./rackLayout').ComponenteFuga

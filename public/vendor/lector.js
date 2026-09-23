@@ -12,13 +12,23 @@
 (function (global) {
   'use strict';
 
-  // Solo simbologías usadas en etiquetas industriales. Codabar, ITF y EAN/UPC se excluyen a propósito:
-  // con fotos borrosas producen lecturas falsas (p. ej. "BDD" en Codabar a partir del texto impreso).
-  const NATIVOS = ['code_128', 'code_39', 'code_93'];
+  // Simbologías de etiqueta industrial: lineales Code 128/39/93 y bidimensionales
+  // QR, Data Matrix, PDF417 y Aztec (agregadas el 23-09-2026 a pedido de Brayan;
+  // el original del escáner solo traía las tres lineales).
+  // Codabar, ITF y EAN/UPC se excluyen a propósito: con fotos borrosas producen
+  // lecturas falsas (p. ej. "BDD" en Codabar a partir del texto impreso).
+  const NATIVOS = ['code_128', 'code_39', 'code_93', 'qr_code', 'data_matrix', 'pdf417', 'aztec'];
   const LARGO_MINIMO = 6;   // un número de serie de membrana tiene bastante más que esto (ej.: BE8A68F5406)
+  const ES_2D = /qr|data_?matrix|pdf_?417|aztec/i;
 
-  function serieValida(texto) {
-    return typeof texto === 'string' && texto.length >= LARGO_MINIMO && /^[A-Za-z0-9\-\/\.]+$/.test(texto);
+  // Un código 2D lleva corrección de error: lo que entrega es lo que dice la
+  // etiqueta, así que se acepta tal cual (sin espacios) aunque traiga separadores
+  // que un lineal borroso no podría garantizar.
+  function serieValida(texto, formato) {
+    if (typeof texto !== 'string') return false;
+    const t = texto.trim();
+    if (ES_2D.test(String(formato || ''))) return t.length >= 4 && t.length <= 64 && !/\s/.test(t);
+    return t.length >= LARGO_MINIMO && /^[A-Za-z0-9\-\/\.]+$/.test(t);
   }
 
   /* ---------- ZXing --------------------------------------------------- */
@@ -32,7 +42,8 @@
     const hints = new Map();
     hints.set(Z.DecodeHintType.TRY_HARDER, true);
     hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [
-      F.CODE_128, F.CODE_39, F.CODE_93
+      F.CODE_128, F.CODE_39, F.CODE_93,
+      F.QR_CODE, F.DATA_MATRIX, F.PDF_417, F.AZTEC
     ]);
     zx = new Z.MultiFormatReader();
     zx.setHints(hints);
@@ -65,7 +76,8 @@
       const Bin = binarizador === 'global' ? Z.GlobalHistogramBinarizer : Z.HybridBinarizer;
       const res = r.decodeWithState(new Z.BinaryBitmap(new Bin(fuente)));
       const texto = String(res.getText() || '').trim();
-      return serieValida(texto) ? { texto: texto, formato: nombreFormatoZX(res.getBarcodeFormat()) } : null;
+      const formato = nombreFormatoZX(res.getBarcodeFormat());
+      return serieValida(texto, formato) ? { texto: texto, formato: formato } : null;
     } catch (e) {
       return null;   // NotFound / Checksum / Format: simplemente no hubo lectura en esta variante
     }
@@ -281,7 +293,7 @@
     if (C.detector) {
       try {
         const cods = await C.detector.detect(v);
-        const ok = (cods || []).map((c) => ({ texto: String(c.rawValue || '').trim(), formato: c.format })).filter((c) => serieValida(c.texto));
+        const ok = (cods || []).map((c) => ({ texto: String(c.rawValue || '').trim(), formato: c.format })).filter((c) => serieValida(c.texto, c.formato));
         if (ok.length) hallado = ok[0];
       } catch (e) { /* cuadro descartado */ }
     }
@@ -303,7 +315,7 @@
   let candidato = { texto: '', t: 0 };
   function confirmar(h) {
     const ahora = Date.now();
-    const fuerte = /code_?128/i.test(h.formato || '');
+    const fuerte = /code_?128/i.test(h.formato || '') || ES_2D.test(String(h.formato || ''));
     if (!fuerte && !(candidato.texto === h.texto && ahora - candidato.t < 2500)) {
       candidato = { texto: h.texto, t: ahora };
       C.onEstado('Leyendo… mantenga el código dentro del recuadro');
@@ -379,7 +391,7 @@
     if (det) {
       try {
         const cods = await det.detect(img);
-        const ok = (cods || []).map((c) => ({ texto: String(c.rawValue || '').trim(), formato: c.format })).filter((c) => serieValida(c.texto));
+        const ok = (cods || []).map((c) => ({ texto: String(c.rawValue || '').trim(), formato: c.format })).filter((c) => serieValida(c.texto, c.formato));
         if (ok.length) return ok[0];
       } catch (e) {}
     }

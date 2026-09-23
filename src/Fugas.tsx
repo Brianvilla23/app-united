@@ -1,6 +1,6 @@
 import { createElement, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from './db'
+import { db, marcaId } from './db'
 import { encolar, registrar } from './sync'
 import { quienSoy } from './identidad'
 import {
@@ -77,6 +77,9 @@ export default function Fugas({
 
   // En tapas se trabaja el rack del outage; en fugas siguen los 12 racks.
   const rack = modo === 'tapas' ? rackOutage : rackFugas
+  // El levantamiento muestra el rack completo: el semi rack A/B es del plano de
+  // tapas, donde se entra por actividad y con el lado ya fijo.
+  const vistaPlano: Vista = ladoFijo ? vista : 'todo'
   // En el Rack 3 la tapa no lleva seguros triples ni pernos parker: el retiro
   // es un toque y queda retirada, sin abrir el detalle pieza por pieza.
   const retiroSimple = modo === 'tapas' && esRetiroTapas(actividad)
@@ -84,9 +87,10 @@ export default function Fugas({
   const estadosVisibles = retiroSimple
     ? ESTADOS_TAPA.filter((e) => e.codigo === 'retirada')
     : ESTADOS_TAPA
-  const espejo = modo === 'tapas' && lado === 'descarga'
+  // el plano de descarga es el espejo del de alimentación, en tapas y en fugas
+  const espejo = modo !== 'manifold' && lado === 'descarga'
 
-  const marcas = todas.filter((m) => m.rack === rack)
+  const marcas = todas.filter((m) => m.rack === rack && m.lado === lado)
   const porVasija = new Map<string, Set<ComponenteFuga>>()
   for (const m of marcas) {
     if (!porVasija.has(m.vasija)) porVasija.set(m.vasija, new Set())
@@ -220,18 +224,18 @@ export default function Fugas({
 
   const toggle = async (vasija: string, componente: ComponenteFuga) => {
     if (!puedeEditar) return
-    const id = `${rack}-${vasija}-${componente}`
+    const id = marcaId(lado, rack, vasija, componente)
     const yo = quienSoy()
     const existe = await db.marcas.get(id)
     if (existe) {
       await db.marcas.delete(id)
-      await encolar('marcas_delete', { lado: 'alimentacion', rack, vasija, componente })
-      await registrar('fuga', 'alimentacion', rack, vasija, 'quitó fuga', componente)
+      await encolar('marcas_delete', { lado, rack, vasija, componente })
+      await registrar('fuga', lado, rack, vasija, 'quitó fuga', componente)
     } else {
       const creado = Date.now()
-      await db.marcas.add({ id, rack, vasija, componente, creadoPor: yo, createdAt: creado, sincronizado: false })
-      await encolar('marcas_upsert', { lado: 'alimentacion', rack, vasija, componente, creado_por: yo, created_at: new Date(creado).toISOString() })
-      await registrar('fuga', 'alimentacion', rack, vasija, 'marcó fuga', componente)
+      await db.marcas.add({ id, lado, rack, vasija, componente, creadoPor: yo, createdAt: creado, sincronizado: false })
+      await encolar('marcas_upsert', { lado, rack, vasija, componente, creado_por: yo, created_at: new Date(creado).toISOString() })
+      await registrar('fuga', lado, rack, vasija, 'marcó fuga', componente)
     }
   }
 
@@ -241,13 +245,6 @@ export default function Fugas({
 
   return (
     <div>
-      {!ladoFijo && (
-        <div className="vista-seg" style={{ marginBottom: 10 }}>
-          <button className={modo === 'fugas' ? 'on' : ''} onClick={() => setModo('fugas')}>Vasijas</button>
-          <button className={modo === 'manifold' ? 'on' : ''} onClick={() => setModo('manifold')}>Manifold</button>
-        </div>
-      )}
-
       {modo === 'fugas' && (
         <div className="avance">
           <div className="avance-top">
@@ -298,27 +295,48 @@ export default function Fugas({
         </>
       )}
 
+      {!ladoFijo && (
+        // El rack entero en una sola hoja: sus dos lados y el manifold.
+        <div className="vista-seg">
+          {LADOS.map((l) => (
+            <button
+              key={l.codigo}
+              className={modo === 'fugas' && lado === l.codigo ? 'on' : ''}
+              onClick={() => { setModo('fugas'); setLado(l.codigo) }}
+            >
+              {l.corto}
+            </button>
+          ))}
+          <button className={modo === 'manifold' ? 'on' : ''} onClick={() => setModo('manifold')}>
+            Manifold
+          </button>
+        </div>
+      )}
+
       {modo === 'manifold' ? <FugasManifold rack={rack} /> : (<>
 
-      <div className="vista-seg">
-        {/* en descarga el plano va espejado y el Semi Rack B queda a la
-            izquierda: el selector se lee en ese mismo orden */}
-        {ordenSemiRacks(espejo).map((sr) => (
-          <button key={sr} className={vista === sr ? 'on' : ''} onClick={() => setVista(sr)}>
-            Semi Rack {sr}
-          </button>
-        ))}
-        <button className={vista === 'todo' ? 'on' : ''} onClick={() => setVista('todo')}>Todo</button>
-      </div>
+      {ladoFijo && (
+        <div className="vista-seg">
+          {/* en descarga el plano va espejado y el Semi Rack B queda a la
+              izquierda: el selector se lee en ese mismo orden */}
+          {ordenSemiRacks(espejo).map((sr) => (
+            <button key={sr} className={vista === sr ? 'on' : ''} onClick={() => setVista(sr)}>
+              Semi Rack {sr}
+            </button>
+          ))}
+          <button className={vista === 'todo' ? 'on' : ''} onClick={() => setVista('todo')}>Todo</button>
+        </div>
+      )}
 
       <div className="plano-titulo">
-        <b>{titulo ?? `RACK ${rack}`}</b>
+        {/* el rack lleva su planta: los 12 del levantamiento son de EWS */}
+        <b>{titulo ?? `RACK ${rack} ${rackDe(rack).planta}`}</b>
         {/* con `titulo` el nombre de la actividad ya dice el lado ("Retiro de
             tapas · alimentación"), así que abajo va el rack y no se repite */}
         <span>
           {titulo
             ? `RACK ${rack}`
-            : modo === 'tapas' ? LADOS.find((l) => l.codigo === lado)!.nombre.toUpperCase() : 'LADO ALIMENTACIÓN'}
+            : LADOS.find((l) => l.codigo === lado)!.nombre.toUpperCase()}
         </span>
       </div>
 
@@ -331,7 +349,7 @@ export default function Fugas({
       <div className="fugas-scroll">
         <PlanoRack
           modo={modo}
-          vista={vista}
+          vista={vistaPlano}
           espejo={espejo}
           tapaRec={tapaRec}
           porVasija={porVasija}

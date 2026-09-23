@@ -1,4 +1,4 @@
-import { db } from './db'
+import { db, marcaId } from './db'
 import { supabase } from './supabase'
 import { uuid } from './util'
 import { quienSoy } from './identidad'
@@ -167,12 +167,14 @@ export async function pullMarcas(): Promise<void> {
   if (!navigator.onLine) return
   const pendientes = await db.outbox.where('tabla').anyOf(['marcas_upsert', 'marcas_delete']).count()
   if (pendientes > 0) return // primero subir lo local, después bajar
-  const data = await bajarTabla('marcas_fuga', ['rack', 'vasija', 'componente'])
+  const data = await bajarTabla('marcas_fuga', ['lado', 'rack', 'vasija', 'componente'])
   if (!data) return
   await db.transaction('rw', db.marcas, async () => {
     await db.marcas.clear()
     await db.marcas.bulkAdd(data.map((r) => ({
-      id: `${r.rack}-${r.vasija}-${r.componente}`,
+      // `lado` puede faltar en filas viejas: eran todas de alimentación
+      id: marcaId(r.lado ?? 'alimentacion', r.rack, r.vasija, r.componente),
+      lado: (r.lado as LadoRack | null) ?? 'alimentacion',
       rack: r.rack,
       vasija: r.vasija,
       componente: r.componente,

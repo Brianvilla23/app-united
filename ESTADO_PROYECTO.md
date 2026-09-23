@@ -38,8 +38,17 @@ viejas ya guardadas —, inspeccionado por, próxima inspección), foto del anda
 "¿se generó el subsecuente?" sí/no.
 
 ### 3. Diagrama de fugas
-Dos vistas del mismo rack: **Vasijas · Manifold**, con el selector R1-R12 en
-las dos.
+**Una hoja por rack** (23-09-2026, pedido de Brayan): el selector R1-R12 arriba
+y, debajo, los tres planos del rack — **Alimentación · Descarga · Manifold**.
+Antes eran "Vasijas / Manifold" y el plano de vasijas estaba fijo en
+alimentación; el semi rack A/B salió de acá (sigue en el plano de tapas del
+outage, que es donde se usa para leer). El título dice el rack con su planta:
+"RACK 1 EWS".
+
+⚠️ **Las fugas se guardan por lado.** La base lo soportaba desde la migración 2
+(`marcas_fuga.lado` en la llave), pero la app marcaba todo como alimentación;
+ahora la marca lleva su lado también en el celular (Dexie v15, que reescribe
+las locales como alimentación, que es lo que eran).
 
 **Manifold (11-08-2026)**: el plano de los 40 manifolds, marcando dónde filtra
 en vez de qué se avanzó. Se toca un manifold → detalle con sus piezas → se
@@ -374,6 +383,13 @@ vasija ya está en el plano, así que tocarla abre sus 7 membranas.
 - **Planilla**: botón que baja un CSV (`;` + BOM, Excel lo abre directo) con una
   fila por membrana — rack, vasija, posición, tipo, marca, modelo, serie, cómo
   se registró, quién y cuándo.
+- **Simbologías** (ampliadas el 23-09 a pedido de Brayan): lineales **Code 128,
+  Code 39 y Code 93** y bidimensionales **QR, Data Matrix, PDF417 y Aztec**.
+  Codabar, ITF y EAN/UPC siguen fuera a propósito: con fotos borrosas dan
+  lecturas falsas. Un 2D se acepta con una sola lectura (trae corrección de
+  error propia); un lineal que no sea Code 128 pide leerlo dos veces igual.
+  ⚠️ **Aztec solo donde el teléfono lo traiga nativo** (Android): el ZXing que
+  viene con el lector incluye QR, Data Matrix y PDF417, pero no Aztec.
 - ⚠️ La cámara **exige HTTPS**: en la app publicada funciona; en local, solo por
   `localhost`.
 - Lo que **no** se trajo: los registros que ya están en la base D1 del escáner y
