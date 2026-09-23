@@ -261,7 +261,7 @@ export default function Fugas({
         <div className="rack-tabs">
           {RACKS.map((r) => (
             <button key={r} className={'rack-tab' + (r === rack ? ' on' : '')} onClick={() => setRackFugas(r)}>
-              R{r}{racksConMarcas.has(r) && <span className="rack-dot" />}
+              Rack {r}{racksConMarcas.has(r) && <span className="rack-dot" />}
             </button>
           ))}
         </div>

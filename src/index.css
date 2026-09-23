@@ -161,8 +161,8 @@ textarea { resize: vertical; }
 .mc-ico.blue { background: rgba(37,99,235,.12); }
 
 .rack-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 8px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
-.rack-tab { position: relative; flex: 0 0 auto; min-width: 46px; padding: 9px 4px; border: 1.5px solid var(--border); background: var(--surface); border-radius: 10px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; }
-.rack-tab.on { border-color: #2563eb; background: rgba(37,99,235,.1); color: #1e40af; }
+.rack-tab { position: relative; flex: 0 0 auto; min-width: 66px; padding: 9px 10px; border: 1.5px solid var(--border); background: var(--surface); border-radius: 10px; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.rack-tab.on { border-color: var(--accent); background: rgba(192,0,0,.08); color: var(--accent-dark); }
 .rack-dot { position: absolute; top: 4px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--warning); }
 
 .vista-seg { display: flex; gap: 6px; margin-bottom: 10px; }

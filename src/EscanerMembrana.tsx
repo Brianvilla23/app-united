@@ -33,7 +33,11 @@ interface ApiLector {
 }
 
 declare global {
-  interface Window { LECTOR?: ApiLector }
+  interface Window {
+    LECTOR?: ApiLector
+    /** La librería ZXing, que `lector.js` lee del global. */
+    ZXing?: unknown
+  }
 }
 
 const BASE = import.meta.env.BASE_URL
@@ -59,8 +63,10 @@ function cargarScript(src: string): Promise<void> {
 async function cargarLector(): Promise<ApiLector> {
   if (!window.LECTOR) {
     // ZXing primero: `lector.js` lo usa apenas arranca en los equipos sin
-    // BarcodeDetector (iPhone, Windows, Firefox).
-    await cargarScript(`${BASE}vendor/zxing.js`)
+    // BarcodeDetector (iPhone, Windows, Firefox). Sale del paquete de npm y no
+    // del build recortado que traía el escáner, que no incluía Aztec; se carga
+    // aparte (import dinámico) para que no pese en el arranque de la app.
+    if (!window.ZXing) window.ZXing = await import('@zxing/library')
     await cargarScript(`${BASE}vendor/lector.js`)
   }
   if (!window.LECTOR) throw new Error('No se pudo cargar el lector de códigos.')
