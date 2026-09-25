@@ -1,5 +1,5 @@
 # App United — Estado del proyecto
-_Última actualización: 23-09-2026_
+_Última actualización: 25-09-2026_
 
 > 👉 **Para retomar: leer primero `TRASPASO_OUTAGE_RACK3.md`.** El Rack 12
 > cerró y el outage del **Rack 3** (también de EWS, no de Planta 0) ya está
@@ -401,6 +401,44 @@ Por decisión de Brayan (23-09) toda la app pasó al rojo corporativo del escán
 mismo `logo-united.png` del escáner) en vez del de 179×60 sacado del Excel. El
 chip de "en línea" quedó verde a propósito: con el acento en rojo se leía como
 alarma.
+
+---
+
+## 12. Planificación: proyectos y entrega de turno ✅ (25-09-2026)
+
+Del cuaderno de Brayan (foto del 25-09): *Planificación → acceso con correo y
+clave · Entrega de turno · Proyectos · actividades pendientes/completadas con
+seguimiento y rango de fecha · cargar actividades y subtareas y tachar las
+completadas · exportar la planilla en PDF o Excel*.
+
+- **Es la única pantalla con cuenta.** El resto de la app sigue entrando sin
+  registrarse: la cuadrilla marca tapas, fugas y membranas como siempre. Acá va
+  Supabase Auth (correo y clave), y **quién entra lo dice la tabla
+  `plan_editores`**, no la pantalla: son permisos de verdad, por RLS. Si alguien
+  abre esta pantalla sin estar en la lista, la base no le devuelve ni una fila.
+- **Proyectos** (`sql/09`): los 7 del cuaderno — Acueducto, Soporte de rack,
+  Tapas Protec USA, Manifold desarmable, Tubing, Brazo y Sala eléctrica. Cada
+  uno con sus **actividades y subtareas** (`plan_tareas`, el padre es la
+  actividad), con estado, desde/hasta y seguimiento. **Tachar es marcar**: la
+  completada queda tachada, como en el papel.
+- **Entrega de turno**: el supervisor la llena **sin cuenta**, desde el menú
+  principal, y funciona sin señal (se va por la cola de subida). En la base
+  `entregas_turno` deja **insertar a cualquiera y leer solo a los editores** —
+  por eso queda además una copia local, para que el supervisor pueda releer y
+  reimprimir lo que entregó desde ese celular. En Planificación se ven todas,
+  se abre el detalle, se baja **el PDF de una** o **el Excel (CSV) de todas**.
+- **Faltan las dos cuentas.** Se crean en Supabase → Authentication → Add user
+  (con "Auto Confirm User"), y después se corre `sql/10_cuentas_planificacion.sql`
+  con los dos correos. ⚠️ Si alguna vez se crean por SQL: GoTrue no soporta NULL
+  en sus columnas de token — el login devuelve "Database error querying schema"
+  hasta dejarlas en cadena vacía, y hace falta la fila en `auth.identities`.
+- Probado de punta a punta contra la base real (19 chequeos): el supervisor
+  manda su entrega, planificación entra con clave, la ve, la baja en PDF y
+  Excel, carga una actividad con subtarea, la tacha y la borra. Todo lo que creó
+  la prueba se borró después, incluida la cuenta de prueba.
+- 🐛 Lección: la clase CSS `.lista` ya era el contenedor de las entregas, y
+  reusarla como "completada" dejó la fila de la actividad apilada en vertical.
+  Las clases son globales: la de estado se llama `.tachada`.
 
 ---
 

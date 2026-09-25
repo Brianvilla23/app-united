@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Aviso, Andamio, MarcaFuga, TapaEstado, OutboxItem, HistorialItem, ItemAvance } from './types'
+import type { Aviso, Andamio, MarcaFuga, TapaEstado, OutboxItem, HistorialItem, ItemAvance, EntregaLocal } from './types'
 
 export class UnitedDB extends Dexie {
   avisos!: Table<Aviso, string>
@@ -8,6 +8,7 @@ export class UnitedDB extends Dexie {
   tapas!: Table<TapaEstado, string>
   historial!: Table<HistorialItem, string>
   items!: Table<ItemAvance, string>
+  entregas!: Table<EntregaLocal, string>
   outbox!: Table<OutboxItem, string>
 
   constructor() {
@@ -148,6 +149,19 @@ export class UnitedDB extends Dexie {
         lado: m.lado ?? 'alimentacion',
         id: marcaId(String(m.lado ?? 'alimentacion'), Number(m.rack), String(m.vasija), String(m.componente)),
       })))
+    })
+    // v16: la entrega de turno que manda el supervisor queda también acá, para
+    // que pueda releer lo que entregó desde este celular (en la base solo la
+    // leen los dos editores de planificación).
+    this.version(16).stores({
+      avisos: 'id, folio, createdAt, estado, sincronizado',
+      andamios: 'id, folio, createdAt, sincronizado',
+      marcas: 'id, lado, rack, vasija, componente, createdAt, [lado+rack+vasija]',
+      tapas: 'id, lado, rack, vasija, [lado+rack+vasija]',
+      historial: 'id, rack, vasija, createdAt, tipo',
+      items: 'id, actividad, lado, rack, item, [actividad+rack]',
+      entregas: 'id, fecha, turno, createdAt',
+      outbox: 'id, createdAt, tabla',
     })
   }
 }

@@ -116,6 +116,10 @@ async function subirPendientes(): Promise<boolean> {
           )
           await db.items.update(id, { sincronizado: true })
         }
+      } else if (it.tabla === 'entrega_turno') {
+        // insert y no upsert: la entrega es un parte firmado, no se reescribe
+        ({ error } = await supabase.from('entregas_turno').insert(it.payload))
+        if (!error) await db.entregas.update(String(it.payload.id), { sincronizado: true })
       } else if (it.tabla === 'historial') {
         // upsert por id: si la respuesta se perdió, el reintento no duplica
         ({ error } = await supabase.from('historial').upsert(it.payload))

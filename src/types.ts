@@ -70,6 +70,7 @@ export const MODOS_FALLA: ModoFalla[] = [
 export type TablaOutbox =
   | 'avisos' | 'andamios' | 'marcas_upsert' | 'marcas_delete'
   | 'tapas_upsert' | 'tapas_delete' | 'historial' | 'item_upsert'
+  | 'entrega_turno'
 
 // Avance de las actividades que no usan el plano de tapas (venteos, manifold,
 // pasos simples). Un registro por ítem marcado.
@@ -113,6 +114,19 @@ export interface HistorialItem {
   detalle: string
   quien: string
   createdAt: number
+}
+
+/** La entrega de turno que se mandó desde ESTE celular. Queda local para que
+    el supervisor pueda releer lo que entregó: en la base solo la leen los dos
+    editores de planificación. */
+export interface EntregaLocal {
+  id: string
+  fecha: string
+  turno: string
+  supervisor: string
+  datos: Record<string, unknown>
+  createdAt: number
+  sincronizado: boolean
 }
 
 export interface OutboxItem {

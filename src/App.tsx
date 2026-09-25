@@ -16,10 +16,13 @@ import Outage from './Outage'
 import Venteos from './Venteos'
 import PlanoActividad from './PlanoActividad'
 import Pruebas from './Pruebas'
+import EntregaTurno from './EntregaTurno'
+import Planificacion from './Planificacion'
 import { ACTIVIDADES, type Actividad } from './actividades'
 import { fechaCorta, fechaLarga } from './fecha'
 
-type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'guardados'
+type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba'
+  | 'entrega' | 'planificacion' | 'guardados'
 
 /** Pantallas a las que solo se entra desde una actividad del outage: el rótulo
     del atrás lleva el nombre de la actividad y no el genérico de la pantalla. */
@@ -35,6 +38,8 @@ const TITULOS: Record<Vista, string> = {
   venteos: 'Cambio de venteos',
   actividad: 'Actividad del outage',
   prueba: 'Prueba de presión',
+  entrega: 'Entrega de turno',
+  planificacion: 'Planificación',
   guardados: 'Guardados',
 }
 
@@ -161,6 +166,16 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
             </button>
           )
         })}
+        <button className="menu-card" onClick={() => go('entrega')}>
+          <span className="mc-ico amber">📝</span>
+          <span className="mc-txt"><b>Entrega de turno</b><small>Lo hecho, lo pendiente y las novedades</small></span>
+          <span className="mc-arrow">›</span>
+        </button>
+        <button className="menu-card" onClick={() => go('planificacion')}>
+          <span className="mc-ico slate">🗂️</span>
+          <span className="mc-txt"><b>Planificación</b><small>Proyectos y entregas · con cuenta</small></span>
+          <span className="mc-arrow">›</span>
+        </button>
         <button className="menu-card" onClick={() => go('guardados')}>
           <span className="mc-ico slate">🗂️</span>
           <span className="mc-txt"><b>Guardados</b><small>{nAvisos + nAndamios} registros · PDF y respaldo</small></span>
@@ -173,7 +188,7 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
         <div className="stat"><b>{nAndamios}</b><span>andamios</span></div>
       </div>
 
-      <p className="menu-foot">Próximamente: entrega de turno · materiales por modo de falla</p>
+      <p className="menu-foot">Próximamente: materiales por modo de falla</p>
     </div>
   )
 }
@@ -267,6 +282,8 @@ export default function App() {
         {vista === 'venteos' && <Venteos actividad="cambio_venteo" />}
         {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} />}
         {vista === 'prueba' && actAbierta && <Pruebas actividad={actAbierta} />}
+        {vista === 'entrega' && <EntregaTurno />}
+        {vista === 'planificacion' && <Planificacion />}
         {vista === 'guardados' && <Guardados />}
       </main>
       <footer className="app-foot">App United v0.2 · uso interno</footer>
