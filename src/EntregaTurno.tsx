@@ -15,9 +15,9 @@ import { encolar } from './sync'
 import { quienSoy } from './identidad'
 import { uuid } from './util'
 import {
-  PERSONA_VACIA, TURNOS, filaEntrega, nombreTurno, semanaDe,
-  type Entrega, type LineaAdicional, type LineaAmenaza, type LineaEquipo, type LineaOT,
-  type Persona, type Turno,
+  AREAS_ENTREGA, PERSONA_VACIA, TURNOS, filaEntrega, nombreTurno, semanaDe,
+  type AreaEntrega, type Entrega, type LineaAdicional, type LineaAmenaza, type LineaEquipo,
+  type LineaOT, type Persona, type Turno,
 } from './planDatos'
 import { EQUIPOS, ESTADOS_EQUIPO, ESTADOS_OT } from './equiposFormato'
 import { traerObsDeFecha } from './turnoObs'
@@ -33,7 +33,10 @@ function turnoProbable(): Turno {
   return h >= 7 && h < 19 ? 'dia' : 'noche'
 }
 
-export default function EntregaTurno() {
+/** La misma pantalla sirve para las dos áreas, que son entregas distintas:
+    la de SUPERVISIÓN la llena el supervisor en terreno y sin cuenta; la de
+    PLANIFICACIÓN la hacen Brayan y Juan desde su pantalla. No se mezclan. */
+export default function EntregaTurno({ area = 'supervision' }: { area?: AreaEntrega }) {
   const [fecha, setFecha] = useState(hoy())
   const [semana, setSemana] = useState(semanaDe(hoy()))
   const [turno, setTurno] = useState<Turno>(turnoProbable())
@@ -64,9 +67,14 @@ export default function EntregaTurno() {
     }
   }
 
-  const mias = useLiveQuery(
-    () => db.entregas.orderBy('createdAt').reverse().limit(20).toArray(), [],
+  const todasMias = useLiveQuery(
+    () => db.entregas.orderBy('createdAt').reverse().limit(40).toArray(), [],
   ) ?? []
+  // las de antes de separar las áreas eran todas de supervisión
+  const mias = todasMias.filter((e) => {
+    const d = e.datos as { area?: AreaEntrega } | undefined
+    return (d?.area ?? 'supervision') === area
+  })
 
   const conTexto = ots.filter((o) => o.ot.trim() || o.observaciones.trim())
   const listo = entrega.nombre.trim().length >= 3
@@ -86,7 +94,7 @@ export default function EntregaTurno() {
     setEquipos(EQUIPOS.map((e) => ({ ...equipoDe(e.interno), estado: 'Operativo' })))
 
   const armar = (): Entrega => ({
-    id: uuid(), fecha, semana: semana.trim(), turno,
+    id: uuid(), area, fecha, semana: semana.trim(), turno,
     entrega: { ...entrega, nombre: entrega.nombre.trim() },
     recibe: { ...recibe, nombre: recibe.nombre.trim() },
     ots: conTexto,
@@ -123,6 +131,7 @@ export default function EntregaTurno() {
   // el cuadro que ellos eligieron del formato. El supervisor lo corrige o lo saca.
   useEffect(() => {
     void (async () => {
+      if (area !== 'planificacion') return
       try {
         const suyas = await traerObsDeFecha(fecha)
         const nuevas = suyas.filter((o) => !obsPuestas.includes(o.id))
@@ -141,7 +150,7 @@ export default function EntregaTurno() {
     })()
     // obsPuestas a propósito fuera: si entra, se relanza en cada carga
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fecha])
+  }, [fecha, area])
 
   const persona = (p: Persona, set: (p: Persona) => void, quien: string) => (
     <>
@@ -164,12 +173,13 @@ export default function EntregaTurno() {
     <div>
       <div className="plano-titulo">
         <b>ENTREGA DE TURNO</b>
-        <span>PYC-EG-MEL-6001-01</span>
+        <span>{AREAS_ENTREGA.find((x) => x.codigo === area)?.nombre} · PYC-EG-MEL-6001-01</span>
       </div>
 
       <p className="hint" style={{ margin: '0 0 12px' }}>
-        Es el mismo formato que se manda hoy. Al enviarla la recibe planificación, y
-        acá abajo la bajas en Excel (el formato oficial) o en PDF.
+        {area === 'planificacion'
+          ? 'Esta es la entrega de turno del área de planificación, aparte de la que manda supervisión. Al enviarla queda acá abajo y la bajas en Excel (el formato oficial) o en PDF.'
+          : 'Es el mismo formato que se manda hoy. Al enviarla la recibe planificación, y acá abajo la bajas en Excel (el formato oficial) o en PDF.'}
       </p>
 
       {obsAviso > 0 && (

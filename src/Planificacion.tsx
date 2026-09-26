@@ -12,9 +12,10 @@ import { martesDe, rotuloSemana } from './minuta'
 import PanelMinuta from './PanelMinuta'
 import PanelProyectos from './PanelProyectos'
 import PanelEntregas from './PanelEntregas'
+import EntregaTurno from './EntregaTurno'
 import PanelPlan from './PanelPlan'
 
-type Area = 'home' | 'minuta' | 'proyectos' | 'entregas' | 'plan'
+type Area = 'home' | 'minuta' | 'proyectos' | 'entrega-propia' | 'entregas' | 'plan'
 
 const AREAS: { codigo: Exclude<Area, 'home'>; icono: string; nombre: string; bajada: string }[] = [
   {
@@ -30,7 +31,11 @@ const AREAS: { codigo: Exclude<Area, 'home'>; icono: string; nombre: string; baj
     bajada: 'Actividades y subtareas de cada frente',
   },
   {
-    codigo: 'entregas', icono: '📝', nombre: 'Entrega de turno',
+    codigo: 'entrega-propia', icono: '📝', nombre: 'Nuestra entrega de turno',
+    bajada: 'La del área de planificación: se llena, se baja y se manda',
+  },
+  {
+    codigo: 'entregas', icono: '📥', nombre: 'Entregas de supervisión',
     bajada: 'Las que mandan los supervisores, para leer y bajar',
   },
 ]
@@ -179,6 +184,7 @@ export default function Planificacion() {
       {area === 'minuta' && <PanelMinuta />}
       {area === 'plan' && <PanelPlan />}
       {area === 'proyectos' && <PanelProyectos />}
+      {area === 'entrega-propia' && <EntregaTurno area="planificacion" />}
       {area === 'entregas' && <PanelEntregas />}
 
       <div className="plan-pie">

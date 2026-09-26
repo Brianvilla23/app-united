@@ -54,9 +54,12 @@ export default function PanelMinuta() {
     try { setObs(await traerObs(semana)) } catch { /* la minuta sirve igual */ }
   }, [])
 
-  /** Y las entregas que mandaron los supervisores en esa misma semana. */
+  /** Y las entregas de turno de PLANIFICACIÓN de esa semana: las nuestras. Las
+      de supervisión son otra área y se leen en su propia pantalla. */
   const cargarEntregas = useCallback(async (semana: string) => {
-    try { setEntregas(await traerEntregasEntre(semana, sumarDias(semana, 6))) } catch { /* idem */ }
+    try {
+      setEntregas(await traerEntregasEntre(semana, sumarDias(semana, 6), 'planificacion'))
+    } catch { /* idem */ }
   }, [])
 
   useEffect(() => { void cargar(inicio) }, [inicio, cargar])
@@ -233,11 +236,11 @@ export default function PanelMinuta() {
         />
       )}
 
-      <h3 className="sec">Para la entrega de turno</h3>
+      <h3 className="sec">Para nuestra entrega de turno</h3>
       <p className="hint" style={{ margin: '0 0 8px' }}>
-        Lo que escribas acá <b>lo ve el supervisor</b> cuando llena su entrega de esta
-        semana, ya cargado en el cuadro que elijas del formato oficial. Él lo puede
-        corregir o sacar. La minuta no se ve: solo esto.
+        Lo que escribas acá aparece <b>ya cargado en la entrega de turno de
+        planificación</b> de esta semana, en el cuadro del formato oficial que elijas.
+        Ahí se corrige o se saca. (La de supervisión es otra área, no se toca.)
       </p>
       <ul className="plan-lista">
         {obs.map((o) => (
@@ -269,10 +272,10 @@ export default function PanelMinuta() {
         </li>
       </ul>
 
-      <h3 className="sec">Entregas de turno de esta semana</h3>
+      <h3 className="sec">Nuestras entregas de turno de esta semana</h3>
       {errorBajada && <p className="memb-aviso">{errorBajada}</p>}
       {entregas.length === 0
-        ? <p className="hint">Todavía no llega ninguna de esta semana.</p>
+        ? <p className="hint">Esta semana todavía no hay ninguna de planificación.</p>
         : (
           <div className="lista">
             {entregas.map((e) => (

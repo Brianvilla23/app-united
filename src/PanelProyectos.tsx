@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { quienSoy } from './identidad'
 import { uuid } from './util'
 import {
-  armarArbol, borrarTarea, guardarTarea, traerProyectos, traerTareas,
+  armarArbol, borrarTarea, guardarProyecto, guardarTarea, traerProyectos, traerTareas,
   type ActividadConSubtareas, type Proyecto, type Tarea,
 } from './planDatos'
 
@@ -16,6 +16,8 @@ export default function PanelProyectos() {
   const [nueva, setNueva] = useState('')
   const [abierta, setAbierta] = useState<string | null>(null)
   const [nuevaSub, setNuevaSub] = useState('')
+  const [editandoNombre, setEditandoNombre] = useState(false)
+  const [nuevaSeccion, setNuevaSeccion] = useState<string | null>(null)
 
   const cargarTareas = useCallback(async (proyecto: string) => {
     try { setTareas(await traerTareas(proyecto)) } catch (e) {
@@ -49,6 +51,40 @@ export default function PanelProyectos() {
     }
     await guardarTarea(tarea, quienSoy())
     await cargarTareas(elegido)
+  }
+
+  /** Renombrar la sección que se está mirando. */
+  const renombrar = async (nombre: string) => {
+    const n = nombre.trim()
+    const p = proyectos.find((x) => x.id === elegido)
+    setEditandoNombre(false)
+    if (!p || !n || n === p.nombre) return
+    try {
+      await guardarProyecto({ ...p, nombre: n }, quienSoy())
+      setProyectos(await traerProyectos())
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo cambiar el nombre.')
+    }
+  }
+
+  /** Una sección nueva: es una pestaña más de esta pantalla. */
+  const crearSeccion = async (nombre: string) => {
+    const n = nombre.trim()
+    if (!n) { setNuevaSeccion(null); return }
+    try {
+      const id = uuid()
+      await guardarProyecto(
+        { id, nombre: n, orden: Math.max(0, ...proyectos.map((p) => p.orden)) + 1, activo: true },
+        quienSoy(),
+      )
+      setProyectos(await traerProyectos())
+      setNuevaSeccion(null)
+      setElegido(id)
+      setAbierta(null)
+      await cargarTareas(id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo crear la sección.')
+    }
   }
 
   const cambiar = async (tarea: Tarea, cambio: Partial<Tarea>) => {
@@ -118,7 +154,47 @@ export default function PanelProyectos() {
             {p.nombre}
           </button>
         ))}
+        <button className="rack-tab nueva-seccion" onClick={() => setNuevaSeccion('')}>+ Sección</button>
       </div>
+
+      {nuevaSeccion !== null && (
+        <div className="plan-nueva" style={{ marginBottom: 10 }}>
+          <input
+            autoFocus value={nuevaSeccion}
+            placeholder="Nombre de la sección"
+            onChange={(e) => setNuevaSeccion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void crearSeccion(nuevaSeccion)
+              if (e.key === 'Escape') setNuevaSeccion(null)
+            }}
+          />
+          <button className="btn sm" onClick={() => void crearSeccion(nuevaSeccion)}>Crear</button>
+          <button className="btn sm ghost" onClick={() => setNuevaSeccion(null)}>Cancelar</button>
+        </div>
+      )}
+
+      {elegido && (
+        <div className="proyecto-titulo">
+          {editandoNombre ? (
+            <input
+              autoFocus
+              defaultValue={proyectos.find((p) => p.id === elegido)?.nombre ?? ''}
+              onBlur={(e) => void renombrar(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void renombrar((e.target as HTMLInputElement).value)
+                if (e.key === 'Escape') setEditandoNombre(false)
+              }}
+            />
+          ) : (
+            <>
+              <b>{proyectos.find((p) => p.id === elegido)?.nombre}</b>
+              <button className="btn sm ghost" onClick={() => setEditandoNombre(true)} title="Cambiar el nombre">
+                Cambiar nombre
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="avance">
         <div className="avance-top">
@@ -128,6 +204,22 @@ export default function PanelProyectos() {
       </div>
 
       <ul className="plan-lista">
+        <li className="plan-nueva">
+          <input
+            value={nueva}
+            placeholder="Actividad nueva"
+            onChange={(e) => setNueva(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { void agregar(nueva, null); setNueva('') } }}
+          />
+          <button className="btn sm" onClick={() => { void agregar(nueva, null); setNueva('') }}>Agregar</button>
+        </li>
+
+        {arbol.length === 0 && (
+          <li className="hint" style={{ padding: '8px 2px' }}>
+            Esta sección todavía no tiene actividades. Escribe la primera arriba.
+          </li>
+        )}
+
         {arbol.map((a: ActividadConSubtareas) => (
           <div key={a.actividad.id}>
             {fila(a.actividad, false)}
@@ -155,16 +247,6 @@ export default function PanelProyectos() {
             )}
           </div>
         ))}
-
-        <li className="plan-nueva">
-          <input
-            value={nueva}
-            placeholder="Actividad nueva"
-            onChange={(e) => setNueva(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { void agregar(nueva, null); setNueva('') } }}
-          />
-          <button className="btn sm" onClick={() => { void agregar(nueva, null); setNueva('') }}>Agregar</button>
-        </li>
       </ul>
     </div>
   )

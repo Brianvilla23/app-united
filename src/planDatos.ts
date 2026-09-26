@@ -71,8 +71,19 @@ export interface Persona {
   run: string
 }
 
+/** De qué área es la entrega. Son dos distintas: la que llena el supervisor en
+    terreno (sin cuenta) y la del área de planificación, que hacen Brayan y
+    Juan con su cuenta. No se mezclan. */
+export type AreaEntrega = 'supervision' | 'planificacion'
+
+export const AREAS_ENTREGA: { codigo: AreaEntrega; nombre: string }[] = [
+  { codigo: 'planificacion', nombre: 'Planificación' },
+  { codigo: 'supervision', nombre: 'Supervisión' },
+]
+
 export interface Entrega {
   id: string
+  area: AreaEntrega
   fecha: string
   /** La semana que informa el formato ("W35"). Se propone y se puede corregir. */
   semana: string
@@ -223,25 +234,27 @@ export function estaLista(a: ActividadConSubtareas): boolean {
 
 export function filaEntrega(e: Entrega): Record<string, unknown> {
   return {
-    id: e.id, fecha: e.fecha, semana: e.semana, turno: e.turno,
+    id: e.id, area: e.area, fecha: e.fecha, semana: e.semana, turno: e.turno,
     entrega_nombre: e.entrega.nombre, entrega_cargo: e.entrega.cargo, entrega_run: e.entrega.run,
     recibe_nombre: e.recibe.nombre, recibe_cargo: e.recibe.cargo, recibe_run: e.recibe.run,
     ots: e.ots, adicionales: e.adicionales, amenazas: e.amenazas, equipos: e.equipos,
   }
 }
 
-export async function traerEntregas(dias = 60): Promise<Entrega[]> {
+export async function traerEntregas(dias = 60, area?: AreaEntrega): Promise<Entrega[]> {
   const desde = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10)
-  const { data, error } = await supabase.from('entregas_turno')
-    .select('*').gte('fecha', desde).order('fecha', { ascending: false }).order('turno')
+  let q = supabase.from('entregas_turno').select('*').gte('fecha', desde)
+  if (area) q = q.eq('area', area)
+  const { data, error } = await q.order('fecha', { ascending: false }).order('turno')
   if (error) throw new Error(traducir(error.message))
   return (data ?? []).map(aEntrega)
 }
 
 /** Las de un tramo de fechas: la minuta muestra las de su semana. */
-export async function traerEntregasEntre(desde: string, hasta: string): Promise<Entrega[]> {
-  const { data, error } = await supabase.from('entregas_turno')
-    .select('*').gte('fecha', desde).lte('fecha', hasta)
+export async function traerEntregasEntre(desde: string, hasta: string, area?: AreaEntrega): Promise<Entrega[]> {
+  let q = supabase.from('entregas_turno').select('*').gte('fecha', desde).lte('fecha', hasta)
+  if (area) q = q.eq('area', area)
+  const { data, error } = await q
     .order('fecha', { ascending: false }).order('turno')
   if (error) throw new Error(traducir(error.message))
   return (data ?? []).map(aEntrega)
@@ -251,6 +264,7 @@ export function aEntrega(r: Record<string, unknown>): Entrega {
   const lista = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : [])
   return {
     id: String(r.id),
+    area: ((r.area as AreaEntrega | null) ?? 'supervision'),
     fecha: String(r.fecha),
     semana: (r.semana as string | null) ?? '',
     turno: ((r.turno as Turno | null) ?? 'dia'),

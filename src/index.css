@@ -550,3 +550,9 @@ textarea { resize: vertical; }
 .plan-tarea .al-turno { flex: 0 0 auto; padding: 4px 8px; font-size: 12px; }
 .row.de-plan { align-items: center; }
 .row.de-plan .obs-cuadro { align-self: center; }
+
+/* Proyectos: el nombre de la sección se cambia en el mismo título. */
+.proyecto-titulo { display: flex; align-items: center; gap: 10px; margin: 2px 0 10px; }
+.proyecto-titulo b { font-size: 17px; color: var(--ink); }
+.proyecto-titulo input { flex: 1; font-size: 17px; font-weight: 700; }
+.rack-tab.nueva-seccion { color: var(--accent); border-style: dashed; font-weight: 700; }

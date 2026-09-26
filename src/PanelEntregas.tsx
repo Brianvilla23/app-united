@@ -1,5 +1,6 @@
-// Las entregas de turno que mandan los supervisores. Acá se leen y se bajan:
-// el Excel es el formato oficial de United, rellenado.
+// Las entregas de turno que mandan los SUPERVISORES. Son otra área: la de
+// planificación es aparte y la llenan ellos mismos.
+// Acá se leen y se bajan: el Excel es el formato oficial de United, rellenado.
 import { useEffect, useState } from 'react'
 import { nombreTurno, traerEntregas, type Entrega } from './planDatos'
 import { bajarCSVEntregas, generarPDFEntrega } from './pdfEntrega'
@@ -21,7 +22,7 @@ export default function PanelEntregas() {
 
   useEffect(() => {
     void (async () => {
-      try { setEntregas(await traerEntregas(60)) } catch (e) {
+      try { setEntregas(await traerEntregas(60, 'supervision')) } catch (e) {
         setError(e instanceof Error ? e.message : 'No se pudo cargar.')
       }
     })()
@@ -44,7 +45,7 @@ export default function PanelEntregas() {
       {errorBajada && <p className="memb-aviso">{errorBajada}</p>}
 
       {entregas.length === 0 && (
-        <p className="hint">Todavía no llega ninguna. Los supervisores la mandan desde "Entrega de turno".</p>
+        <p className="hint">Todavía no llega ninguna de supervisión. Ellos la mandan desde "Entrega de turno" en la portada de la app.</p>
       )}
 
       <div className="lista">

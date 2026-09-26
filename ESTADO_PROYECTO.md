@@ -547,32 +547,52 @@ se sube, porque esa es la que tiene validada control de calidad.**
 
 ## 16. La minuta y la entrega de turno se hablan ✅ (26-09-2026)
 
-Era el pendiente que quedaba: las dos pantallas existían pero no se tocaban.
-Ahora van en los dos sentidos (`sql/14`).
+⚠️ **Son DOS entregas de turno, de dos áreas distintas** (Brayan lo corrigió en
+el mismo día, y la primera versión estaba mal):
+- **Supervisión**: la llena el supervisor en terreno, desde la portada de la
+  app, sin cuenta.
+- **Planificación**: la hacen Brayan y Juan desde su pantalla. Es *su* entrega
+  de turno, no la de supervisión.
 
-**De planificación al turno.** En la minuta hay **"Para la entrega de turno"**:
-se escribe una observación y se elige en qué cuadro del formato oficial cae
-—**3.2 Actividades adicionales** o **3.3 Amenazas**—. Cuando el supervisor abre
-su entrega de esa semana, le llegan **ya cargadas en ese cuadro**, marcadas con
-una pastilla "Plan", y las puede corregir o sacar. Cada tarea de la minuta tiene
-además un botón **"Al turno"** que la manda de una.
+`entregas_turno.area` las separa (`sql/15`) y lo que había hasta hoy quedó como
+`'supervision'`. En Planificación hay dos tarjetas: **"Nuestra entrega de
+turno"** (el formulario, para llenarla y bajarla) y **"Entregas de
+supervisión"** (las que llegan, para leer y bajar). La misma pantalla
+`EntregaTurno` sirve a las dos con un `area` y nunca mezcla las listas.
+
+**De la minuta a nuestra entrega.** En la minuta hay **"Para nuestra entrega de
+turno"**: se escribe una observación y se elige en qué cuadro del formato
+oficial cae —**3.2 Actividades adicionales** o **3.3 Amenazas**—. Al abrir la
+entrega de planificación de esa semana, llegan **ya cargadas en ese cuadro**,
+marcadas con una pastilla "Plan", y se pueden corregir o sacar. Cada tarea de la
+minuta tiene además un botón **"Al turno"** que la manda de una.
 - 🔑 **No se inventó ninguna sección en la planilla validada**: la observación
   ocupa filas que el formato ya tiene. Comprobado en el Excel bajado: la
   actividad quedó en la fila 63 (3.2) y la amenaza en la 83 (3.3).
-- ⚠️ `turno_observaciones` **la puede leer cualquiera**, a propósito: el
-  supervisor no tiene cuenta. Ahí va solo lo que planificación decide mandarle
-  al turno — la minuta sigue siendo privada.
+- `turno_observaciones` la leen **solo los editores**: como la entrega de
+  planificación la llenan ellos con su cuenta, no hace falta abrirla a nadie
+  más. La prueba verifica que a supervisión no le llega nada.
 
-**Del turno a planificación.** La minuta muestra **"Entregas de turno de esta
-semana"** (las que mandaron los supervisores, con Excel y PDF) y a cada una se
-le puede dejar una **observación de planificación** para seguimiento.
-- Esa observación **no va en el Excel**: ese es el documento que firmó el
-  supervisor y no se le mete mano después. Sale en el **PDF** y queda en la app.
-  Si Brayan la quiere también en el Excel, hay que decidir en qué cuadro.
+**De la entrega a la minuta.** La minuta muestra **"Nuestras entregas de turno
+de esta semana"** (con Excel y PDF) y a cada una se le puede dejar una
+**observación de planificación** para seguimiento.
+- Esa observación **no va en el Excel**: ese es el documento firmado y no se le
+  mete mano después. Sale en el **PDF** y queda en la app.
 
 **De paso:** tocar dos veces "A la semana" duplicaba la tarea. Ahora el botón
 dice "Ya está" y no repite. En la minuta del 22-09 quedaron 6 + 2 duplicados de
 antes del arreglo: se sacan con la ✕.
+
+---
+
+## 17. Proyectos: agregar, renombrar y secciones nuevas ✅ (26-09-2026)
+
+- El campo para **agregar una actividad** estaba al final de la lista y no se
+  veía: ahora va **arriba**, apenas se abre la sección (y es uno solo, no dos).
+- El **nombre de la sección se cambia en su propio título** ("Cambiar nombre").
+- Botón **"+ Sección"** al final de las pestañas: se le pone nombre, se crea,
+  queda seleccionada y ya se le pueden cargar actividades y subtareas.
+- Una sección vacía lo dice en vez de quedar en blanco.
 
 ---
 
