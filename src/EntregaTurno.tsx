@@ -336,7 +336,7 @@ export default function EntregaTurno({ area = 'supervision' }: { area?: AreaEntr
                 </div>
                 <div className="row" style={{ gap: 6 }}>
                   <button className="btn sm" onClick={() => void bajar(entregaDe(e))}>Excel</button>
-                  <button className="btn sm ghost" onClick={() => generarPDFEntrega(entregaDe(e))}>PDF</button>
+                  <button className="btn sm ghost" onClick={() => void generarPDFEntrega(entregaDe(e))}>PDF</button>
                 </div>
               </div>
             ))}

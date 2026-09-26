@@ -58,7 +58,7 @@ export default function PanelEntregas() {
               </div>
               <div className="row" style={{ gap: 6 }}>
                 <button className="btn sm" onClick={(ev) => { ev.stopPropagation(); void bajar(e) }}>Excel</button>
-                <button className="btn sm ghost" onClick={(ev) => { ev.stopPropagation(); generarPDFEntrega(e) }}>PDF</button>
+                <button className="btn sm ghost" onClick={(ev) => { ev.stopPropagation(); void generarPDFEntrega(e) }}>PDF</button>
               </div>
             </div>
             {abierta === e.id && (

@@ -596,6 +596,26 @@ antes del arreglo: se sacan con la ✕.
 
 ---
 
+## 18. El PDF es el mismo documento que el Excel ✅ (26-09-2026)
+
+Brayan: *"el PDF debe quedar de igual forma que el documento en excel"*. El PDF
+era un diseño propio; ahora **reproduce el formato oficial**: logo de United,
+título, cuadro de código/revisión/fecha, y las mismas secciones en el mismo
+orden con los colores de la planilla —bandas rojas `C00000` para las secciones
+numeradas, gris `696A6D` para 3.1/3.2/3.3/3.4 y gris `8D8F91` para los
+encabezados de tabla—, incluidos **los 23 equipos del catálogo** y el cuadro de
+firmas. Verificado renderizando el PDF y mirándolo página por página.
+
+- El título dice **de qué área es**: `ENTREGA DE TURNO SUPERVISORES` para la de
+  terreno y `ENTREGA DE TURNO PYC` para la de planificación (`entregaFormato.ts`),
+  tanto en el PDF como en la celda D2 del Excel.
+- ⚠️ **El formato oficial no tiene casilla para día/noche.** Para no ensuciarlo,
+  el turno va en el pie de página del PDF. Si hay que meterlo en un cuadro, hay
+  que decidir en cuál.
+- La observación de planificación va como **anexo al final**, fuera del formato.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

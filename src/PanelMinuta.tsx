@@ -287,7 +287,7 @@ export default function PanelMinuta() {
                   </div>
                   <div className="row" style={{ gap: 6 }}>
                     <button className="btn sm" onClick={() => void bajarExcel(e)}>Excel</button>
-                    <button className="btn sm ghost" onClick={() => generarPDFEntrega(e)}>PDF</button>
+                    <button className="btn sm ghost" onClick={() => void generarPDFEntrega(e)}>PDF</button>
                   </div>
                 </div>
                 <label className="lab" style={{ marginTop: 6 }}>

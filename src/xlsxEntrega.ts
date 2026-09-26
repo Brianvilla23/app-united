@@ -6,6 +6,7 @@
 // ExcelJS pesa, así que se carga recién cuando alguien baja una entrega.
 import type { Entrega } from './planDatos'
 import { EQUIPOS } from './equiposFormato'
+import { tituloFormato } from './entregaFormato'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -35,6 +36,9 @@ export async function bajarExcelEntrega(e: Entrega): Promise<void> {
   await wb.xlsx.load(plantilla)
   const ws = wb.getWorksheet('Entrega de Turno')
   if (!ws) throw new Error('La plantilla no trae la hoja "Entrega de Turno".')
+
+  // el título del documento dice de qué área es la entrega
+  ws.getCell('D2').value = tituloFormato(e.area)
 
   // ---- antecedentes de la entrega
   ws.getCell('D9').value = e.fecha
