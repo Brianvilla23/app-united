@@ -9,6 +9,7 @@
 import { supabase } from './supabase'
 import { martesDe, sumarDias, traerMinuta, type TareaMinuta } from './minuta'
 import { traerObs } from './turnoObs'
+import { traerAmenazas } from './amenazas'
 import { traerProyectos } from './planDatos'
 
 export interface LineaEntregaPlan {
@@ -61,10 +62,11 @@ export async function armarDesdeLaMinuta(inicio: string): Promise<{
   pendientes: LineaEntregaPlan[]
   observaciones: LineaEntregaPlan[]
 }> {
-  const [tareas, obs, proyectos] = await Promise.all([
+  const [tareas, obs, proyectos, amenazas] = await Promise.all([
     traerMinuta(inicio),
     traerObs(inicio).catch(() => []),
     traerProyectos().catch(() => []),
+    traerAmenazas(inicio).catch(() => []),
   ])
   const nombreProyecto = (id: string | null) => proyectos.find((p) => p.id === id)?.nombre ?? ''
 
@@ -78,9 +80,24 @@ export async function armarDesdeLaMinuta(inicio: string): Promise<{
   }
 
   const madres = tareas.filter((t) => !t.padreId)
+
+  // Las amenazas que reportó supervisión y que siguen abiertas se van en
+  // seguimiento, con la solución que anotó planificación. Las resueltas pasan
+  // a realizadas: la semana cerró con eso listo.
+  const abiertas = amenazas.filter((a) => a.estado !== 'resuelta')
+  const cerradas = amenazas.filter((a) => a.estado === 'resuelta')
+  const deAmenaza = (a: (typeof amenazas)[number]): LineaEntregaPlan => ({
+    titulo: a.descripcion,
+    detalle: [
+      `Amenaza de supervisión · ${a.origen}`,
+      a.solucion ? `Solución: ${a.solucion}` : '',
+      a.responsable ? `Responde: ${a.responsable}` : '',
+    ].filter(Boolean).join(' · '),
+  })
+
   return {
-    realizadas: madres.filter((t) => t.estado === 'lista').map(linea),
-    seguimiento: madres.filter((t) => t.estado === 'en_curso').map(linea),
+    realizadas: [...madres.filter((t) => t.estado === 'lista').map(linea), ...cerradas.map(deAmenaza)],
+    seguimiento: [...madres.filter((t) => t.estado === 'en_curso').map(linea), ...abiertas.map(deAmenaza)],
     pendientes: madres.filter((t) => t.estado === 'pendiente').map(linea),
     observaciones: obs.map((o) => ({
       titulo: o.texto,

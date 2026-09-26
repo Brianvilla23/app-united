@@ -667,6 +667,31 @@ y en PDF con la cara de United.
 
 ---
 
+## 21. Las amenazas de supervisión se monitorean en la minuta ✅ (26-09-2026)
+
+Brayan: *"estas amenazas deberían aparecer en la minuta de planificación como
+tareas que debemos monitorear y cómo se debe solucionar"*. Hecho (`sql/18`):
+
+- La minuta tiene el bloque **"Amenazas de supervisión · para monitorear"** con
+  lo que los supervisores pusieron en el cuadro **3.3** de su entrega de esa
+  semana, diciendo de qué entrega viene cada una.
+- Cada amenaza lleva **cómo se soluciona** y **quién responde**, y un estado que
+  se cicla tocándolo: **por monitorear → en curso → resuelta**.
+- De ahí viaja sola a la entrega de turno de planificación: las abiertas van a
+  **Actividades en seguimiento** con su solución y su responsable, y las
+  resueltas pasan a **Tareas realizadas**.
+- La amenaza original **no se toca**: vive en la entrega que firmó el
+  supervisor. Acá solo se guarda el seguimiento, con id estable
+  `<entrega>-<fila>`.
+- 🔴 **Bug encontrado y arreglado en el camino**: el guardado mandaba la fila
+  entera, así que al salir del texto de la solución y del responsable casi
+  juntos el segundo guardaba la copia vieja y **borraba la solución**. Ahora se
+  manda solo el campo que cambió y el `on conflict` deja los otros como
+  estaban. Regla para lo que venga: si dos campos de la misma fila se guardan
+  al salir del foco, el upsert tiene que ser parcial.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

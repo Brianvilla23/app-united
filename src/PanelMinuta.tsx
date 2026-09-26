@@ -15,6 +15,10 @@ import {
   type Entrega, type Proyecto, type Tarea, type Turno,
 } from './planDatos'
 import { CUADROS, borrarObs, guardarObs, traerObs, type CuadroObs, type ObsTurno } from './turnoObs'
+import {
+  ESTADOS_AMENAZA, guardarAmenaza, resumirAmenazas, siguienteEstadoAmenaza, traerAmenazas,
+  type Amenaza,
+} from './amenazas'
 import { generarPDFEntrega } from './pdfEntrega'
 import { bajarExcelEntrega } from './xlsxEntrega'
 import FichaTarea from './FichaTarea'
@@ -42,6 +46,7 @@ export default function PanelMinuta() {
   const [cuadroObs, setCuadroObs] = useState<CuadroObs>('adicional')
   const [entregas, setEntregas] = useState<Entrega[]>([])
   const [errorBajada, setErrorBajada] = useState('')
+  const [amenazas, setAmenazas] = useState<Amenaza[]>([])
 
   const cargar = useCallback(async (semana: string) => {
     try { setTareas(await traerMinuta(semana)) } catch (e) {
@@ -62,7 +67,13 @@ export default function PanelMinuta() {
     } catch { /* idem */ }
   }, [])
 
+  /** Las amenazas que reportó supervisión esa semana, para monitorearlas. */
+  const cargarAmenazas = useCallback(async (semana: string) => {
+    try { setAmenazas(await traerAmenazas(semana)) } catch { /* la minuta sirve igual */ }
+  }, [])
+
   useEffect(() => { void cargar(inicio) }, [inicio, cargar])
+  useEffect(() => { void cargarAmenazas(inicio) }, [inicio, cargarAmenazas])
   useEffect(() => { void cargarObs(inicio); void cargarEntregas(inicio) }, [inicio, cargarObs, cargarEntregas])
 
   // lo que sigue abierto en los proyectos, para tenerlo a la vista en la minuta
@@ -141,6 +152,19 @@ export default function PanelMinuta() {
     setErrorBajada('')
     try { await bajarExcelEntrega(e) } catch (err) {
       setErrorBajada(err instanceof Error ? err.message : 'No se pudo armar el Excel.')
+    }
+  }
+
+  const cambiarAmenaza = async (
+    a: Amenaza,
+    cambio: Partial<Pick<Amenaza, 'estado' | 'solucion' | 'responsable'>>,
+  ) => {
+    setErrorBajada('')
+    try {
+      await guardarAmenaza(a, cambio, quienSoy())
+      await cargarAmenazas(inicio)
+    } catch (e) {
+      setErrorBajada(e instanceof Error ? e.message : 'No se pudo guardar la amenaza.')
     }
   }
 
@@ -235,6 +259,66 @@ export default function PanelMinuta() {
           onCerrar={cerrarFicha}
         />
       )}
+
+      <h3 className="sec">Amenazas de supervisión · para monitorear</h3>
+      <p className="hint" style={{ margin: '0 0 8px' }}>
+        Lo que los supervisores pusieron en el cuadro <b>3.3 Amenazas</b> de su entrega
+        de esta semana. Acá se monitorean y se anota <b>cómo se solucionan</b>. Tocando
+        el estado va: por monitorear → en curso → resuelta.
+      </p>
+      {amenazas.length === 0
+        ? <p className="hint">Esta semana no llegó ninguna amenaza de supervisión.</p>
+        : (
+          <>
+            <div className="minuta-resumen">
+              <span><b>{resumirAmenazas(amenazas).monitorear}</b> por monitorear</span>
+              <span><b>{resumirAmenazas(amenazas).en_curso}</b> en curso</span>
+              <span className="ok"><b>{resumirAmenazas(amenazas).resuelta}</b> resueltas</span>
+            </div>
+            <div className="lista">
+              {amenazas.map((a) => (
+                <div key={a.id} className={'entrega-caja amenaza-' + a.estado}>
+                  <div className="fila-entrega">
+                    <div>
+                      <b>{a.descripcion}</b>
+                      <small>De la entrega de {a.origen}</small>
+                    </div>
+                    <div className="row" style={{ gap: 6 }}>
+                      <button
+                        className={'btn sm' + (a.estado === 'resuelta' ? '' : ' ghost')}
+                        onClick={() => void cambiarAmenaza(a, { estado: siguienteEstadoAmenaza(a.estado) })}
+                      >
+                        {ESTADOS_AMENAZA.find((e) => e.codigo === a.estado)?.nombre}
+                      </button>
+                      <button
+                        className="btn sm ghost"
+                        title="Llevarla a la minuta como tarea de la semana"
+                        onClick={() => void agregar(a.descripcion, null)}
+                      >
+                        A la minuta
+                      </button>
+                    </div>
+                  </div>
+                  <label className="lab">
+                    Cómo se soluciona
+                    <textarea
+                      rows={2} defaultValue={a.solucion}
+                      placeholder="Qué hay que hacer para cerrarla"
+                      onBlur={(e) => { if (e.target.value !== a.solucion) void cambiarAmenaza(a, { solucion: e.target.value }) }}
+                    />
+                  </label>
+                  <label className="lab">
+                    Quién responde
+                    <input
+                      defaultValue={a.responsable} placeholder="Nombre o empresa"
+                      onBlur={(e) => { if (e.target.value !== a.responsable) void cambiarAmenaza(a, { responsable: e.target.value.trim() }) }}
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
       <h3 className="sec">Para nuestra entrega de turno</h3>
       <p className="hint" style={{ margin: '0 0 8px' }}>

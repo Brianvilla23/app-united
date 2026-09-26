@@ -584,3 +584,9 @@ textarea { resize: vertical; }
 .tabla-seccion th { text-align: left; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1.5px solid var(--border); white-space: nowrap; }
 .tabla-seccion td { padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .tabla-seccion td input, .tabla-seccion td textarea { padding: 7px 8px; font-size: 13px; }
+
+/* Amenazas de supervisión en la minuta: se ve de una en qué va cada una. */
+.entrega-caja.amenaza-monitorear { border-left: 4px solid var(--accent); }
+.entrega-caja.amenaza-en_curso { border-left: 4px solid var(--warning); }
+.entrega-caja.amenaza-resuelta { border-left: 4px solid #16a34a; }
+.entrega-caja.amenaza-resuelta .fila-entrega > div > b { text-decoration: line-through; color: var(--muted); }
