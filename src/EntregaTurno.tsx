@@ -8,7 +8,7 @@
 // se va por la cola de subida. En la base cualquiera puede insertar y solo los
 // editores de planificación pueden leer, por eso queda además una copia local
 // para releer y reimprimir lo que entregó desde ESTE celular.
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
@@ -20,7 +20,6 @@ import {
   type LineaOT, type Persona, type Turno,
 } from './planDatos'
 import { EQUIPOS, ESTADOS_EQUIPO, ESTADOS_OT } from './equiposFormato'
-import { traerObsDeFecha } from './turnoObs'
 import { generarPDFEntrega } from './pdfEntrega'
 import { bajarExcelEntrega } from './xlsxEntrega'
 import type { EntregaLocal } from './types'
@@ -33,9 +32,9 @@ function turnoProbable(): Turno {
   return h >= 7 && h < 19 ? 'dia' : 'noche'
 }
 
-/** La misma pantalla sirve para las dos áreas, que son entregas distintas:
-    la de SUPERVISIÓN la llena el supervisor en terreno y sin cuenta; la de
-    PLANIFICACIÓN la hacen Brayan y Juan desde su pantalla. No se mezclan. */
+/** La entrega de turno de SUPERVISIÓN: la llena el supervisor en terreno, sin
+    cuenta, en el formato oficial. La de planificación es otra pantalla y otro
+    documento (`EntregaPlanificacion.tsx`). */
 export default function EntregaTurno({ area = 'supervision' }: { area?: AreaEntrega }) {
   const [fecha, setFecha] = useState(hoy())
   const [semana, setSemana] = useState(semanaDe(hoy()))
@@ -50,10 +49,61 @@ export default function EntregaTurno({ area = 'supervision' }: { area?: AreaEntr
   const [enviando, setEnviando] = useState(false)
   const [aviso, setAviso] = useState('')
   const [errorBajada, setErrorBajada] = useState('')
-  /** Las observaciones de planificación que ya se cargaron en el formulario.
-      Si el supervisor saca una, no vuelve a aparecer sola. */
-  const [obsPuestas, setObsPuestas] = useState<string[]>([])
-  const [obsAviso, setObsAviso] = useState(0)
+  const [viendo, setViendo] = useState<string | null>(null)
+
+  /** Las entregas del celular agrupadas por su semana, de la más nueva a la
+      más vieja: así se encuentran sin bajar por una lista larga. */
+  const porSemanaLocal = (ls: typeof mias) => {
+    const mapa = new Map<string, typeof mias>()
+    for (const e of ls) {
+      const k = semanaDe(String(e.fecha))
+      mapa.set(k, [...(mapa.get(k) ?? []), e])
+    }
+    return [...mapa.entries()]
+      .map(([semana, suyas]) => ({ semana, suyas }))
+      .sort((a, b) => (a.suyas[0].fecha < b.suyas[0].fecha ? 1 : -1))
+  }
+
+  /** Lo que dice la entrega, para leerla sin bajar el archivo. */
+  const detalleDe = (e: Entrega) => (
+    <>
+      {e.recibe.nombre && <p>Recibe: <b>{e.recibe.nombre}</b></p>}
+      {e.ots.length > 0 && (
+        <>
+          <h4 className="sec">3.1 Órdenes de trabajo</h4>
+          <ul className="plan-lista">
+            {e.ots.map((o, i) => (
+              <li key={i} className="plan-tarea">
+                <span className="plan-cuerpo"><b>{o.ot || 'Sin Nº'}</b><small>{o.observaciones} · {o.estado}</small></span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {e.adicionales.length > 0 && (
+        <>
+          <h4 className="sec">3.2 Actividades adicionales</h4>
+          <ul className="plan-lista">
+            {e.adicionales.map((a, i) => (
+              <li key={i} className="plan-tarea">
+                <span className="plan-cuerpo"><b>{a.descripcion}</b><small>{a.estado}</small></span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {e.amenazas.length > 0 && (
+        <>
+          <h4 className="sec">3.3 Amenazas</h4>
+          <ul className="plan-lista">
+            {e.amenazas.map((a, i) => (
+              <li key={i} className="plan-tarea"><span className="plan-cuerpo"><b>{a.descripcion}</b></span></li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  )
 
   /** Bajar la planilla puede fallar (sin señal la primera vez, por ejemplo) y
       antes se caía en silencio: el supervisor apretaba y no pasaba nada. */
@@ -127,31 +177,6 @@ export default function EntregaTurno({ area = 'supervision' }: { area?: AreaEntr
     }
   }
 
-  // Lo que planificación dejó en la minuta para este turno: llega ya cargado en
-  // el cuadro que ellos eligieron del formato. El supervisor lo corrige o lo saca.
-  useEffect(() => {
-    void (async () => {
-      if (area !== 'planificacion') return
-      try {
-        const suyas = await traerObsDeFecha(fecha)
-        const nuevas = suyas.filter((o) => !obsPuestas.includes(o.id))
-        if (nuevas.length === 0) return
-        const adi = nuevas.filter((o) => o.cuadro === 'adicional')
-        const ame = nuevas.filter((o) => o.cuadro === 'amenaza')
-        if (adi.length > 0) {
-          setAdicionales((x) => [...x, ...adi.map((o) => ({ descripcion: o.texto, estado: 'Realizado', dePlan: true }))])
-        }
-        if (ame.length > 0) {
-          setAmenazas((x) => [...x, ...ame.map((o) => ({ descripcion: o.texto, dePlan: true }))])
-        }
-        setObsPuestas((x) => [...x, ...nuevas.map((o) => o.id)])
-        setObsAviso(nuevas.length)
-      } catch { /* sin señal se llena igual, a mano */ }
-    })()
-    // obsPuestas a propósito fuera: si entra, se relanza en cada carga
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fecha, area])
-
   const persona = (p: Persona, set: (p: Persona) => void, quien: string) => (
     <>
       <label className="lab">Nombre y apellidos de quien {quien} turno</label>
@@ -160,10 +185,6 @@ export default function EntregaTurno({ area = 'supervision' }: { area?: AreaEntr
         <label className="lab" style={{ flex: 1 }}>
           Cargo
           <input value={p.cargo} onChange={(e) => set({ ...p, cargo: e.target.value })} placeholder="Supervisor de obra" />
-        </label>
-        <label className="lab" style={{ flex: 1 }}>
-          RUN
-          <input value={p.run} onChange={(e) => set({ ...p, run: e.target.value })} placeholder="12.345.678-9" />
         </label>
       </div>
     </>
@@ -181,13 +202,6 @@ export default function EntregaTurno({ area = 'supervision' }: { area?: AreaEntr
           ? 'Esta es la entrega de turno del área de planificación, aparte de la que manda supervisión. Al enviarla queda acá abajo y la bajas en Excel (el formato oficial) o en PDF.'
           : 'Es el mismo formato que se manda hoy. Al enviarla la recibe planificación, y acá abajo la bajas en Excel (el formato oficial) o en PDF.'}
       </p>
-
-      {obsAviso > 0 && (
-        <p className="entrega-ok">
-          Planificación dejó {obsAviso} {obsAviso === 1 ? 'observación' : 'observaciones'} para
-          este turno. Están abajo, en su cuadro: revísalas, corrígelas o sácalas.
-        </p>
-      )}
 
       <div className="form">
         <h3 className="sec">Antecedentes de la entrega</h3>
@@ -242,8 +256,7 @@ export default function EntregaTurno({ area = 'supervision' }: { area?: AreaEntr
 
         <h3 className="sec">3.2 Actividades adicionales / OT subsecuentes</h3>
         {adicionales.map((a, i) => (
-          <div key={i} className={'row' + (a.dePlan ? ' de-plan' : '')} style={{ gap: 8, marginBottom: 8 }}>
-            {a.dePlan && <span className="obs-cuadro" title="La dejó planificación en la minuta">Plan</span>}
+          <div key={i} className="row" style={{ gap: 8, marginBottom: 8 }}>
             <input
               style={{ flex: 1 }} value={a.descripcion} placeholder="OT y descripción"
               onChange={(e) => setAdicionales(adicionales.map((x, k) => (k === i ? { ...x, descripcion: e.target.value } : x)))}
@@ -263,8 +276,7 @@ export default function EntregaTurno({ area = 'supervision' }: { area?: AreaEntr
 
         <h3 className="sec">3.3 Amenazas</h3>
         {amenazas.map((a, i) => (
-          <div key={i} className={'row' + (a.dePlan ? ' de-plan' : '')} style={{ gap: 8, marginBottom: 8 }}>
-            {a.dePlan && <span className="obs-cuadro amenaza" title="La dejó planificación en la minuta">Plan</span>}
+          <div key={i} className="row" style={{ gap: 8, marginBottom: 8 }}>
             <input
               style={{ flex: 1 }} value={a.descripcion} placeholder="Lo que puede frenar el trabajo"
               onChange={(e) => setAmenazas(amenazas.map((x, k) => (k === i ? { ...x, descripcion: e.target.value } : x)))}
@@ -327,20 +339,35 @@ export default function EntregaTurno({ area = 'supervision' }: { area?: AreaEntr
             ese es el que se manda por correo. El PDF es solo para leerlo.
           </p>
           {errorBajada && <p className="memb-aviso">{errorBajada}</p>}
-          <div className="lista">
-            {mias.map((e) => (
-              <div key={e.id} className="fila-entrega">
-                <div>
-                  <b>{e.fecha} · {nombreTurno(e.turno as Turno)}</b>
-                  <small>{e.supervisor}{e.sincronizado ? '' : ' · por subir'}</small>
-                </div>
-                <div className="row" style={{ gap: 6 }}>
-                  <button className="btn sm" onClick={() => void bajar(entregaDe(e))}>Excel</button>
-                  <button className="btn sm ghost" onClick={() => void generarPDFEntrega(entregaDe(e))}>PDF</button>
-                </div>
+          {porSemanaLocal(mias).map(({ semana, suyas }) => (
+            <div key={semana} style={{ marginBottom: 12 }}>
+              <p className="hint" style={{ margin: '0 0 6px' }}><b>{semana}</b> · {suyas.length}</p>
+              <div className="lista">
+                {suyas.map((e) => (
+                  <div key={e.id} className="entrega-caja">
+                    <div className="fila-entrega">
+                      <div>
+                        <b>{e.fecha} · {nombreTurno(e.turno as Turno)}</b>
+                        <small>{e.supervisor}{e.sincronizado ? '' : ' · por subir'}</small>
+                      </div>
+                      <div className="row" style={{ gap: 6 }}>
+                        <button className="btn sm ghost" onClick={() => setViendo(viendo === e.id ? null : e.id)}>
+                          {viendo === e.id ? 'Cerrar' : 'Ver'}
+                        </button>
+                        <button className="btn sm" onClick={() => void bajar(entregaDe(e))}>Excel</button>
+                        <button className="btn sm ghost" onClick={() => void generarPDFEntrega(entregaDe(e))}>PDF</button>
+                      </div>
+                    </div>
+                    {viendo === e.id && (
+                      <div className="entrega-detalle">
+                        {detalleDe(entregaDe(e))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </>
       )}
     </div>

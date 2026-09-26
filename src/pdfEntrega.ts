@@ -10,6 +10,7 @@ import autoTable from 'jspdf-autotable'
 import { EQUIPOS } from './equiposFormato'
 import { nombreTurno, type Entrega } from './planDatos'
 import { tituloFormato } from './entregaFormato'
+import { logoUnited } from './logoPdf'
 
 const ROJO: [number, number, number] = [192, 0, 0]
 const GRIS_SEC: [number, number, number] = [105, 106, 109]
@@ -32,28 +33,12 @@ function nombreBase(e: Entrega): string {
   return `PYC-EG-MEL-6001-01 Entrega de Turno ${e.semana || e.fecha} ${quien}`
 }
 
-/** El logo de United, el mismo de la planilla. Si no está, el PDF sale igual. */
-async function traerLogo(): Promise<string | null> {
-  try {
-    const r = await fetch(`${import.meta.env.BASE_URL}united.png`)
-    if (!r.ok) return null
-    const blob = await r.blob()
-    return await new Promise((listo) => {
-      const fr = new FileReader()
-      fr.onloadend = () => listo(typeof fr.result === 'string' ? fr.result : null)
-      fr.onerror = () => listo(null)
-      fr.readAsDataURL(blob)
-    })
-  } catch {
-    return null
-  }
-}
 
 export async function generarPDFEntrega(e: Entrega): Promise<void> {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true })
   const W = doc.internal.pageSize.getWidth()
   const ancho = W - M * 2
-  const logo = await traerLogo()
+  const logo = await logoUnited()
 
   const finY = (): number => {
     const d = doc as unknown as { lastAutoTable?: { finalY: number } }
@@ -76,7 +61,7 @@ export async function generarPDFEntrega(e: Entrega): Promise<void> {
       if (d.section === 'body' && d.column.index === 0 && logo) {
         const alto = 7
         const anchoLogo = 26
-        doc.addImage(logo, 'PNG', d.cell.x + 8, d.cell.y + (d.cell.height - alto) / 2, anchoLogo, alto)
+        doc.addImage(logo, 'JPEG', d.cell.x + 8, d.cell.y + (d.cell.height - alto) / 2, anchoLogo, alto)
       }
     },
   })

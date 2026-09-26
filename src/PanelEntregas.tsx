@@ -3,6 +3,7 @@
 // Acá se leen y se bajan: el Excel es el formato oficial de United, rellenado.
 import { useEffect, useState } from 'react'
 import { nombreTurno, traerEntregas, type Entrega } from './planDatos'
+import { semanaDe } from './planDatos'
 import { bajarCSVEntregas, generarPDFEntrega } from './pdfEntrega'
 import { bajarExcelEntrega } from './xlsxEntrega'
 
@@ -11,6 +12,18 @@ export default function PanelEntregas() {
   const [error, setError] = useState('')
   const [abierta, setAbierta] = useState<string | null>(null)
   const [errorBajada, setErrorBajada] = useState('')
+
+  /** Agrupadas por semana: es como las buscan, no por fecha suelta. */
+  const porSemana = (ls: Entrega[]) => {
+    const mapa = new Map<string, Entrega[]>()
+    for (const e of ls) {
+      const k = e.semana || semanaDe(e.fecha)
+      mapa.set(k, [...(mapa.get(k) ?? []), e])
+    }
+    return [...mapa.entries()]
+      .map(([semana, suyas]) => ({ semana, suyas }))
+      .sort((a, b) => (a.suyas[0].fecha < b.suyas[0].fecha ? 1 : -1))
+  }
 
   /** Si falla la plantilla hay que decirlo: antes el botón no hacía nada. */
   const bajar = async (e: Entrega) => {
@@ -48,8 +61,11 @@ export default function PanelEntregas() {
         <p className="hint">Todavía no llega ninguna de supervisión. Ellos la mandan desde "Entrega de turno" en la portada de la app.</p>
       )}
 
+      {porSemana(entregas).map(({ semana, suyas }) => (
+      <div key={semana} style={{ marginBottom: 12 }}>
+      <p className="hint" style={{ margin: '0 0 6px' }}><b>{semana}</b> · {suyas.length}</p>
       <div className="lista">
-        {entregas.map((e) => (
+        {suyas.map((e) => (
           <div key={e.id} className="entrega-caja">
             <div className="fila-entrega" onClick={() => setAbierta(abierta === e.id ? null : e.id)}>
               <div>
@@ -87,6 +103,8 @@ export default function PanelEntregas() {
           </div>
         ))}
       </div>
+      </div>
+      ))}
     </div>
   )
 }

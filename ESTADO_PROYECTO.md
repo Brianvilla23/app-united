@@ -637,6 +637,36 @@ Las cinco tarjetas estaban escritas en el código. Ahora viven en la base
 
 ---
 
+## 20. La entrega de planificación sale de la minuta ✅ (26-09-2026)
+
+Brayan: *"nuestra entrega de turno debe modificarse porque no es lo mismo que
+los supervisores"*. Ya no usa la plantilla PYC: es **su propio documento** y se
+arma **desde la minuta de la semana**, ordenado por estado (`sql/17`):
+
+| En la minuta | En la entrega |
+|---|---|
+| Lista (se hizo) | **Tareas realizadas** |
+| En curso (quedó a medias) | **Actividades en seguimiento** |
+| Pendiente | **Pendientes** |
+| Las observaciones "Para nuestra entrega" | **Observaciones** |
+
+Se pueden sacar líneas o agregar otras a mano antes de guardar, y al guardar
+queda **una foto de esa semana** (la minuta sigue viva después). Baja en Excel
+y en PDF con la cara de United.
+
+- **Las entregas se listan por semana**, y cada una tiene **Ver** —se lee en
+  pantalla sin bajar nada—, Excel y PDF. Lo mismo en la lista del celular del
+  supervisor y en las de supervisión.
+- **Fuera el RUT** de los formularios. En el Excel oficial la fila "RUN:" del
+  cuadro de firmas queda impresa y en blanco, para firmarla a mano: es parte
+  del formato validado y no se toca.
+- 🔴 **El logo hinchaba los PDF a 4 MB**: `united.png` son 1738×595 px y jsPDF
+  los mete como mapa de bits. Se reduce en un canvas y sale como JPEG
+  (`logoPdf.ts`) → **15 KB**. Y ojo: jsPDF usa WinAnsi, así que la flecha "→"
+  sale como basura y en los PDF se cambia por un guion.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

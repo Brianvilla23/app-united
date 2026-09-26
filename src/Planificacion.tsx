@@ -12,7 +12,7 @@ import { martesDe, rotuloSemana } from './minuta'
 import PanelMinuta from './PanelMinuta'
 import PanelProyectos from './PanelProyectos'
 import PanelEntregas from './PanelEntregas'
-import EntregaTurno from './EntregaTurno'
+import EntregaPlanificacion from './EntregaPlanificacion'
 import PanelPlan from './PanelPlan'
 import PanelSeccion from './PanelSeccion'
 import NuevaSeccion from './NuevaSeccion'
@@ -227,7 +227,7 @@ export default function Planificacion() {
       {area === 'minuta' && <PanelMinuta />}
       {area === 'plan' && <PanelPlan />}
       {area === 'proyectos' && <PanelProyectos />}
-      {area === 'entrega-propia' && <EntregaTurno area="planificacion" />}
+      {area === 'entrega-propia' && <EntregaPlanificacion />}
       {area === 'entregas' && <PanelEntregas />}
       {abierta && abierta.tipo !== 'fija' && <PanelSeccion seccion={abierta} />}
 
