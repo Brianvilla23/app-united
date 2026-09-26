@@ -545,6 +545,37 @@ se sube, porque esa es la que tiene validada control de calidad.**
 
 ---
 
+## 16. La minuta y la entrega de turno se hablan ✅ (26-09-2026)
+
+Era el pendiente que quedaba: las dos pantallas existían pero no se tocaban.
+Ahora van en los dos sentidos (`sql/14`).
+
+**De planificación al turno.** En la minuta hay **"Para la entrega de turno"**:
+se escribe una observación y se elige en qué cuadro del formato oficial cae
+—**3.2 Actividades adicionales** o **3.3 Amenazas**—. Cuando el supervisor abre
+su entrega de esa semana, le llegan **ya cargadas en ese cuadro**, marcadas con
+una pastilla "Plan", y las puede corregir o sacar. Cada tarea de la minuta tiene
+además un botón **"Al turno"** que la manda de una.
+- 🔑 **No se inventó ninguna sección en la planilla validada**: la observación
+  ocupa filas que el formato ya tiene. Comprobado en el Excel bajado: la
+  actividad quedó en la fila 63 (3.2) y la amenaza en la 83 (3.3).
+- ⚠️ `turno_observaciones` **la puede leer cualquiera**, a propósito: el
+  supervisor no tiene cuenta. Ahí va solo lo que planificación decide mandarle
+  al turno — la minuta sigue siendo privada.
+
+**Del turno a planificación.** La minuta muestra **"Entregas de turno de esta
+semana"** (las que mandaron los supervisores, con Excel y PDF) y a cada una se
+le puede dejar una **observación de planificación** para seguimiento.
+- Esa observación **no va en el Excel**: ese es el documento que firmó el
+  supervisor y no se le mete mano después. Sale en el **PDF** y queda en la app.
+  Si Brayan la quiere también en el Excel, hay que decidir en qué cuadro.
+
+**De paso:** tocar dos veces "A la semana" duplicaba la tarea. Ahora el botón
+dice "Ya está" y no repite. En la minuta del 22-09 quedaron 6 + 2 duplicados de
+antes del arreglo: se sacan con la ✕.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

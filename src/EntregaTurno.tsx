@@ -8,7 +8,7 @@
 // se va por la cola de subida. En la base cualquiera puede insertar y solo los
 // editores de planificación pueden leer, por eso queda además una copia local
 // para releer y reimprimir lo que entregó desde ESTE celular.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
@@ -20,6 +20,7 @@ import {
   type Persona, type Turno,
 } from './planDatos'
 import { EQUIPOS, ESTADOS_EQUIPO, ESTADOS_OT } from './equiposFormato'
+import { traerObsDeFecha } from './turnoObs'
 import { generarPDFEntrega } from './pdfEntrega'
 import { bajarExcelEntrega } from './xlsxEntrega'
 import type { EntregaLocal } from './types'
@@ -46,6 +47,10 @@ export default function EntregaTurno() {
   const [enviando, setEnviando] = useState(false)
   const [aviso, setAviso] = useState('')
   const [errorBajada, setErrorBajada] = useState('')
+  /** Las observaciones de planificación que ya se cargaron en el formulario.
+      Si el supervisor saca una, no vuelve a aparecer sola. */
+  const [obsPuestas, setObsPuestas] = useState<string[]>([])
+  const [obsAviso, setObsAviso] = useState(0)
 
   /** Bajar la planilla puede fallar (sin señal la primera vez, por ejemplo) y
       antes se caía en silencio: el supervisor apretaba y no pasaba nada. */
@@ -114,6 +119,30 @@ export default function EntregaTurno() {
     }
   }
 
+  // Lo que planificación dejó en la minuta para este turno: llega ya cargado en
+  // el cuadro que ellos eligieron del formato. El supervisor lo corrige o lo saca.
+  useEffect(() => {
+    void (async () => {
+      try {
+        const suyas = await traerObsDeFecha(fecha)
+        const nuevas = suyas.filter((o) => !obsPuestas.includes(o.id))
+        if (nuevas.length === 0) return
+        const adi = nuevas.filter((o) => o.cuadro === 'adicional')
+        const ame = nuevas.filter((o) => o.cuadro === 'amenaza')
+        if (adi.length > 0) {
+          setAdicionales((x) => [...x, ...adi.map((o) => ({ descripcion: o.texto, estado: 'Realizado', dePlan: true }))])
+        }
+        if (ame.length > 0) {
+          setAmenazas((x) => [...x, ...ame.map((o) => ({ descripcion: o.texto, dePlan: true }))])
+        }
+        setObsPuestas((x) => [...x, ...nuevas.map((o) => o.id)])
+        setObsAviso(nuevas.length)
+      } catch { /* sin señal se llena igual, a mano */ }
+    })()
+    // obsPuestas a propósito fuera: si entra, se relanza en cada carga
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fecha])
+
   const persona = (p: Persona, set: (p: Persona) => void, quien: string) => (
     <>
       <label className="lab">Nombre y apellidos de quien {quien} turno</label>
@@ -142,6 +171,13 @@ export default function EntregaTurno() {
         Es el mismo formato que se manda hoy. Al enviarla la recibe planificación, y
         acá abajo la bajas en Excel (el formato oficial) o en PDF.
       </p>
+
+      {obsAviso > 0 && (
+        <p className="entrega-ok">
+          Planificación dejó {obsAviso} {obsAviso === 1 ? 'observación' : 'observaciones'} para
+          este turno. Están abajo, en su cuadro: revísalas, corrígelas o sácalas.
+        </p>
+      )}
 
       <div className="form">
         <h3 className="sec">Antecedentes de la entrega</h3>
@@ -196,7 +232,8 @@ export default function EntregaTurno() {
 
         <h3 className="sec">3.2 Actividades adicionales / OT subsecuentes</h3>
         {adicionales.map((a, i) => (
-          <div key={i} className="row" style={{ gap: 8, marginBottom: 8 }}>
+          <div key={i} className={'row' + (a.dePlan ? ' de-plan' : '')} style={{ gap: 8, marginBottom: 8 }}>
+            {a.dePlan && <span className="obs-cuadro" title="La dejó planificación en la minuta">Plan</span>}
             <input
               style={{ flex: 1 }} value={a.descripcion} placeholder="OT y descripción"
               onChange={(e) => setAdicionales(adicionales.map((x, k) => (k === i ? { ...x, descripcion: e.target.value } : x)))}
@@ -216,10 +253,11 @@ export default function EntregaTurno() {
 
         <h3 className="sec">3.3 Amenazas</h3>
         {amenazas.map((a, i) => (
-          <div key={i} className="row" style={{ gap: 8, marginBottom: 8 }}>
+          <div key={i} className={'row' + (a.dePlan ? ' de-plan' : '')} style={{ gap: 8, marginBottom: 8 }}>
+            {a.dePlan && <span className="obs-cuadro amenaza" title="La dejó planificación en la minuta">Plan</span>}
             <input
               style={{ flex: 1 }} value={a.descripcion} placeholder="Lo que puede frenar el trabajo"
-              onChange={(e) => setAmenazas(amenazas.map((x, k) => (k === i ? { descripcion: e.target.value } : x)))}
+              onChange={(e) => setAmenazas(amenazas.map((x, k) => (k === i ? { ...x, descripcion: e.target.value } : x)))}
             />
             <button className="memb-x" onClick={() => setAmenazas(amenazas.filter((_, k) => k !== i))}>✕</button>
           </div>

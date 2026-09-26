@@ -85,6 +85,15 @@ export function generarPDFEntrega(e: Entrega): void {
     [['Equipo', 'Nº interno', 'Ubicación', 'Estado', 'Horómetro']],
     equipos.map(({ l, eq }) => [eq!.nombre, l.interno, eq!.ubicacion, l.estado || '—', l.horometro || '—']))
 
+  // Lo que planificación anotó después, al revisarla en la minuta. Va acá y no
+  // en el Excel: ese es el documento que firmó el supervisor y no se le mete
+  // mano después.
+  if (e.obsPlan) {
+    tabla('Observación de planificación (posterior a la entrega)',
+      [['Anotó', 'Observación']],
+      [[e.obsPlanPor || '—', e.obsPlan]])
+  }
+
   // ---- firmas
   if (y > H - 45) { doc.addPage(); y = 20 }
   y += 4

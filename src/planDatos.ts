@@ -48,10 +48,13 @@ export interface LineaOT {
 export interface LineaAdicional {
   descripcion: string
   estado: string
+  /** true si la dejó planificación en la minuta, no el turno. */
+  dePlan?: boolean
 }
 
 export interface LineaAmenaza {
   descripcion: string
+  dePlan?: boolean
 }
 
 export interface LineaEquipo {
@@ -81,6 +84,10 @@ export interface Entrega {
   amenazas: LineaAmenaza[]
   equipos: LineaEquipo[]
   creadoEn?: string
+  /** Lo que planificación anotó DESPUÉS, al revisarla en la minuta. No va en
+      el Excel oficial: ese es el documento que firmó el supervisor. */
+  obsPlan?: string
+  obsPlanPor?: string
 }
 
 export const PERSONA_VACIA: Persona = { nombre: '', cargo: 'Supervisor de obra', run: '' }
@@ -231,6 +238,15 @@ export async function traerEntregas(dias = 60): Promise<Entrega[]> {
   return (data ?? []).map(aEntrega)
 }
 
+/** Las de un tramo de fechas: la minuta muestra las de su semana. */
+export async function traerEntregasEntre(desde: string, hasta: string): Promise<Entrega[]> {
+  const { data, error } = await supabase.from('entregas_turno')
+    .select('*').gte('fecha', desde).lte('fecha', hasta)
+    .order('fecha', { ascending: false }).order('turno')
+  if (error) throw new Error(traducir(error.message))
+  return (data ?? []).map(aEntrega)
+}
+
 export function aEntrega(r: Record<string, unknown>): Entrega {
   const lista = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : [])
   return {
@@ -253,7 +269,17 @@ export function aEntrega(r: Record<string, unknown>): Entrega {
     amenazas: lista<LineaAmenaza>(r.amenazas),
     equipos: lista<LineaEquipo>(r.equipos),
     creadoEn: (r.creado_en as string | null) ?? undefined,
+    obsPlan: (r.obs_plan as string | null) ?? '',
+    obsPlanPor: (r.obs_plan_por as string | null) ?? '',
   }
+}
+
+/** La observación que planificación le deja a una entrega ya recibida. */
+export async function guardarObsPlan(id: string, texto: string, quien: string): Promise<void> {
+  const { error } = await supabase.from('entregas_turno').update({
+    obs_plan: texto, obs_plan_por: quien, obs_plan_en: new Date().toISOString(),
+  }).eq('id', id)
+  if (error) throw new Error(traducir(error.message))
 }
 
 export function nombreTurno(t: Turno): string {
