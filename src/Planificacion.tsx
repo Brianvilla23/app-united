@@ -16,6 +16,7 @@ import {
   type ActividadConSubtareas, type Entrega, type Proyecto, type Tarea,
 } from './planDatos'
 import { bajarCSVEntregas, generarPDFEntrega } from './pdfEntrega'
+import { bajarExcelEntrega } from './xlsxEntrega'
 
 type Pestana = 'proyectos' | 'entregas'
 
@@ -279,7 +280,7 @@ function PanelEntregas() {
           <b>{entregas.length}</b>
           <span>entregas en los últimos 60 días</span>
           {entregas.length > 0 && (
-            <button className="btn sm ghost" onClick={() => bajarCSVEntregas(entregas)}>Excel</button>
+            <button className="btn sm ghost" onClick={() => bajarCSVEntregas(entregas)}>Resumen</button>
           )}
         </div>
       </div>
@@ -293,17 +294,35 @@ function PanelEntregas() {
           <div key={e.id} className="entrega-caja">
             <div className="fila-entrega" onClick={() => setAbierta(abierta === e.id ? null : e.id)}>
               <div>
-                <b>{e.fecha} · {nombreTurno(e.turno)}</b>
-                <small>{e.supervisor}{e.area ? ` · ${e.area}` : ''}</small>
+                <b>{e.fecha} · {nombreTurno(e.turno)}{e.semana ? ` · ${e.semana}` : ''}</b>
+                <small>{e.entrega.nombre}{e.entrega.cargo ? ` · ${e.entrega.cargo}` : ''}</small>
               </div>
-              <button className="btn sm ghost" onClick={(ev) => { ev.stopPropagation(); generarPDFEntrega(e) }}>PDF</button>
+              <div className="row" style={{ gap: 6 }}>
+                <button className="btn sm ghost" onClick={(ev) => { ev.stopPropagation(); void bajarExcelEntrega(e) }}>Excel</button>
+                <button className="btn sm ghost" onClick={(ev) => { ev.stopPropagation(); generarPDFEntrega(e) }}>PDF</button>
+              </div>
             </div>
             {abierta === e.id && (
               <div className="entrega-detalle">
-                {e.dotacion ? <p><b>Dotación:</b> {e.dotacion}</p> : null}
-                {e.hecho && <><b>Lo que se hizo</b><p>{e.hecho}</p></>}
-                {e.pendiente && <><b>Queda pendiente</b><p>{e.pendiente}</p></>}
-                {e.novedades && <><b>Novedades</b><p>{e.novedades}</p></>}
+                {e.recibe.nombre && <p>Recibe: <b>{e.recibe.nombre}</b></p>}
+                {e.ots.length > 0 && <>
+                  <b>Órdenes de trabajo</b>
+                  {e.ots.map((o, i) => (
+                    <p key={i}>{o.ot ? `OT ${o.ot} · ` : ''}{o.observaciones} <em>({o.estado})</em></p>
+                  ))}
+                </>}
+                {e.adicionales.length > 0 && <>
+                  <b>Actividades adicionales</b>
+                  {e.adicionales.map((a, i) => <p key={i}>{a.descripcion} <em>({a.estado})</em></p>)}
+                </>}
+                {e.amenazas.length > 0 && <>
+                  <b>Amenazas</b>
+                  {e.amenazas.map((a, i) => <p key={i}>{a.descripcion}</p>)}
+                </>}
+                {e.equipos.length > 0 && <>
+                  <b>Equipos informados</b>
+                  <p>{e.equipos.map((q) => `${q.interno}: ${q.estado || '—'}${q.horometro ? ` (${q.horometro})` : ''}`).join(' · ')}</p>
+                </>}
               </div>
             )}
           </div>

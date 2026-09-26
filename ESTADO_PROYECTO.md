@@ -427,7 +427,20 @@ completadas · exportar la planilla en PDF o Excel*.
   por eso queda además una copia local, para que el supervisor pueda releer y
   reimprimir lo que entregó desde ese celular. En Planificación se ven todas,
   se abre el detalle, se baja **el PDF de una** o **el Excel (CSV) de todas**.
-- **Faltan las dos cuentas.** Se crean en Supabase → Authentication → Add user
+- **Formato oficial (26-09)**: la entrega de turno dejó de ser texto libre y
+  tomó la forma del formato de United **PYC-EG-MEL-6001-01**: antecedentes
+  (fecha, semana, quién entrega y quién recibe con cargo y RUN), **3.1 órdenes
+  de trabajo ejecutadas**, **3.2 actividades adicionales / OT subsecuentes**,
+  **3.3 amenazas** y **3.4 equipos** (los 23 del formato, con estado y
+  horómetro). Al bajarla se rellena **la misma planilla**, que viaja con la app
+  en `public/plantillas/entrega_turno.xlsx` — con su logo, sus textos fijos y
+  los datos del contrato — usando ExcelJS (930 KB, se carga solo al exportar).
+  También sale en PDF para mandarla por WhatsApp. La semana (W35) se propone
+  sola —una atrás de la ISO, que es como la numeran ellos— y se puede corregir.
+- **Las dos cuentas están creadas** (26-09): `bvillalobos@` y `jmolina@`
+  `unitedpipeline-sa.com`, con la clave provisoria que definió Brayan y el
+  botón para cambiarla dentro de la pantalla. Quedaron en `plan_editores`.
+- ~~**Faltan las dos cuentas.**~~ Se crean en Supabase → Authentication → Add user
   (con "Auto Confirm User"), y después se corre `sql/10_cuentas_planificacion.sql`
   con los dos correos. ⚠️ Si alguna vez se crean por SQL: GoTrue no soporta NULL
   en sus columnas de token — el login devuelve "Database error querying schema"

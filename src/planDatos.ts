@@ -38,24 +38,64 @@ export interface Tarea {
   orden: number
 }
 
-export interface LineaEntrega {
-  titulo: string
-  estado: EstadoTarea
-  proyecto?: string
+/** Las cuatro tablas del formato oficial PYC-EG-MEL-6001-01. */
+export interface LineaOT {
+  ot: string
+  observaciones: string
+  estado: string
+}
+
+export interface LineaAdicional {
+  descripcion: string
+  estado: string
+}
+
+export interface LineaAmenaza {
+  descripcion: string
+}
+
+export interface LineaEquipo {
+  /** Número interno del equipo en el formato (C-6701, VCLX-73…). */
+  interno: string
+  estado: string
+  observaciones: string
+  horometro: string
+}
+
+export interface Persona {
+  nombre: string
+  cargo: string
+  run: string
 }
 
 export interface Entrega {
   id: string
   fecha: string
+  /** La semana que informa el formato ("W35"). Se propone y se puede corregir. */
+  semana: string
   turno: Turno
-  supervisor: string
-  area: string
-  dotacion: number | null
-  hecho: string
-  pendiente: string
-  novedades: string
-  actividades: LineaEntrega[]
+  entrega: Persona
+  recibe: Persona
+  ots: LineaOT[]
+  adicionales: LineaAdicional[]
+  amenazas: LineaAmenaza[]
+  equipos: LineaEquipo[]
   creadoEn?: string
+}
+
+export const PERSONA_VACIA: Persona = { nombre: '', cargo: 'Supervisor de obra', run: '' }
+
+/** La semana que United pone en el formato. En los dos casos que se pudieron
+    comparar (01-09-2026 = W35 y la planilla W37 del 14-09) va una atrás de la
+    semana ISO, así que se propone esa y el supervisor la corrige si no calza. */
+export function semanaDe(fecha: string): string {
+  const d = new Date(fecha + 'T12:00:00')
+  const jueves = new Date(d)
+  jueves.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7))
+  const enero = new Date(jueves.getFullYear(), 0, 4)
+  const iso = 1 + Math.round(((jueves.getTime() - enero.getTime()) / 86400000 - 3 + ((enero.getDay() + 6) % 7)) / 7)
+  const n = Math.max(1, iso - 1)
+  return 'W' + String(n).padStart(2, '0')
 }
 
 // ---------------------------------------------------------------- sesión
@@ -176,25 +216,44 @@ export function estaLista(a: ActividadConSubtareas): boolean {
 
 export function filaEntrega(e: Entrega): Record<string, unknown> {
   return {
-    id: e.id, fecha: e.fecha, turno: e.turno, supervisor: e.supervisor,
-    area: e.area, dotacion: e.dotacion,
-    hecho: e.hecho, pendiente: e.pendiente, novedades: e.novedades,
-    actividades: e.actividades,
+    id: e.id, fecha: e.fecha, semana: e.semana, turno: e.turno,
+    entrega_nombre: e.entrega.nombre, entrega_cargo: e.entrega.cargo, entrega_run: e.entrega.run,
+    recibe_nombre: e.recibe.nombre, recibe_cargo: e.recibe.cargo, recibe_run: e.recibe.run,
+    ots: e.ots, adicionales: e.adicionales, amenazas: e.amenazas, equipos: e.equipos,
   }
 }
 
-export async function traerEntregas(dias = 30): Promise<Entrega[]> {
+export async function traerEntregas(dias = 60): Promise<Entrega[]> {
   const desde = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10)
   const { data, error } = await supabase.from('entregas_turno')
     .select('*').gte('fecha', desde).order('fecha', { ascending: false }).order('turno')
   if (error) throw new Error(traducir(error.message))
-  return (data ?? []).map((r) => ({
-    id: r.id, fecha: r.fecha, turno: r.turno as Turno, supervisor: r.supervisor,
-    area: r.area ?? '', dotacion: r.dotacion ?? null,
-    hecho: r.hecho ?? '', pendiente: r.pendiente ?? '', novedades: r.novedades ?? '',
-    actividades: (r.actividades as LineaEntrega[] | null) ?? [],
-    creadoEn: r.creado_en ?? undefined,
-  }))
+  return (data ?? []).map(aEntrega)
+}
+
+export function aEntrega(r: Record<string, unknown>): Entrega {
+  const lista = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : [])
+  return {
+    id: String(r.id),
+    fecha: String(r.fecha),
+    semana: (r.semana as string | null) ?? '',
+    turno: ((r.turno as Turno | null) ?? 'dia'),
+    entrega: {
+      nombre: (r.entrega_nombre as string | null) ?? '',
+      cargo: (r.entrega_cargo as string | null) ?? '',
+      run: (r.entrega_run as string | null) ?? '',
+    },
+    recibe: {
+      nombre: (r.recibe_nombre as string | null) ?? '',
+      cargo: (r.recibe_cargo as string | null) ?? '',
+      run: (r.recibe_run as string | null) ?? '',
+    },
+    ots: lista<LineaOT>(r.ots),
+    adicionales: lista<LineaAdicional>(r.adicionales),
+    amenazas: lista<LineaAmenaza>(r.amenazas),
+    equipos: lista<LineaEquipo>(r.equipos),
+    creadoEn: (r.creado_en as string | null) ?? undefined,
+  }
 }
 
 export function nombreTurno(t: Turno): string {
