@@ -89,6 +89,9 @@ export function leerHoja(ws: Hoja): LineaPlan[] {
 
 /** Carga el archivo que eligió el planificador. */
 export async function leerPlanDesdeArchivo(archivo: File): Promise<LineaPlan[]> {
+  if (/\.xlsb$/i.test(archivo.name)) {
+    throw new Error('El .xlsb no se puede leer en el navegador: abre la planilla y guárdala como .xlsx.')
+  }
   const mod = await import('exceljs')
   const ExcelJS = (mod as unknown as { default?: typeof import('exceljs') }).default ?? mod
   const wb = new ExcelJS.Workbook()

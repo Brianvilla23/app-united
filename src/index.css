@@ -528,3 +528,6 @@ textarea { resize: vertical; }
 .plan-linea small { font-size: 11px; color: var(--muted); }
 .plan-linea.nueva input { font-size: 14px; padding: 7px 9px; }
 .plan-mas { background: none; border: none; color: var(--accent-dark); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 0; }
+.btn.estado-pendiente { background: #f1f5f9; color: #475569; border-color: var(--border); }
+.btn.estado-en_curso { background: rgba(217,119,6,.15); color: #92400e; border-color: rgba(217,119,6,.4); }
+.btn.estado-lista { background: rgba(34,197,94,.15); color: #15803d; border-color: rgba(34,197,94,.45); }

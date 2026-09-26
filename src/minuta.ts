@@ -23,6 +23,24 @@ export interface TareaMinuta {
   nota: string
   orden: number
   vieneDe: string | null
+  /** Para cuándo tiene que estar. */
+  cierre: string | null
+  /** A quién se le pidió o con quién se coordina. */
+  correo: string
+  /** Con padre = subtarea de esa tarea. */
+  padreId: string | null
+}
+
+/** Un archivo colgado de una tarea: PDF, foto, lo que sea. */
+export interface Adjunto {
+  id: string
+  tareaId: string
+  nombre: string
+  ruta: string
+  tipo: string
+  tamano: number
+  subidoPor: string
+  subidoEn: string
 }
 
 /** El martes de la semana a la que pertenece una fecha (martes → lunes). */
@@ -72,6 +90,9 @@ function aTarea(r: Record<string, unknown>): TareaMinuta {
     nota: (r.nota as string | null) ?? '',
     orden: Number(r.orden ?? 0),
     vieneDe: (r.viene_de as string | null) ?? null,
+    cierre: (r.cierre as string | null) ?? null,
+    correo: (r.correo as string | null) ?? '',
+    padreId: (r.padre_id as string | null) ?? null,
   }
 }
 
@@ -93,6 +114,7 @@ export async function guardarTarea(t: TareaMinuta, quien: string): Promise<void>
   const { error } = await supabase.from('minuta_tareas').upsert({
     id: t.id, inicio: t.inicio, titulo: t.titulo, estado: t.estado,
     proyecto_id: t.proyectoId, nota: t.nota, orden: t.orden, viene_de: t.vieneDe,
+    cierre: t.cierre, correo: t.correo, padre_id: t.padreId,
     creado_por: quien, actualizado_en: new Date().toISOString(),
   })
   if (error) throw new Error(error.message)
@@ -109,7 +131,7 @@ export async function arrastrarPendientes(
 ): Promise<number> {
   const anterior = sumarDias(inicio, -7)
   const [previas, actuales] = await Promise.all([traerMinuta(anterior), traerMinuta(inicio)])
-  const quedaron = previas.filter((t) => t.estado !== 'lista')
+  const quedaron = previas.filter((t) => t.estado !== 'lista' && !t.padreId)
   const yaEstan = new Set(actuales.map((t) => t.titulo.trim().toLowerCase()))
   const nuevas = quedaron.filter((t) => !yaEstan.has(t.titulo.trim().toLowerCase()))
   let orden = actuales.length
@@ -117,6 +139,7 @@ export async function arrastrarPendientes(
     orden += 1
     await guardarTarea({
       ...t, id: nuevoId(), inicio, orden, vieneDe: anterior, estado: t.estado,
+      padreId: null,   // las subtareas se arrastran con su madre, no sueltas
     }, quien)
   }
   return nuevas.length
@@ -126,4 +149,63 @@ export function resumir(tareas: TareaMinuta[]): Record<EstadoMinuta, number> {
   const r: Record<EstadoMinuta, number> = { pendiente: 0, en_curso: 0, lista: 0 }
   for (const t of tareas) r[t.estado] += 1
   return r
+}
+
+// ---------------------------------------------------------------- adjuntos
+
+const BUCKET = 'adjuntos'
+
+function aAdjunto(r: Record<string, unknown>): Adjunto {
+  return {
+    id: String(r.id), tareaId: String(r.tarea_id), nombre: String(r.nombre),
+    ruta: String(r.ruta), tipo: (r.tipo as string | null) ?? '',
+    tamano: Number(r.tamano ?? 0),
+    subidoPor: (r.subido_por as string | null) ?? '',
+    subidoEn: (r.subido_en as string | null) ?? '',
+  }
+}
+
+export async function traerAdjuntos(tareaId: string): Promise<Adjunto[]> {
+  const { data, error } = await supabase.from('minuta_adjuntos')
+    .select('*').eq('tarea_id', tareaId).order('subido_en')
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(aAdjunto)
+}
+
+/** Sube el archivo al bucket privado y lo cuelga de la tarea. */
+export async function subirAdjunto(
+  tareaId: string, archivo: File, quien: string, nuevoId: () => string,
+): Promise<void> {
+  const id = nuevoId()
+  const limpio = archivo.name.replace(/[^\w.\-]+/g, '_')
+  const ruta = `${tareaId}/${id}-${limpio}`
+  const { error } = await supabase.storage.from(BUCKET).upload(ruta, archivo, {
+    contentType: archivo.type || undefined,
+    upsert: false,
+  })
+  if (error) throw new Error(error.message)
+  const { error: e2 } = await supabase.from('minuta_adjuntos').insert({
+    id, tarea_id: tareaId, nombre: archivo.name, ruta,
+    tipo: archivo.type, tamano: archivo.size, subido_por: quien,
+  })
+  if (e2) throw new Error(e2.message)
+}
+
+/** Enlace temporal para abrirlo: el bucket es privado a propósito. */
+export async function enlaceAdjunto(ruta: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(ruta, 300)
+  if (error || !data) throw new Error(error?.message ?? 'No se pudo abrir el archivo.')
+  return data.signedUrl
+}
+
+export async function borrarAdjunto(a: Adjunto): Promise<void> {
+  await supabase.storage.from(BUCKET).remove([a.ruta])
+  const { error } = await supabase.from('minuta_adjuntos').delete().eq('id', a.id)
+  if (error) throw new Error(error.message)
+}
+
+export function pesoLegible(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }

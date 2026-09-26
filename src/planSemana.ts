@@ -32,26 +32,6 @@ export const DIAS_SEMANA = 7
 
 export const HH_DIA_POR_DEFECTO = 344
 
-export function lunesDe(fecha: string): string {
-  const d = new Date(fecha + 'T12:00:00')
-  const dif = (d.getDay() + 6) % 7
-  d.setDate(d.getDate() - dif)
-  return d.toISOString().slice(0, 10)
-}
-
-export function diasDeLaSemana(lunes: string): string[] {
-  return Array.from({ length: DIAS_SEMANA }, (_, i) => {
-    const d = new Date(lunes + 'T12:00:00')
-    d.setDate(d.getDate() + i)
-    return d.toISOString().slice(0, 10)
-  })
-}
-
-export function nombreDia(fecha: string): string {
-  return new Date(fecha + 'T12:00:00')
-    .toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: '2-digit' })
-}
-
 // ------------------------------------------------------------------- base
 
 function aLinea(r: Record<string, unknown>): LineaPlan {
@@ -76,18 +56,23 @@ export async function traerPlan(desde: string, hasta: string): Promise<LineaPlan
   return (data ?? []).map(aLinea)
 }
 
-/** Las semanas que tienen algo cargado, de la más nueva a la más vieja. */
-export async function traerSemanas(): Promise<{ lunes: string; lineas: number }[]> {
+/** Las semanas que tienen algo cargado (por su martes), de la más nueva a la
+    más vieja. Sirve para saltar a una semana con datos: después de cargar un
+    archivo viejo, la semana de hoy puede estar vacía y parece que no cargó. */
+export async function traerSemanasCargadas(): Promise<{ inicio: string; lineas: number }[]> {
   const { data, error } = await supabase.from('plan_semana').select('fecha')
   if (error) throw new Error(error.message)
   const cuenta = new Map<string, number>()
   for (const r of data ?? []) {
-    const l = lunesDe(String(r.fecha))
-    cuenta.set(l, (cuenta.get(l) ?? 0) + 1)
+    const f = String(r.fecha)
+    const d = new Date(f + 'T12:00:00')
+    d.setDate(d.getDate() - ((d.getDay() + 5) % 7))   // el martes de esa semana
+    const clave = d.toISOString().slice(0, 10)
+    cuenta.set(clave, (cuenta.get(clave) ?? 0) + 1)
   }
   return [...cuenta.entries()]
-    .map(([lunes, lineas]) => ({ lunes, lineas }))
-    .sort((a, b) => (a.lunes < b.lunes ? 1 : -1))
+    .map(([inicio, lineas]) => ({ inicio, lineas }))
+    .sort((a, b) => (a.inicio < b.inicio ? 1 : -1))
 }
 
 export async function guardarLinea(l: LineaPlan, quien: string): Promise<void> {

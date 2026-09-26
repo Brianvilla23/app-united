@@ -11,6 +11,8 @@ import {
   type EstadoMinuta, type TareaMinuta,
 } from './minuta'
 import { armarArbol, traerProyectos, traerTareas, type Proyecto, type Tarea } from './planDatos'
+import FichaTarea from './FichaTarea'
+import { useModal } from './useModal'
 
 const hoy = () => new Date().toISOString().slice(0, 10)
 
@@ -28,6 +30,7 @@ export default function PanelMinuta() {
   const [proyectoNueva, setProyectoNueva] = useState('')
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
+  const [abierta, abrirFicha, cerrarFicha] = useModal<string>()
 
   const cargar = useCallback(async (semana: string) => {
     try { setTareas(await traerMinuta(semana)) } catch (e) {
@@ -55,14 +58,17 @@ export default function PanelMinuta() {
     })()
   }, [])
 
-  const resumen = resumir(tareas)
+  const madres = tareas.filter((t) => !t.padreId)
+  const subtareasDe = (id: string) => tareas.filter((t) => t.padreId === id)
+  const resumen = resumir(madres)
 
   const agregar = async (titulo: string, proyectoId: string | null) => {
     const t = titulo.trim()
     if (!t) return
     await guardarTarea({
       id: uuid(), inicio, titulo: t, estado: 'pendiente',
-      proyectoId, nota: '', orden: tareas.length + 1, vieneDe: null,
+      proyectoId, nota: '', orden: madres.length + 1, vieneDe: null,
+      cierre: null, correo: '', padreId: null,
     }, quienSoy())
     setNueva('')
     await cargar(inicio)
@@ -108,7 +114,7 @@ export default function PanelMinuta() {
       </div>
 
       <ul className="plan-lista">
-        {tareas.map((t) => {
+        {madres.map((t) => {
           const p = proyectos.find((x) => x.id === t.proyectoId)
           return (
             <li key={t.id} className={'plan-tarea min-' + t.estado}>
@@ -118,10 +124,12 @@ export default function PanelMinuta() {
               >
                 {ESTADOS_MINUTA.find((e) => e.codigo === t.estado)?.corto}
               </button>
-              <span className="plan-cuerpo">
+              <span className="plan-cuerpo" onClick={() => abrirFicha(t.id)}>
                 <b>{t.titulo}</b>
                 <small>
                   {p ? p.nombre : 'Sin proyecto'}
+                  {t.cierre ? ` · cierra ${t.cierre}` : ''}
+                  {subtareasDe(t.id).length > 0 ? ` · ${subtareasDe(t.id).length} subtareas` : ''}
                   {t.vieneDe ? ' · viene de la semana anterior' : ''}
                 </small>
               </span>
@@ -150,6 +158,16 @@ export default function PanelMinuta() {
           Traer lo que quedó abierto la semana pasada
         </button>
       </div>
+
+      {abierta && tareas.some((t) => t.id === abierta) && (
+        <FichaTarea
+          tarea={tareas.find((t) => t.id === abierta)!}
+          subtareas={subtareasDe(abierta)}
+          proyectos={proyectos}
+          onCambio={() => cargar(inicio)}
+          onCerrar={cerrarFicha}
+        />
+      )}
 
       {pendientesProyecto.length > 0 && (
         <>

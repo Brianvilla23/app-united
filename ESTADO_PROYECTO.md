@@ -482,6 +482,26 @@ completadas · exportar la planilla en PDF o Excel*.
 
 ---
 
+## 14. La ficha de la tarea y el plan que se encuentra ✅ (26-09-2026)
+
+- **Cada tarea de la minuta tiene ficha** (`sql/13`): fecha de cierre, correo de
+  contacto, información libre, **subtareas** y **archivos** (PDF, fotos, lo que
+  sea). Se abre tocando el título. Los archivos van a un bucket **privado** de
+  Supabase y se abren con **enlaces firmados de 5 minutos**: no hay URL pública
+  que se pueda pasar por ahí. En la lista, cada tarea muestra su fecha de cierre
+  y cuántas subtareas tiene.
+- 🔴 **"El plan maestro no funciona"**: sí funcionaba, pero el archivo que se
+  cargó traía semanas de 2025 y la app abre en la semana de hoy, que estaba
+  vacía. Ahora, al cargar, **salta a la primera semana del archivo**, avisa
+  desde cuándo hasta cuándo cargó, y si la semana que se mira está vacía lo dice
+  y ofrece ir a una con datos. Además hay un **selector con las semanas
+  cargadas**. Lección: cuando una pantalla depende de en qué fecha está parada,
+  el vacío tiene que explicarse solo.
+- Un `.xlsb` no se puede leer en el navegador: la app lo dice y pide guardarlo
+  como `.xlsx`.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

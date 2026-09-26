@@ -10,7 +10,7 @@ import { uuid } from './util'
 import { martesDe, rotuloSemana, sumarDias, diasDeLaSemana, esSemanaDeHoy } from './minuta'
 import {
   borrarLinea, guardarLinea, guardarMuchas, hhDe, lineasDe, traerHHDia, traerPlan,
-  type LineaPlan, type TurnoPlan,
+  traerSemanasCargadas, type LineaPlan, type TurnoPlan,
 } from './planSemana'
 import { bajarPlanExcel, leerPlanDesdeArchivo } from './planExcel'
 
@@ -27,6 +27,7 @@ export default function PanelPlan() {
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [semanas, setSemanas] = useState<{ inicio: string; lineas: number }[]>([])
   const [nueva, setNueva] = useState<{ fecha: string; turno: TurnoPlan } | null>(null)
   const [texto, setTexto] = useState('')
   const [hh, setHH] = useState('')
@@ -42,8 +43,12 @@ export default function PanelPlan() {
     }
   }, [])
 
+  const cargarSemanas = useCallback(async () => {
+    try { setSemanas(await traerSemanasCargadas()) } catch { /* se vive sin la lista */ }
+  }, [])
+
   useEffect(() => { void cargar(inicio) }, [inicio, cargar])
-  useEffect(() => { void traerHHDia().then(setHHDia) }, [])
+  useEffect(() => { void traerHHDia().then(setHHDia); void cargarSemanas() }, [cargarSemanas])
 
   const importar = async (archivo: File | undefined) => {
     if (!archivo) return
@@ -55,9 +60,14 @@ export default function PanelPlan() {
         return
       }
       const n = await guardarMuchas(lineas, quienSoy())
-      const semanas = new Set(lineas.map((l) => martesDe(l.fecha))).size
-      setAviso(`Se cargaron ${n} líneas en ${semanas} semanas.`)
-      await cargar(inicio)
+      const cuales = [...new Set(lineas.map((l) => martesDe(l.fecha)))].sort()
+      // saltar a la primera semana del archivo: si trae semanas viejas, la de
+      // hoy queda vacía y parece que no cargó nada
+      const primera = cuales[0]
+      setAviso(`Se cargaron ${n} líneas en ${cuales.length} semanas, de la del ${primera} a la del ${cuales[cuales.length - 1]}.`)
+      await cargarSemanas()
+      if (primera) setInicio(primera)
+      else await cargar(inicio)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo leer el archivo.')
     } finally {
@@ -75,6 +85,7 @@ export default function PanelPlan() {
     }, quienSoy())
     setTexto(''); setHH(''); setNueva(null)
     await cargar(inicio)
+    await cargarSemanas()
   }
 
   const quitar = async (id: string) => {
@@ -123,6 +134,26 @@ export default function PanelPlan() {
           con SharePoint: el ida y vuelta es bajando y subiendo el Excel.
         </p>
       </div>
+
+      {plan.length === 0 && semanas.length > 0 && (
+        <p className="memb-aviso">
+          Esta semana no tiene nada cargado. El plan tiene {semanas.length} semanas con
+          actividades; la más nueva es la del {semanas[0].inicio}.{' '}
+          <button className="btn sm" onClick={() => setInicio(semanas[0].inicio)}>Ir a esa</button>
+        </p>
+      )}
+
+      {semanas.length > 0 && (
+        <label className="lab">
+          Semanas cargadas
+          <select value={semanas.some((x) => x.inicio === inicio) ? inicio : ''} onChange={(e) => e.target.value && setInicio(e.target.value)}>
+            <option value="">Elegir una semana…</option>
+            {semanas.map((x) => (
+              <option key={x.inicio} value={x.inicio}>{rotuloSemana(x.inicio)} · {x.lineas} líneas</option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <div className="plan-dias">
         {dias.map((dia) => {
