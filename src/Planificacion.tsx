@@ -14,31 +14,16 @@ import PanelProyectos from './PanelProyectos'
 import PanelEntregas from './PanelEntregas'
 import EntregaTurno from './EntregaTurno'
 import PanelPlan from './PanelPlan'
+import PanelSeccion from './PanelSeccion'
+import NuevaSeccion from './NuevaSeccion'
+import { quienSoy } from './identidad'
+import {
+  SECCIONES_BASE, borrarSeccion, guardarSeccion, traerSecciones, type Seccion,
+} from './secciones'
 
-type Area = 'home' | 'minuta' | 'proyectos' | 'entrega-propia' | 'entregas' | 'plan'
+/** 'home' o el id de una sección: las cinco de siempre y las que se agreguen. */
+type Area = string
 
-const AREAS: { codigo: Exclude<Area, 'home'>; icono: string; nombre: string; bajada: string }[] = [
-  {
-    codigo: 'minuta', icono: '📌', nombre: 'Minuta de la semana',
-    bajada: 'Lo pendiente, lo que se está haciendo y lo cerrado',
-  },
-  {
-    codigo: 'plan', icono: '🗓️', nombre: 'Plan maestro',
-    bajada: 'La planilla semanal con sus HH, día y noche',
-  },
-  {
-    codigo: 'proyectos', icono: '🏗️', nombre: 'Proyectos',
-    bajada: 'Actividades y subtareas de cada frente',
-  },
-  {
-    codigo: 'entrega-propia', icono: '📝', nombre: 'Nuestra entrega de turno',
-    bajada: 'La del área de planificación: se llena, se baja y se manda',
-  },
-  {
-    codigo: 'entregas', icono: '📥', nombre: 'Entregas de supervisión',
-    bajada: 'Las que mandan los supervisores, para leer y bajar',
-  },
-]
 
 interface Sesion {
   correo: string | null
@@ -118,6 +103,30 @@ export default function Planificacion() {
   const sesion = useSesion()
   const [area, setArea] = useState<Area>('home')
   const [cambiando, setCambiando] = useState(false)
+  const [secciones, setSecciones] = useState<Seccion[]>(SECCIONES_BASE)
+  const [editando, setEditando] = useState(false)
+  const [renombrando, setRenombrando] = useState<string | null>(null)
+  const [agregando, setAgregando] = useState(false)
+
+  const cargarSecciones = async () => {
+    try { setSecciones(await traerSecciones()) } catch { /* quedan las de siempre */ }
+  }
+  useEffect(() => { void cargarSecciones() }, [])
+
+  /** Cambiarle el nombre a una sección: vale para las de siempre y las nuevas. */
+  const renombrar = async (s: Seccion, nombre: string) => {
+    setRenombrando(null)
+    const n = nombre.trim()
+    if (!n || n === s.nombre) return
+    await guardarSeccion({ ...s, nombre: n }, quienSoy())
+    await cargarSecciones()
+  }
+
+  const quitarSeccion = async (s: Seccion) => {
+    await borrarSeccion(s.id)
+    if (area === s.id) setArea('home')
+    await cargarSecciones()
+  }
   const [nuevaClave, setNuevaClave] = useState('')
   const [aviso, setAviso] = useState('')
 
@@ -148,7 +157,7 @@ export default function Planificacion() {
     }
   }
 
-  const abierta = AREAS.find((a) => a.codigo === area)
+  const abierta = secciones.find((x) => x.id === area)
 
   return (
     <div>
@@ -170,13 +179,47 @@ export default function Planificacion() {
             Va de martes a lunes, como la trabajas tú.
           </p>
           <div className="menu-grid">
-            {AREAS.map((a) => (
-              <button key={a.codigo} className="menu-card" onClick={() => setArea(a.codigo)}>
-                <span className="mc-ico rojo">{a.icono}</span>
-                <span className="mc-txt"><b>{a.nombre}</b><small>{a.bajada}</small></span>
-                <span className="mc-arrow">›</span>
-              </button>
+            {secciones.map((s) => (
+              <div key={s.id} className="menu-card-caja">
+                {renombrando === s.id ? (
+                  <div className="plan-nueva">
+                    <input
+                      autoFocus defaultValue={s.nombre}
+                      onBlur={(e) => void renombrar(s, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void renombrar(s, (e.target as HTMLInputElement).value)
+                        if (e.key === 'Escape') setRenombrando(null)
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <button className="menu-card" onClick={() => setArea(s.id)}>
+                    <span className="mc-ico rojo">{s.icono}</span>
+                    <span className="mc-txt"><b>{s.nombre}</b><small>{s.bajada}</small></span>
+                    <span className="mc-arrow">›</span>
+                  </button>
+                )}
+                {editando && renombrando !== s.id && (
+                  <div className="row" style={{ gap: 6, padding: '0 6px 8px' }}>
+                    <button className="btn sm ghost" onClick={() => setRenombrando(s.id)}>Cambiar nombre</button>
+                    {s.tipo !== 'fija' && (
+                      <button className="btn sm ghost" onClick={() => void quitarSeccion(s)}>Borrar</button>
+                    )}
+                  </div>
+                )}
+              </div>
             ))}
+            <button className="menu-card agregar" onClick={() => setAgregando(true)}>
+              <span className="mc-ico rojo">＋</span>
+              <span className="mc-txt"><b>Agregar una sección</b><small>Te pregunto qué necesitas y te la muestro antes de crearla</small></span>
+              <span className="mc-arrow">›</span>
+            </button>
+          </div>
+
+          <div className="row" style={{ gap: 8, marginTop: 10 }}>
+            <button className="btn sm ghost" onClick={() => { setEditando(!editando); setRenombrando(null) }}>
+              {editando ? 'Listo' : 'Editar las secciones'}
+            </button>
           </div>
         </>
       )}
@@ -186,6 +229,15 @@ export default function Planificacion() {
       {area === 'proyectos' && <PanelProyectos />}
       {area === 'entrega-propia' && <EntregaTurno area="planificacion" />}
       {area === 'entregas' && <PanelEntregas />}
+      {abierta && abierta.tipo !== 'fija' && <PanelSeccion seccion={abierta} />}
+
+      {agregando && (
+        <NuevaSeccion
+          orden={Math.max(50, ...secciones.map((s) => s.orden)) + 10}
+          onCerrar={() => setAgregando(false)}
+          onListo={(s) => { setAgregando(false); void cargarSecciones().then(() => setArea(s.id)) }}
+        />
+      )}
 
       <div className="plan-pie">
         <span>{sesion.correo}</span>

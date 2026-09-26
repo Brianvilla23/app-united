@@ -616,6 +616,27 @@ firmas. Verificado renderizando el PDF y mirándolo página por página.
 
 ---
 
+## 19. Las secciones de Planificación se editan y se crean ✅ (26-09-2026)
+
+Las cinco tarjetas estaban escritas en el código. Ahora viven en la base
+(`sql/16`) y desde la app se puede:
+
+- **Cambiar el nombre** de cualquiera —incluidas las de siempre— con "Editar
+  las secciones". El nombre manda también en el título de la pantalla.
+- **Agregar una sección nueva** con un asistente: una conversación corta que
+  pregunta cómo se llama, qué se va a anotar (una lista que se marca, una tabla
+  con las columnas que uno defina, o notas sueltas) y con qué ícono; después
+  **la muestra en vista previa** —la tarjeta y la pantalla, con dos filas de
+  ejemplo— y recién ahí se crea.
+- ⚠️ **El asistente NO es una IA**: es un guion de preguntas. Así funciona sin
+  llaves de nadie, sin mandar nada afuera y sin depender de la señal de la
+  planta. Si algún día se quiere que redacte solo, hay que meter un servicio y
+  una llave.
+- Las secciones nuevas guardan lo suyo en `plan_seccion_items` y las dibuja una
+  sola pantalla genérica (`PanelSeccion.tsx`). Las fijas no se pueden borrar.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

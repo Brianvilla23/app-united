@@ -556,3 +556,31 @@ textarea { resize: vertical; }
 .proyecto-titulo b { font-size: 17px; color: var(--ink); }
 .proyecto-titulo input { flex: 1; font-size: 17px; font-weight: 700; }
 .rack-tab.nueva-seccion { color: var(--accent); border-style: dashed; font-weight: 700; }
+
+/* ---- secciones de Planificación: editar, agregar y la sección genérica ---- */
+.menu-card-caja { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); }
+.menu-card-caja .menu-card { box-shadow: none; }
+.menu-card.agregar { border: 1.5px dashed var(--accent); background: #fff8f8; }
+.menu-card.agregar .mc-ico { font-weight: 700; }
+
+/* el asistente: una conversación corta con vista previa */
+.chat { display: flex; flex-direction: column; gap: 10px; }
+.burbuja { max-width: 92%; padding: 10px 13px; border-radius: 14px; font-size: 14px; line-height: 1.45; }
+.burbuja.app { align-self: flex-start; background: #f1f5f9; color: var(--ink); border-bottom-left-radius: 4px; }
+.burbuja.yo { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.iconos { display: flex; flex-wrap: wrap; gap: 8px; }
+.icono { font-size: 20px; line-height: 1; padding: 8px 10px; border-radius: 11px; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; }
+.icono.on { border-color: var(--accent); background: #fdf2f2; }
+.fila-entrega.como-boton { width: 100%; text-align: left; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; font-family: inherit; }
+
+/* la vista previa de cómo quedaría la sección */
+.vista-previa { border: 1.5px dashed var(--border); border-radius: var(--radius); padding: 10px; background: #f8fafc; }
+.vp-tarjeta { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow); }
+.vp-pantalla { margin-top: 10px; background: var(--surface); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow); }
+
+/* la tabla de una sección creada desde la app */
+.tabla-seccion { overflow-x: auto; }
+.tabla-seccion table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabla-seccion th { text-align: left; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1.5px solid var(--border); white-space: nowrap; }
+.tabla-seccion td { padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.tabla-seccion td input, .tabla-seccion td textarea { padding: 7px 8px; font-size: 13px; }
