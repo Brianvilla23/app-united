@@ -17,12 +17,10 @@
 //
 // Como no hay conexión con SharePoint (haría falta que TI registre la app en
 // el tenant), el ida y vuelta es por archivo.
-import {
-  COL_ACTIVIDAD, COL_HH, COL_OT, DIAS_SEMANA, lunesDe, type LineaPlan, type TurnoPlan,
-} from './planSemana'
+import { DIAS_SEMANA, lunesDe, type LineaPlan, type TurnoPlan } from './planSemana'
 
-type Celda = { value: unknown }
-type Hoja = {
+type Celda = { value: unknown; address?: string; isMerged?: boolean; master?: { address?: string } }
+export type Hoja = {
   name: string
   rowCount: number
   columnCount: number
@@ -103,12 +101,12 @@ function agrupar<T>(ws: Hoja, f: number, leer: (v: unknown) => T | null): { col:
   return grupos
 }
 
-interface Bloque { fila: number; titulo: string; inicio: string; col0: number; paso: number }
+export interface Bloque { fila: number; titulo: string; inicio: string; col0: number; paso: number }
 
 /** Los bloques de semana de la hoja: dónde empiezan, en qué columnas y qué
     lunes. Hay semanas con la fila de fechas escrita a mano ("lunes 21"); esas
     se deducen del número de Week del título o de la semana anterior. */
-function bloquesDe(ws: Hoja): Bloque[] {
+export function bloquesDe(ws: Hoja): Bloque[] {
   const bloques: Bloque[] = []
   const tituloArriba = (f: number, col: number): string => {
     for (let arriba = 1; arriba <= 3; arriba++) {
@@ -235,79 +233,102 @@ export async function leerLibro(archivo: File): Promise<HojaPlan[]> {
   return hojas.sort((a, b) => Number(b.vigente) - Number(a.vigente) || (a.hasta < b.hasta ? 1 : -1))
 }
 
-/** Escribe el plan de vuelta, con la misma forma de bloques semanales. */
-export async function bajarPlanExcel(lineas: LineaPlan[], hhDia: number): Promise<void> {
-  const mod = await import('exceljs')
+
+// --------------------------------------------------------------- escribir
+
+/** Dónde van las actividades de un bloque: las filas del turno día y las del
+    turno noche, salteando la fila de HH libres y el encabezado. */
+function cuerpoDelBloque(ws: Hoja, bloques: Bloque[], k: number): { dia: number[]; noche: number[] } {
+  const b = bloques[k]
+  const hasta = k + 1 < bloques.length ? bloques[k + 1].fila - 2 : ws.rowCount
+  const dia: number[] = []
+  const noche: number[] = []
+  let enNoche = false
+
+  /** Una celda sirve si no es la continuación de una combinada: las franjas
+      que separan los turnos son una sola celda de lado a lado, y escribir ahí
+      pisa lo de al lado. */
+  const libre = (f: number, c: number): boolean => {
+    const celda = ws.getCell(f, c)
+    return !celda.isMerged || celda.master?.address === celda.address
+  }
+
+  for (let f = b.fila + 2; f <= hasta; f++) {      // +2 salta la fila de HH libres
+    const celdas = Array.from({ length: DIAS_SEMANA }, (_, i) =>
+      texto(ws.getCell(f, b.col0 + i * b.paso).value).trim())
+    const llenas = celdas.filter((t) => t !== '')
+    let marca = ''
+    for (let c = 1; c < b.col0 && !marca; c++) marca = texto(ws.getCell(f, c).value).trim()
+    const banda = llenas.length > 0 && llenas.every((t) => PALABRAS_DIA.test(t) || PALABRAS_NOCHE.test(t))
+    if (banda) marca = llenas[0]
+
+    if (PALABRAS_NOCHE.test(marca)) enNoche = true
+    if (banda) continue                             // la franja "NOCHE" no lleva actividades
+    if (llenas.some((t) => NO_ES_ACTIVIDAD.test(t))) continue   // "Descripcion | Horas"
+    if (!libre(f, b.col0) || (b.paso >= 2 && !libre(f, b.col0 + 1))) continue
+    ;(enNoche ? noche : dia).push(f)
+  }
+  return { dia, noche }
+}
+
+/** Escribe el plan en la PLANTILLA de United —la misma que suben a SharePoint,
+    que es la que tiene validada control de calidad— y la baja.
+    Devuelve qué semanas se escribieron y cuáles no están en la plantilla. */
+export async function bajarPlanExcel(lineas: LineaPlan[]): Promise<{ semanas: number; fuera: string[] }> {
+  const [mod, plantilla] = await Promise.all([
+    import('exceljs'),
+    fetch(`${import.meta.env.BASE_URL}plantillas/plan_maestro.xlsx`).then((r) => {
+      if (!r.ok) throw new Error('No se encontró la plantilla del plan.')
+      return r.arrayBuffer()
+    }),
+  ])
   const ExcelJS = (mod as unknown as { default?: typeof import('exceljs') }).default ?? mod
   const wb = new ExcelJS.Workbook()
-  const ws = wb.addWorksheet('Planificacion')
+  await wb.xlsx.load(plantilla)
+  const ws = wb.worksheets[0] as unknown as Hoja
+  if (!ws) throw new Error('La plantilla del plan vino vacía.')
 
-  ws.getColumn(1).width = 12
-  ws.getColumn(2).width = 22
-  ws.getColumn(3).width = 8
-  for (let d = 0; d < DIAS_SEMANA; d++) {
-    ws.getColumn(COL_ACTIVIDAD(d)).width = 30
-    ws.getColumn(COL_HH(d)).width = 7
-    ws.getColumn(COL_OT(d)).width = 12
-  }
-
-  // agrupar por semana de lunes a domingo, como la planilla de United
+  const bloques = bloquesDe(ws)
   const porSemana = new Map<string, LineaPlan[]>()
-  for (const l of lineas) {
-    const clave = lunesDe(l.fecha)
-    porSemana.set(clave, [...(porSemana.get(clave) ?? []), l])
-  }
+  for (const l of lineas) porSemana.set(lunesDe(l.fecha), [...(porSemana.get(lunesDe(l.fecha)) ?? []), l])
 
-  let f = 2
+  const fuera: string[] = []
+  let semanas = 0
+
   for (const [inicio, suyas] of [...porSemana.entries()].sort()) {
-    const dias = Array.from({ length: DIAS_SEMANA }, (_, i) => {
-      const d = new Date(inicio + 'T12:00:00')
-      d.setDate(d.getDate() + i)
-      return d.toISOString().slice(0, 10)
-    })
+    const k = bloques.findIndex((b) => b.inicio === inicio)
+    if (k < 0) { fuera.push(inicio); continue }
+    const b = bloques[k]
+    const cuerpo = cuerpoDelBloque(ws, bloques, k)
+    semanas += 1
 
-    const tit = ws.getCell(f, COL_ACTIVIDAD(0))
-    tit.value = suyas[0]?.titulo || `Semana del ${inicio}`
-    tit.font = { bold: true, size: 12 }
-    f += 1
-
-    dias.forEach((dia, d) => {
-      const c = ws.getCell(f, COL_ACTIVIDAD(d))
-      c.value = new Date(dia + 'T12:00:00')
-      c.numFmt = 'dd-mm-yyyy'
-      c.font = { bold: true }
-      c.alignment = { horizontal: 'center' }
-    })
-    f += 1
-
-    dias.forEach((dia, d) => {
-      const usadas = suyas.filter((l) => l.fecha === dia).reduce((n, l) => n + (l.hh ?? 0), 0)
-      ws.getCell(f, COL_ACTIVIDAD(d)).value = hhDia - usadas
-      ws.getCell(f, COL_OT(d)).value = 'OT'
-    })
-    f += 1
-
-    for (const turno of ['dia', 'noche'] as TurnoPlan[]) {
-      const alto = Math.max(
-        1,
-        ...dias.map((dia) => suyas.filter((l) => l.fecha === dia && l.turno === turno).length),
-      )
-      ws.getCell(f, 3).value = turno === 'dia' ? 'Dia' : 'Noche'
-      ws.getCell(f, 3).font = { bold: true }
-      for (let i = 0; i < alto; i++) {
-        dias.forEach((dia, d) => {
-          const l = suyas
-            .filter((x) => x.fecha === dia && x.turno === turno)
-            .sort((a, b) => a.orden - b.orden)[i]
-          if (!l) return
-          ws.getCell(f + i, COL_ACTIVIDAD(d)).value = l.actividad
-          if (l.hh !== null) ws.getCell(f + i, COL_HH(d)).value = l.hh
-          if (l.ot) ws.getCell(f + i, COL_OT(d)).value = l.ot
+    for (let i = 0; i < DIAS_SEMANA; i++) {
+      const fecha = sumarDias(inicio, i)
+      const col = b.col0 + i * b.paso
+      for (const turno of ['dia', 'noche'] as TurnoPlan[]) {
+        const filas = turno === 'dia' ? cuerpo.dia : cuerpo.noche
+        const suyasDelDia = suyas
+          .filter((l) => l.fecha === fecha && l.turno === turno)
+          .sort((a, c) => a.orden - c.orden)
+        if (filas.length === 0) continue
+        // si no caben, la última fila se lleva el resto junto: mejor apretado
+        // que perdido
+        const caben = suyasDelDia.length > filas.length
+          ? [
+              ...suyasDelDia.slice(0, filas.length - 1),
+              suyasDelDia.slice(filas.length - 1).reduce((a, c) => ({
+                ...a,
+                actividad: `${a.actividad} / ${c.actividad}`,
+                hh: (a.hh ?? 0) + (c.hh ?? 0),
+              })),
+            ]
+          : suyasDelDia
+        caben.forEach((l, n) => {
+          ws.getCell(filas[n], col).value = l.actividad
+          if (b.paso >= 2) ws.getCell(filas[n], col + 1).value = l.hh
         })
       }
-      f += alto
     }
-    f += 2
   }
 
   const buf = await wb.xlsx.writeBuffer()
@@ -316,7 +337,8 @@ export async function bajarPlanExcel(lineas: LineaPlan[], hhDia: number): Promis
   }))
   const a = document.createElement('a')
   a.href = url
-  a.download = `Planificacion_${new Date().toISOString().slice(0, 10)}.xlsx`
+  a.download = `Planificacion ${new Date().toISOString().slice(0, 10)}.xlsx`
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 3000)
+  return { semanas, fuera }
 }

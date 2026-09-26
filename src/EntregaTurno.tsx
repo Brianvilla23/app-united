@@ -45,6 +45,19 @@ export default function EntregaTurno() {
   const [verEquipos, setVerEquipos] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [aviso, setAviso] = useState('')
+  const [errorBajada, setErrorBajada] = useState('')
+
+  /** Bajar la planilla puede fallar (sin señal la primera vez, por ejemplo) y
+      antes se caía en silencio: el supervisor apretaba y no pasaba nada. */
+  const bajar = async (e: Entrega) => {
+    setErrorBajada('')
+    try { await bajarExcelEntrega(e) } catch (err) {
+      setErrorBajada(
+        (err instanceof Error ? err.message : 'No se pudo armar el Excel.')
+        + ' Conéctate una vez para que el formato quede guardado en el celular.',
+      )
+    }
+  }
 
   const mias = useLiveQuery(
     () => db.entregas.orderBy('createdAt').reverse().limit(20).toArray(), [],
@@ -261,6 +274,11 @@ export default function EntregaTurno() {
       {mias.length > 0 && (
         <>
           <h3 className="sec">Entregas enviadas desde este celular</h3>
+          <p className="hint" style={{ margin: '0 0 8px' }}>
+            El <b>Excel</b> es el formato oficial, el que está validado por calidad:
+            ese es el que se manda por correo. El PDF es solo para leerlo.
+          </p>
+          {errorBajada && <p className="memb-aviso">{errorBajada}</p>}
           <div className="lista">
             {mias.map((e) => (
               <div key={e.id} className="fila-entrega">
@@ -269,7 +287,7 @@ export default function EntregaTurno() {
                   <small>{e.supervisor}{e.sincronizado ? '' : ' · por subir'}</small>
                 </div>
                 <div className="row" style={{ gap: 6 }}>
-                  <button className="btn sm ghost" onClick={() => void bajarExcelEntrega(entregaDe(e))}>Excel</button>
+                  <button className="btn sm" onClick={() => void bajar(entregaDe(e))}>Excel</button>
                   <button className="btn sm ghost" onClick={() => generarPDFEntrega(entregaDe(e))}>PDF</button>
                 </div>
               </div>

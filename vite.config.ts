@@ -28,7 +28,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        // el xlsx entra sí o sí: son las plantillas oficiales (entrega de turno
+        // y plan maestro) y el supervisor las baja en planta, muchas veces sin
+        // señal. Si no están guardadas, el botón no hace nada.
+        globPatterns: ['**/*.{js,css,html,png,svg,woff2,xlsx}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         clientsClaim: true,

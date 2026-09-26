@@ -517,6 +517,34 @@ completadas · exportar la planilla en PDF o Excel*.
 
 ---
 
+## 15. Los dos Excel salen en el formato de United ✅ (26-09-2026)
+
+Regla que dejó Brayan: **lo que se descarga tiene que ser la misma planilla que
+se sube, porque esa es la que tiene validada control de calidad.**
+
+- **Plan maestro**: ya no arma un libro nuevo. Se sacó una **plantilla en
+  blanco** del archivo real —`public/plantillas/plan_maestro.xlsx`, 76 KB: la
+  hoja `OT Estrategia` con sus 73 bloques, títulos, fechas, fórmulas de HH
+  libres, franjas de turno y formato, sin ninguna actividad— y al bajar se
+  **escriben las actividades dentro de esa plantilla**. Se regenera con
+  `node scripts/plantilla_plan.mjs "<archivo de SharePoint>"`.
+  - Ida y vuelta probado con el archivo real: **451 líneas entran y 451 salen**,
+    sin perder ni inventar ninguna, conservando hoja, 1.174 celdas combinadas,
+    títulos y fórmulas.
+  - ⚠️ **Las franjas que separan día de noche son una celda combinada de lado a
+    lado.** Escribir ahí pisa la celda vecina (se perdían 2 líneas). El
+    exportador salta toda fila cuya celda de HH no sea dueña de sí misma.
+  - La plantilla arranca en **diciembre de 2025**: las semanas anteriores no
+    tienen bloque y la app avisa cuántas quedaron fuera.
+- **Entrega de turno**: ya rellenaba el formato oficial, pero 🔴 **el botón
+  fallaba en silencio**: `.xlsx` no estaba en `globPatterns` del service worker,
+  así que la plantilla no quedaba guardada y sin señal —en planta— no bajaba
+  nada y no se mostraba error. Ahora el xlsx se precachea, el botón **Excel es
+  el principal** (el PDF quedó secundario, "solo para leerlo") y cualquier falla
+  se muestra. Probado **con la red cortada**: baja igual.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

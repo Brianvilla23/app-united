@@ -9,6 +9,15 @@ export default function PanelEntregas() {
   const [entregas, setEntregas] = useState<Entrega[]>([])
   const [error, setError] = useState('')
   const [abierta, setAbierta] = useState<string | null>(null)
+  const [errorBajada, setErrorBajada] = useState('')
+
+  /** Si falla la plantilla hay que decirlo: antes el botón no hacía nada. */
+  const bajar = async (e: Entrega) => {
+    setErrorBajada('')
+    try { await bajarExcelEntrega(e) } catch (err) {
+      setErrorBajada(err instanceof Error ? err.message : 'No se pudo armar el Excel.')
+    }
+  }
 
   useEffect(() => {
     void (async () => {
@@ -32,6 +41,8 @@ export default function PanelEntregas() {
         </div>
       </div>
 
+      {errorBajada && <p className="memb-aviso">{errorBajada}</p>}
+
       {entregas.length === 0 && (
         <p className="hint">Todavía no llega ninguna. Los supervisores la mandan desde "Entrega de turno".</p>
       )}
@@ -45,7 +56,7 @@ export default function PanelEntregas() {
                 <small>{e.entrega.nombre}{e.entrega.cargo ? ` · ${e.entrega.cargo}` : ''}</small>
               </div>
               <div className="row" style={{ gap: 6 }}>
-                <button className="btn sm ghost" onClick={(ev) => { ev.stopPropagation(); void bajarExcelEntrega(e) }}>Excel</button>
+                <button className="btn sm" onClick={(ev) => { ev.stopPropagation(); void bajar(e) }}>Excel</button>
                 <button className="btn sm ghost" onClick={(ev) => { ev.stopPropagation(); generarPDFEntrega(e) }}>PDF</button>
               </div>
             </div>

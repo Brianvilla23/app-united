@@ -120,10 +120,18 @@ export default function PanelPlan() {
   }
 
   const exportar = async () => {
-    setCargando(true)
+    setCargando(true); setError(''); setAviso('')
     try {
       const todo = await traerPlan(sumarDias(inicio, -364), sumarDias(inicio, 364))
-      await bajarPlanExcel(todo.length > 0 ? todo : plan, hhDia)
+      const { semanas, fuera } = await bajarPlanExcel(todo.length > 0 ? todo : plan)
+      setAviso(
+        `Se bajó la planilla de United con ${semanas} semanas.`
+        + (fuera.length > 0
+          ? ` ${fuera.length} semanas quedaron fuera porque la plantilla no las trae (la más vieja es la del ${fuera[0]}).`
+          : ''),
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo bajar el Excel.')
     } finally {
       setCargando(false)
     }
@@ -157,7 +165,8 @@ export default function PanelPlan() {
         <button className="btn sm ghost" disabled={cargando} onClick={() => void exportar()}>Bajar el Excel</button>
         <span className="hint" style={{ alignSelf: 'center' }}>HH del día: {hhDia}</span>
         <p className="hint" style={{ width: '100%', margin: 0 }}>
-          Cargar reemplaza las semanas que traiga el archivo. No hay conexión en vivo
+          Cargar reemplaza las semanas que traiga el archivo. Al bajar se rellena la
+          MISMA planilla de United, la validada por calidad. No hay conexión en vivo
           con SharePoint: el ida y vuelta es bajando y subiendo el Excel.
         </p>
       </div>
