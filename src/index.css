@@ -502,3 +502,29 @@ textarea { resize: vertical; }
 .equipo-tit b { display: block; font-size: 13.5px; }
 .equipo-tit small { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
 .entrega-detalle em { font-style: normal; color: var(--muted); font-size: 12px; }
+
+/* ---------- Minuta y plan por semana (martes a lunes) ---------- */
+.semana-barra { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.semana-rotulo { flex: 1; text-align: center; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.semana-rotulo b { font-size: 13.5px; }
+.minuta-resumen { display: flex; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 14px; font-size: 12.5px; color: var(--muted); }
+.minuta-resumen b { font-size: 18px; color: var(--ink); margin-right: 4px; }
+.minuta-resumen .ok b { color: #16a34a; }
+.plan-tarea.min-en_curso .plan-check { background: #d97706; border-color: #b45309; }
+.plan-tarea.min-lista .plan-check { background: #22c55e; border-color: #16a34a; }
+.plan-tarea.min-lista .plan-cuerpo b { text-decoration: line-through; color: var(--muted); font-weight: 500; }
+.plan-nueva select { max-width: 130px; }
+
+.plan-dias { display: flex; flex-direction: column; gap: 10px; }
+.plan-dia { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 12px; }
+.plan-dia-tit { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.plan-dia-tit b { font-size: 14px; text-transform: capitalize; }
+.plan-dia-tit small { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+.plan-dia-tit small.pasado { color: var(--accent); }
+.plan-turno { border-top: 1px dashed var(--border); padding-top: 6px; margin-top: 6px; }
+.plan-turno-tit { font-size: 10.5px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); }
+.plan-linea { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; }
+.plan-linea b { font-size: 13.5px; font-weight: 600; display: block; }
+.plan-linea small { font-size: 11px; color: var(--muted); }
+.plan-linea.nueva input { font-size: 14px; padding: 7px 9px; }
+.plan-mas { background: none; border: none; color: var(--accent-dark); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 0; }

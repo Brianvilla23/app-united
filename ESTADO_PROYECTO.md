@@ -455,6 +455,33 @@ completadas · exportar la planilla en PDF o Excel*.
 
 ---
 
+## 13. Planificación: home, minuta semanal y plan maestro ✅ (26-09-2026)
+
+- **Al entrar hay un HOME** con las cuatro áreas: Minuta de la semana, Plan
+  maestro, Proyectos y Entrega de turno.
+- ⚠️ **La semana de planificación va de MARTES a LUNES**, como la trabaja
+  Brayan. Todo se guarda contra el martes de inicio y se rotula
+  "Martes 22-09 → lunes 28-09 · W38" — el número sale de la misma regla que el
+  formato de entrega de turno (una atrás de la ISO).
+- **Minuta de la semana** (`minuta_tareas`): las tareas de la semana con tres
+  estados —pendiente · en curso · lista— que se ciclan tocando el cuadrito.
+  Botón **"Traer lo que quedó abierto la semana pasada"**, que copia lo que no
+  se cerró y lo deja marcado como arrastrado. Abajo, **lo pendiente de los
+  proyectos**, con un botón para bajarlo a la semana.
+- **Plan maestro** (`plan_semana`): la planilla "Planificacion" de SharePoint.
+  Se **carga el Excel** (lo parsea en el navegador con ExcelJS: bloques
+  semanales, 7 días de a 3 columnas, turno día/noche, HH y OT) y se **baja el
+  Excel** de vuelta. La semana se ve día por día con sus dos turnos y las
+  **HH usadas contra las 344** del día. Cargar **reemplaza** las semanas que
+  traiga el archivo, para que lo borrado en la planilla no quede de fantasma.
+  Probado con el archivo real: **704 líneas en 33 semanas**.
+- ⚠️ **No hay conexión en vivo con SharePoint.** Para que la app leyera y
+  escribiera el archivo haría falta que **TI de United registre la app en el
+  tenant** (Microsoft Graph), y Brayan descartó todo lo que dependa de TI. El
+  ida y vuelta es por archivo.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

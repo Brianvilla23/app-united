@@ -1,24 +1,39 @@
-// Planificación: los proyectos con sus actividades y las entregas de turno que
-// mandan los supervisores.
+// Planificación: la parte con cuenta, para Brayan y su colega.
 //
-// Es la única pantalla con cuenta. Quién entra lo dice la tabla `plan_editores`
-// en la base y lo hace cumplir RLS: si alguien abre esta pantalla sin ser
-// editor, la base no le devuelve ni una fila. Lo de acá es la comodidad, no la
-// seguridad.
-import { useCallback, useEffect, useState } from 'react'
+// Al entrar se ve el HOME con las áreas y de ahí se baja a cada una. Quién
+// entra lo dice la tabla `plan_editores` en la base y lo hace cumplir RLS: si
+// alguien abre esta pantalla sin ser editor, la base no le devuelve ni una
+// fila. Lo de acá es la comodidad, no la seguridad.
+import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
-import { quienSoy } from './identidad'
-import { uuid } from './util'
 import { fechaCorta } from './fecha'
-import {
-  armarArbol, borrarTarea, cambiarClave, entrar, guardarTarea, nombreTurno, salir,
-  soyEditor, traerEntregas, traerProyectos, traerTareas,
-  type ActividadConSubtareas, type Entrega, type Proyecto, type Tarea,
-} from './planDatos'
-import { bajarCSVEntregas, generarPDFEntrega } from './pdfEntrega'
-import { bajarExcelEntrega } from './xlsxEntrega'
+import { cambiarClave, entrar, salir, soyEditor } from './planDatos'
+import { martesDe, rotuloSemana } from './minuta'
+import PanelMinuta from './PanelMinuta'
+import PanelProyectos from './PanelProyectos'
+import PanelEntregas from './PanelEntregas'
+import PanelPlan from './PanelPlan'
 
-type Pestana = 'proyectos' | 'entregas'
+type Area = 'home' | 'minuta' | 'proyectos' | 'entregas' | 'plan'
+
+const AREAS: { codigo: Exclude<Area, 'home'>; icono: string; nombre: string; bajada: string }[] = [
+  {
+    codigo: 'minuta', icono: '📌', nombre: 'Minuta de la semana',
+    bajada: 'Lo pendiente, lo que se está haciendo y lo cerrado',
+  },
+  {
+    codigo: 'plan', icono: '🗓️', nombre: 'Plan maestro',
+    bajada: 'La planilla semanal con sus HH, día y noche',
+  },
+  {
+    codigo: 'proyectos', icono: '🏗️', nombre: 'Proyectos',
+    bajada: 'Actividades y subtareas de cada frente',
+  },
+  {
+    codigo: 'entregas', icono: '📝', nombre: 'Entrega de turno',
+    bajada: 'Las que mandan los supervisores, para leer y bajar',
+  },
+]
 
 interface Sesion {
   correo: string | null
@@ -76,7 +91,7 @@ function Ingreso() {
       <label className="lab">Correo</label>
       <input
         type="email" autoComplete="username" inputMode="email"
-        value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="nombre@united.cl"
+        value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="nombre@unitedpipeline-sa.com"
       />
       <label className="lab">Clave</label>
       <input
@@ -92,251 +107,11 @@ function Ingreso() {
   )
 }
 
-// -------------------------------------------------------------- proyectos
-
-function PanelProyectos() {
-  const [proyectos, setProyectos] = useState<Proyecto[]>([])
-  const [elegido, setElegido] = useState<string>('')
-  const [tareas, setTareas] = useState<Tarea[]>([])
-  const [error, setError] = useState('')
-  const [nueva, setNueva] = useState('')
-  const [abierta, setAbierta] = useState<string | null>(null)
-  const [nuevaSub, setNuevaSub] = useState('')
-
-  const cargarTareas = useCallback(async (proyecto: string) => {
-    try { setTareas(await traerTareas(proyecto)) } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo cargar.')
-    }
-  }, [])
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const ps = await traerProyectos()
-        setProyectos(ps)
-        const primero = ps[0]?.id ?? ''
-        setElegido(primero)
-        if (primero) await cargarTareas(primero)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'No se pudo cargar.')
-      }
-    })()
-  }, [cargarTareas])
-
-  const arbol = armarArbol(tareas)
-
-  const agregar = async (titulo: string, padreId: string | null) => {
-    const t = titulo.trim()
-    if (!t || !elegido) return
-    const hermanos = tareas.filter((x) => (x.padreId ?? null) === padreId)
-    const tarea: Tarea = {
-      id: uuid(), proyectoId: elegido, padreId, titulo: t, estado: 'pendiente',
-      desde: null, hasta: null, seguimiento: null, orden: hermanos.length + 1,
-    }
-    await guardarTarea(tarea, quienSoy())
-    await cargarTareas(elegido)
-  }
-
-  const cambiar = async (tarea: Tarea, cambio: Partial<Tarea>) => {
-    await guardarTarea({ ...tarea, ...cambio }, quienSoy())
-    await cargarTareas(elegido)
-  }
-
-  const quitar = async (id: string) => {
-    await borrarTarea(id)
-    await cargarTareas(elegido)
-  }
-
-  /** Tachar es marcar: la actividad completada se ve tachada, como en el papel. */
-  const tachar = (t: Tarea) =>
-    void cambiar(t, { estado: t.estado === 'completada' ? 'pendiente' : 'completada' })
-
-  const fila = (t: Tarea, esSub: boolean) => (
-    <li key={t.id} className={'plan-tarea' + (esSub ? ' sub' : '') + (t.estado === 'completada' ? ' tachada' : '')}>
-      <button className="plan-check" onClick={() => tachar(t)} title="Completada">
-        {t.estado === 'completada' ? '✓' : ''}
-      </button>
-      <span className="plan-cuerpo" onClick={() => setAbierta(abierta === t.id ? null : t.id)}>
-        <b>{t.titulo}</b>
-        {(t.desde || t.hasta || t.seguimiento) && (
-          <small>
-            {t.desde && `desde ${t.desde}`}{t.desde && t.hasta && ' · '}{t.hasta && `hasta ${t.hasta}`}
-            {t.seguimiento && `${t.desde || t.hasta ? ' · ' : ''}${t.seguimiento}`}
-          </small>
-        )}
-      </span>
-      <button className="memb-x" onClick={() => void quitar(t.id)} title="Borrar">✕</button>
-    </li>
-  )
-
-  const detalle = (t: Tarea) => (
-    <li className="plan-detalle">
-      <div className="row" style={{ gap: 8 }}>
-        <label className="lab" style={{ flex: 1 }}>
-          Desde
-          <input type="date" value={t.desde ?? ''} onChange={(e) => void cambiar(t, { desde: e.target.value || null })} />
-        </label>
-        <label className="lab" style={{ flex: 1 }}>
-          Hasta
-          <input type="date" value={t.hasta ?? ''} onChange={(e) => void cambiar(t, { hasta: e.target.value || null })} />
-        </label>
-      </div>
-      <label className="lab">Seguimiento</label>
-      <input
-        defaultValue={t.seguimiento ?? ''}
-        placeholder="Dónde va, qué falta, quién responde"
-        onBlur={(e) => { if ((t.seguimiento ?? '') !== e.target.value) void cambiar(t, { seguimiento: e.target.value || null }) }}
-      />
-    </li>
-  )
-
-  return (
-    <div>
-      {error && <p className="memb-aviso">{error}</p>}
-
-      <div className="rack-tabs">
-        {proyectos.map((p) => (
-          <button
-            key={p.id}
-            className={'rack-tab' + (p.id === elegido ? ' on' : '')}
-            onClick={() => { setElegido(p.id); setAbierta(null); void cargarTareas(p.id) }}
-          >
-            {p.nombre}
-          </button>
-        ))}
-      </div>
-
-      <div className="avance">
-        <div className="avance-top">
-          <b>{arbol.filter((a) => a.actividad.estado === 'completada').length}</b>
-          <span>de {arbol.length} actividades completadas</span>
-        </div>
-      </div>
-
-      <ul className="plan-lista">
-        {arbol.map((a: ActividadConSubtareas) => (
-          <div key={a.actividad.id}>
-            {fila(a.actividad, false)}
-            {abierta === a.actividad.id && detalle(a.actividad)}
-            {a.subtareas.map((s) => (
-              <div key={s.id}>
-                {fila(s, true)}
-                {abierta === s.id && detalle(s)}
-              </div>
-            ))}
-            {abierta === a.actividad.id && (
-              <li className="plan-nueva sub">
-                <input
-                  value={nuevaSub}
-                  placeholder="Subtarea"
-                  onChange={(e) => setNuevaSub(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') { void agregar(nuevaSub, a.actividad.id); setNuevaSub('') }
-                  }}
-                />
-                <button className="btn sm" onClick={() => { void agregar(nuevaSub, a.actividad.id); setNuevaSub('') }}>
-                  Agregar
-                </button>
-              </li>
-            )}
-          </div>
-        ))}
-
-        <li className="plan-nueva">
-          <input
-            value={nueva}
-            placeholder="Actividad nueva"
-            onChange={(e) => setNueva(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { void agregar(nueva, null); setNueva('') } }}
-          />
-          <button className="btn sm" onClick={() => { void agregar(nueva, null); setNueva('') }}>Agregar</button>
-        </li>
-      </ul>
-    </div>
-  )
-}
-
-// --------------------------------------------------------- entregas de turno
-
-function PanelEntregas() {
-  const [entregas, setEntregas] = useState<Entrega[]>([])
-  const [error, setError] = useState('')
-  const [abierta, setAbierta] = useState<string | null>(null)
-
-  useEffect(() => {
-    void (async () => {
-      try { setEntregas(await traerEntregas(60)) } catch (e) {
-        setError(e instanceof Error ? e.message : 'No se pudo cargar.')
-      }
-    })()
-  }, [])
-
-  if (error) return <p className="memb-aviso">{error}</p>
-
-  return (
-    <div>
-      <div className="avance">
-        <div className="avance-top">
-          <b>{entregas.length}</b>
-          <span>entregas en los últimos 60 días</span>
-          {entregas.length > 0 && (
-            <button className="btn sm ghost" onClick={() => bajarCSVEntregas(entregas)}>Resumen</button>
-          )}
-        </div>
-      </div>
-
-      {entregas.length === 0 && (
-        <p className="hint">Todavía no llega ninguna. Los supervisores la mandan desde "Entrega de turno".</p>
-      )}
-
-      <div className="lista">
-        {entregas.map((e) => (
-          <div key={e.id} className="entrega-caja">
-            <div className="fila-entrega" onClick={() => setAbierta(abierta === e.id ? null : e.id)}>
-              <div>
-                <b>{e.fecha} · {nombreTurno(e.turno)}{e.semana ? ` · ${e.semana}` : ''}</b>
-                <small>{e.entrega.nombre}{e.entrega.cargo ? ` · ${e.entrega.cargo}` : ''}</small>
-              </div>
-              <div className="row" style={{ gap: 6 }}>
-                <button className="btn sm ghost" onClick={(ev) => { ev.stopPropagation(); void bajarExcelEntrega(e) }}>Excel</button>
-                <button className="btn sm ghost" onClick={(ev) => { ev.stopPropagation(); generarPDFEntrega(e) }}>PDF</button>
-              </div>
-            </div>
-            {abierta === e.id && (
-              <div className="entrega-detalle">
-                {e.recibe.nombre && <p>Recibe: <b>{e.recibe.nombre}</b></p>}
-                {e.ots.length > 0 && <>
-                  <b>Órdenes de trabajo</b>
-                  {e.ots.map((o, i) => (
-                    <p key={i}>{o.ot ? `OT ${o.ot} · ` : ''}{o.observaciones} <em>({o.estado})</em></p>
-                  ))}
-                </>}
-                {e.adicionales.length > 0 && <>
-                  <b>Actividades adicionales</b>
-                  {e.adicionales.map((a, i) => <p key={i}>{a.descripcion} <em>({a.estado})</em></p>)}
-                </>}
-                {e.amenazas.length > 0 && <>
-                  <b>Amenazas</b>
-                  {e.amenazas.map((a, i) => <p key={i}>{a.descripcion}</p>)}
-                </>}
-                {e.equipos.length > 0 && <>
-                  <b>Equipos informados</b>
-                  <p>{e.equipos.map((q) => `${q.interno}: ${q.estado || '—'}${q.horometro ? ` (${q.horometro})` : ''}`).join(' · ')}</p>
-                </>}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ------------------------------------------------------------------ pantalla
 
 export default function Planificacion() {
   const sesion = useSesion()
-  const [pestana, setPestana] = useState<Pestana>('proyectos')
+  const [area, setArea] = useState<Area>('home')
   const [cambiando, setCambiando] = useState(false)
   const [nuevaClave, setNuevaClave] = useState('')
   const [aviso, setAviso] = useState('')
@@ -368,23 +143,43 @@ export default function Planificacion() {
     }
   }
 
+  const abierta = AREAS.find((a) => a.codigo === area)
+
   return (
     <div>
       <div className="plano-titulo">
-        <b>PLANIFICACIÓN</b>
-        <span>{fechaCorta().toUpperCase()}</span>
+        <b>{abierta ? abierta.nombre.toUpperCase() : 'PLANIFICACIÓN'}</b>
+        <span>{area === 'home' ? fechaCorta().toUpperCase() : 'PLANIFICACIÓN'}</span>
       </div>
 
-      <div className="vista-seg">
-        <button className={pestana === 'proyectos' ? 'on' : ''} onClick={() => setPestana('proyectos')}>
-          Proyectos
+      {area !== 'home' && (
+        <button className="btn sm ghost" style={{ marginBottom: 10 }} onClick={() => setArea('home')}>
+          ‹ Volver
         </button>
-        <button className={pestana === 'entregas' ? 'on' : ''} onClick={() => setPestana('entregas')}>
-          Entrega de turno
-        </button>
-      </div>
+      )}
 
-      {pestana === 'proyectos' ? <PanelProyectos /> : <PanelEntregas />}
+      {area === 'home' && (
+        <>
+          <p className="hint" style={{ margin: '0 0 12px' }}>
+            Semana en curso: <b>{rotuloSemana(martesDe(new Date().toISOString().slice(0, 10)))}</b>.
+            Va de martes a lunes, como la trabajas tú.
+          </p>
+          <div className="menu-grid">
+            {AREAS.map((a) => (
+              <button key={a.codigo} className="menu-card" onClick={() => setArea(a.codigo)}>
+                <span className="mc-ico rojo">{a.icono}</span>
+                <span className="mc-txt"><b>{a.nombre}</b><small>{a.bajada}</small></span>
+                <span className="mc-arrow">›</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {area === 'minuta' && <PanelMinuta />}
+      {area === 'plan' && <PanelPlan />}
+      {area === 'proyectos' && <PanelProyectos />}
+      {area === 'entregas' && <PanelEntregas />}
 
       <div className="plan-pie">
         <span>{sesion.correo}</span>
