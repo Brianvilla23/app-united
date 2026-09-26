@@ -1,5 +1,9 @@
 // El plan maestro: la planilla "Planificacion" de SharePoint, semana por
-// semana (martes a lunes), con sus turnos día y noche y las HH de cada día.
+// semana, con sus turnos día y noche y las HH de cada día.
+//
+// ⚠️ Acá la semana va de LUNES A DOMINGO y lleva el número de la planilla
+// ("Week 46"), no de martes a lunes como la minuta. Son dos calendarios
+// distintos a propósito: este es el de United.
 //
 // El ida y vuelta con SharePoint es por archivo: se carga el Excel que está
 // allá y, cuando se quiere publicar, se baja de nuevo. Conectarlo en línea
@@ -7,12 +11,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { quienSoy } from './identidad'
 import { uuid } from './util'
-import { martesDe, rotuloSemana, sumarDias, diasDeLaSemana, esSemanaDeHoy } from './minuta'
+import { sumarDias, diasDeLaSemana } from './minuta'
 import {
-  borrarLinea, guardarLinea, guardarMuchas, hhDe, lineasDe, traerHHDia, traerPlan,
-  traerSemanasCargadas, type LineaPlan, type TurnoPlan,
+  borrarLinea, esSemanaPlanDeHoy, guardarLinea, guardarMuchas, hhDe, lineasDe, lunesDe,
+  rotuloSemanaPlan, traerHHDia, traerPlan, traerSemanasCargadas,
+  type LineaPlan, type TurnoPlan,
 } from './planSemana'
-import { bajarPlanExcel, leerPlanDesdeArchivo } from './planExcel'
+import { bajarPlanExcel, leerLibro, type HojaPlan } from './planExcel'
 
 const hoy = () => new Date().toISOString().slice(0, 10)
 const TURNOS: { codigo: TurnoPlan; nombre: string }[] = [
@@ -21,8 +26,9 @@ const TURNOS: { codigo: TurnoPlan; nombre: string }[] = [
 ]
 
 export default function PanelPlan() {
-  const [inicio, setInicio] = useState(martesDe(hoy()))
+  const [inicio, setInicio] = useState(lunesDe(hoy()))
   const [plan, setPlan] = useState<LineaPlan[]>([])
+  const [hojas, setHojas] = useState<HojaPlan[]>([])
   const [hhDia, setHHDia] = useState(344)
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
@@ -50,24 +56,44 @@ export default function PanelPlan() {
   useEffect(() => { void cargar(inicio) }, [inicio, cargar])
   useEffect(() => { void traerHHDia().then(setHHDia); void cargarSemanas() }, [cargarSemanas])
 
+  /** Carga una hoja del libro. Al terminar se para en la semana de hoy si la
+      hoja la tiene; si no, en la primera que trajo, para que se vea que cargó. */
+  const cargarHoja = async (h: HojaPlan) => {
+    setCargando(true); setError('')
+    try {
+      const n = await guardarMuchas(h.lineas, quienSoy())
+      const cuales = [...new Set(h.lineas.map((l) => lunesDe(l.fecha)))].sort()
+      const deHoy = lunesDe(hoy())
+      const ir = cuales.includes(deHoy) ? deHoy : cuales[0]
+      setHojas([])
+      setAviso(`Hoja «${h.nombre}»: ${n} líneas en ${cuales.length} semanas, del ${h.desde} al ${h.hasta}.`)
+      await cargarSemanas()
+      if (ir && ir !== inicio) setInicio(ir)
+      else await cargar(inicio)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo cargar la hoja.')
+    } finally {
+      setCargando(false)
+    }
+  }
+
   const importar = async (archivo: File | undefined) => {
     if (!archivo) return
-    setCargando(true); setError(''); setAviso('')
+    setCargando(true); setError(''); setAviso(''); setHojas([])
     try {
-      const lineas = await leerPlanDesdeArchivo(archivo)
-      if (lineas.length === 0) {
+      const encontradas = await leerLibro(archivo)
+      if (encontradas.length === 0) {
         setError('No se encontraron semanas en ese archivo.')
         return
       }
-      const n = await guardarMuchas(lineas, quienSoy())
-      const cuales = [...new Set(lineas.map((l) => martesDe(l.fecha)))].sort()
-      // saltar a la primera semana del archivo: si trae semanas viejas, la de
-      // hoy queda vacía y parece que no cargó nada
-      const primera = cuales[0]
-      setAviso(`Se cargaron ${n} líneas en ${cuales.length} semanas, de la del ${primera} a la del ${cuales[cuales.length - 1]}.`)
-      await cargarSemanas()
-      if (primera) setInicio(primera)
-      else await cargar(inicio)
+      // el libro de United trae la hoja histórica y la viva: hay que elegir,
+      // porque cargar la vieja deja la semana de hoy en blanco
+      if (encontradas.length === 1) {
+        await cargarHoja(encontradas[0])
+        return
+      }
+      setHojas(encontradas)
+      setAviso(`El archivo trae ${encontradas.length} hojas con plan. Elige cuál cargar.`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo leer el archivo.')
     } finally {
@@ -108,9 +134,9 @@ export default function PanelPlan() {
       <div className="semana-barra">
         <button className="btn sm ghost" onClick={() => setInicio(sumarDias(inicio, -7))}>‹</button>
         <div className="semana-rotulo">
-          <b>{rotuloSemana(inicio)}</b>
-          {!esSemanaDeHoy(inicio) && (
-            <button className="btn sm ghost" onClick={() => setInicio(martesDe(hoy()))}>Ir a la de hoy</button>
+          <b>{rotuloSemanaPlan(inicio)}</b>
+          {!esSemanaPlanDeHoy(inicio) && (
+            <button className="btn sm ghost" onClick={() => setInicio(lunesDe(hoy()))}>Ir a la de hoy</button>
           )}
         </div>
         <button className="btn sm ghost" onClick={() => setInicio(sumarDias(inicio, 7))}>›</button>
@@ -124,7 +150,8 @@ export default function PanelPlan() {
           {cargando ? 'Trabajando…' : 'Cargar el Excel'}
           <input
             type="file" hidden accept=".xlsx,.xlsm"
-            onChange={(e) => void importar(e.target.files?.[0])}
+            // se limpia el campo para poder volver a elegir el MISMO archivo
+            onChange={(e) => { const a = e.target.files?.[0]; e.target.value = ''; void importar(a) }}
           />
         </label>
         <button className="btn sm ghost" disabled={cargando} onClick={() => void exportar()}>Bajar el Excel</button>
@@ -134,6 +161,20 @@ export default function PanelPlan() {
           con SharePoint: el ida y vuelta es bajando y subiendo el Excel.
         </p>
       </div>
+
+      {hojas.length > 0 && (
+        <div className="lista">
+          {hojas.map((h) => (
+            <div key={h.nombre} className="fila-entrega">
+              <div>
+                <b>{h.nombre}{h.vigente ? ' · tiene la semana de hoy' : ''}</b>
+                <small>{h.lineas.length} líneas · del {h.desde} al {h.hasta}</small>
+              </div>
+              <button className="btn sm" disabled={cargando} onClick={() => void cargarHoja(h)}>Cargar</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {plan.length === 0 && semanas.length > 0 && (
         <p className="memb-aviso">
@@ -149,7 +190,7 @@ export default function PanelPlan() {
           <select value={semanas.some((x) => x.inicio === inicio) ? inicio : ''} onChange={(e) => e.target.value && setInicio(e.target.value)}>
             <option value="">Elegir una semana…</option>
             {semanas.map((x) => (
-              <option key={x.inicio} value={x.inicio}>{rotuloSemana(x.inicio)} · {x.lineas} líneas</option>
+              <option key={x.inicio} value={x.inicio}>{rotuloSemanaPlan(x.inicio)} · {x.lineas} líneas</option>
             ))}
           </select>
         </label>

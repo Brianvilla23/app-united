@@ -32,6 +32,45 @@ export const DIAS_SEMANA = 7
 
 export const HH_DIA_POR_DEFECTO = 344
 
+// ------------------------------------------------------- la semana del plan
+// ⚠️ Ojo: la MINUTA va de martes a lunes, como trabaja Brayan. El PLAN MAESTRO
+// no: la planilla de United arma sus bloques de LUNES A DOMINGO y los numera
+// con la semana ISO ("Week 46" = la que empieza el lunes 09-11-2026). Se
+// respeta el número de la planilla para poder hablar el mismo idioma en las
+// reuniones.
+
+/** El lunes de la semana en que cae esa fecha. */
+export function lunesDe(fecha: string): string {
+  const d = new Date(fecha + 'T12:00:00')
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return d.toISOString().slice(0, 10)
+}
+
+/** El número de semana ISO, el mismo que usa la planilla. */
+export function semanaISO(fecha: string): number {
+  // todo al mediodía: así el cambio de hora no corre la cuenta un día
+  const lunes = new Date(lunesDe(fecha) + 'T12:00:00')
+  const anio = new Date(lunes.getTime() + 3 * 86400000).getFullYear()   // manda el jueves
+  const cuatro = new Date(anio, 0, 4, 12)
+  const lunesUno = new Date(cuatro)
+  lunesUno.setDate(cuatro.getDate() - ((cuatro.getDay() + 6) % 7))
+  return Math.round((lunes.getTime() - lunesUno.getTime()) / (7 * 86400000)) + 1
+}
+
+/** "21-09". A mano, porque el formato corto del navegador da "21/9". */
+const diaMes = (f: string) => `${f.slice(8, 10)}-${f.slice(5, 7)}`
+
+/** "Week 46 · lunes 09-11 → domingo 15-11", igual que la planilla. */
+export function rotuloSemanaPlan(inicio: string): string {
+  const fin = new Date(inicio + 'T12:00:00')
+  fin.setDate(fin.getDate() + 6)
+  return `Week ${semanaISO(inicio)} · lunes ${diaMes(inicio)} → domingo ${diaMes(fin.toISOString().slice(0, 10))}`
+}
+
+export function esSemanaPlanDeHoy(inicio: string): boolean {
+  return inicio === lunesDe(new Date().toISOString().slice(0, 10))
+}
+
 // ------------------------------------------------------------------- base
 
 function aLinea(r: Record<string, unknown>): LineaPlan {
@@ -56,19 +95,23 @@ export async function traerPlan(desde: string, hasta: string): Promise<LineaPlan
   return (data ?? []).map(aLinea)
 }
 
-/** Las semanas que tienen algo cargado (por su martes), de la más nueva a la
+/** Las semanas que tienen algo cargado (por su lunes), de la más nueva a la
     más vieja. Sirve para saltar a una semana con datos: después de cargar un
     archivo viejo, la semana de hoy puede estar vacía y parece que no cargó. */
 export async function traerSemanasCargadas(): Promise<{ inicio: string; lineas: number }[]> {
-  const { data, error } = await supabase.from('plan_semana').select('fecha')
-  if (error) throw new Error(error.message)
   const cuenta = new Map<string, number>()
-  for (const r of data ?? []) {
-    const f = String(r.fecha)
-    const d = new Date(f + 'T12:00:00')
-    d.setDate(d.getDate() - ((d.getDay() + 5) % 7))   // el martes de esa semana
-    const clave = d.toISOString().slice(0, 10)
-    cuenta.set(clave, (cuenta.get(clave) ?? 0) + 1)
+  // ⚠️ Supabase entrega 1.000 filas por consulta y el plan tiene miles: hay que
+  // pedirlas por tandas o se pierden semanas enteras de la lista.
+  for (let p = 0; p < 50; p++) {
+    const { data, error } = await supabase.from('plan_semana')
+      .select('fecha').order('fecha').order('id')
+      .range(p * 1000, p * 1000 + 999)
+    if (error) throw new Error(error.message)
+    for (const r of data ?? []) {
+      const clave = lunesDe(String(r.fecha))
+      cuenta.set(clave, (cuenta.get(clave) ?? 0) + 1)
+    }
+    if (!data || data.length < 1000) break
   }
   return [...cuenta.entries()]
     .map(([inicio, lineas]) => ({ inicio, lineas }))

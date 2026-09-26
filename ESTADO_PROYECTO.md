@@ -490,15 +490,30 @@ completadas · exportar la planilla en PDF o Excel*.
   Supabase y se abren con **enlaces firmados de 5 minutos**: no hay URL pública
   que se pueda pasar por ahí. En la lista, cada tarea muestra su fecha de cierre
   y cuántas subtareas tiene.
-- 🔴 **"El plan maestro no funciona"**: sí funcionaba, pero el archivo que se
-  cargó traía semanas de 2025 y la app abre en la semana de hoy, que estaba
-  vacía. Ahora, al cargar, **salta a la primera semana del archivo**, avisa
-  desde cuándo hasta cuándo cargó, y si la semana que se mira está vacía lo dice
-  y ofrece ir a una con datos. Además hay un **selector con las semanas
-  cargadas**. Lección: cuando una pantalla depende de en qué fecha está parada,
-  el vacío tiene que explicarse solo.
+- 🔴 **"El plan maestro no funciona"** — eran cuatro cosas, no una:
+  1. **Se cargaba la hoja equivocada.** El libro de SharePoint trae dos hojas
+     con plan: `Planifcacion` (histórica, abr–dic 2025) y **`OT Estrategia`,
+     que es la viva** (dic 2025 → ene 2027). El lector tomaba la primera que le
+     servía y nunca llegaba a la buena. Ahora **lee todo el libro y ofrece las
+     hojas** con sus fechas, marcando cuál tiene la semana de hoy.
+  2. **Las dos hojas no tienen la misma forma**: la histórica usa 3 columnas
+     por día (actividad, HH, OT) y la viva 2 (Descripcion, Horas). El lector ya
+     no asume columnas fijas: **busca la fila de fechas y deduce el ancho**.
+  3. **Las semanas cercanas tienen el día escrito a mano** ("lunes 21") en vez
+     de una fecha. Esas se deducen del número de *Week* del título o de la
+     semana anterior, y se validan contra el día del mes.
+  4. **Todo caía un día antes.** Excel entrega el día a medianoche UTC y la
+     cuenta lo corría al domingo anterior. Ahora se redondea al día más cercano.
+- La semana del plan va de **lunes a domingo** y lleva el **número de la
+  planilla** ("Week 39"), no la de martes a lunes de la minuta. Son dos
+  calendarios a propósito: este es el de United.
+- Si la semana que se mira está vacía, la app lo dice y ofrece ir a una con
+  datos; y hay un **selector con las semanas cargadas**.
 - Un `.xlsb` no se puede leer en el navegador: la app lo dice y pide guardarlo
-  como `.xlsx`.
+  como `.xlsx`. Y elegir **el mismo archivo dos veces** ya funciona.
+- Comprobado contra el archivo real: saca **451 líneas** de la hoja viva y
+  **704** de la histórica — exactamente las celdas que tienen actividad, ni una
+  inventada ni una perdida. La semana de hoy muestra el outage del Rack 3.
 
 ---
 
