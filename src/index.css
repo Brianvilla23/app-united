@@ -599,8 +599,12 @@ textarea { resize: vertical; }
 
 /* Control de ovalamiento: la vasija con sus dos sideport al costado. */
 .oval-dibujo { display: block; width: 100%; max-width: 340px; height: auto; margin: 4px auto 8px; }
-.oval-foto { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-.oval-foto img { width: 100%; max-width: 280px; border-radius: 11px; border: 1px solid var(--border); }
-.oval-foto h4.sec { margin: 0; }
+/* la foto: la imagen arriba y sus tres botones en una fila, con aire */
+.oval-foto { display: flex; flex-direction: column; gap: 10px; }
+.oval-foto img { display: block; width: 100%; max-height: 320px; object-fit: contain; background: #f1f5f9; border-radius: 11px; border: 1px solid var(--border); }
+.oval-foto-cargando { display: grid; place-items: center; height: 160px; border-radius: 11px; background: #f1f5f9; color: var(--muted); font-size: 13px; }
+.oval-foto-botones { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+.oval-foto-botones .btn { margin: 0; text-align: center; }
+.oval-sin-foto { display: block; text-align: center; margin-top: 0; }
 .app-foot { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
 .app-foot .btn { padding: 6px 10px; font-size: 12px; }

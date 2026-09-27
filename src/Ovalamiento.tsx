@@ -8,7 +8,7 @@
 // Al tocar una vasija se abre su detalle: el número al medio y sus dos
 // sideport a los costados. Tocando una sideport se le pone el estado —buena,
 // pendiente de retiro o crítica para cambio—, su nota y su foto.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
@@ -41,11 +41,25 @@ export default function Ovalamiento() {
   const [selPort, setSelPort] = useState<Sideport | null>(null)
   const [error, setError] = useState('')
   const [subiendo, setSubiendo] = useState(false)
+  /** Enlace firmado de la foto que está en el servidor, para mostrarla aunque
+      este equipo no sea el que la sacó (la miniatura vive solo en ese). */
+  const [urlFoto, setUrlFoto] = useState<string | null>(null)
 
   const filas = useLiveQuery(
     () => db.ovalamientos.where('[lado+rack]').equals([lado, rack]).toArray(),
     [lado, rack],
   ) ?? []
+
+  const rutaAbierta = sel && selPort
+    ? filas.find((x) => x.id === ovalId(lado, rack, sel, selPort))?.foto ?? null
+    : null
+  useEffect(() => {
+    setUrlFoto(null)
+    if (!rutaAbierta) return
+    let vivo = true
+    enlaceFoto(rutaAbierta).then((u) => { if (vivo) setUrlFoto(u) }).catch(() => {})
+    return () => { vivo = false }
+  }, [rutaAbierta])
 
   const revisada = (vasija: string, sideport: Sideport) =>
     filas.some((x) => x.id === ovalId(lado, rack, vasija, sideport))
@@ -212,37 +226,53 @@ export default function Ovalamiento() {
                   onBlur={(e) => { if (e.target.value !== abierto.nota) void guardar(abierto, { nota: e.target.value }) }}
                 />
 
-                {(miniatura(abierto.id) || abierto.foto) && (
-                  <div className="oval-foto">
-                    <h4 className="sec">Foto</h4>
-                    {miniatura(abierto.id) && <img src={miniatura(abierto.id)} alt="" />}
-                    {!abierto.foto && miniatura(abierto.id) && (
-                      <small className="hint">Solo en este celular: falta subirla.</small>
-                    )}
-                    <div className="row" style={{ gap: 8, marginTop: 4 }}>
-                      {abierto.foto && (
-                        <button className="btn sm ghost" onClick={() => void verFoto(abierto.foto!)}>
-                          Ver grande
-                        </button>
+                <h4 className="sec" style={{ marginTop: 14 }}>Foto</h4>
+                {(() => {
+                  const imagen = miniatura(abierto.id) ?? urlFoto
+                  const tiene = !!(abierto.foto || miniatura(abierto.id))
+                  if (!tiene) {
+                    return puedeRegistrar ? (
+                      <label className="btn add oval-sin-foto">
+                        {subiendo ? 'Guardando la foto…' : '+ Foto de la sideport'}
+                        <input
+                          type="file" accept="image/*" capture="environment" hidden
+                          onChange={(e) => void ponerFoto(abierto, e.target.files?.[0])}
+                        />
+                      </label>
+                    ) : <p className="hint">Sin foto.</p>
+                  }
+                  return (
+                    <div className="oval-foto">
+                      {imagen
+                        ? <img src={imagen} alt={`Sideport ${nombreSideport(abierto.sideport)} de ${sel}`} />
+                        : <div className="oval-foto-cargando">Cargando la foto…</div>}
+                      {!abierto.foto && miniatura(abierto.id) && (
+                        <small className="hint">Solo en este celular: falta subirla.</small>
                       )}
-                      {puedeRegistrar && (
-                        <button className="btn sm ghost" onClick={() => void quitarFoto(abierto)}>
-                          Borrar la foto
-                        </button>
-                      )}
+                      <div className="oval-foto-botones">
+                        {abierto.foto && (
+                          <button className="btn sm ghost" onClick={() => void verFoto(abierto.foto!)}>
+                            Ver grande
+                          </button>
+                        )}
+                        {puedeRegistrar && (
+                          <label className="btn sm ghost">
+                            {subiendo ? 'Guardando…' : 'Cambiar'}
+                            <input
+                              type="file" accept="image/*" capture="environment" hidden
+                              onChange={(e) => void ponerFoto(abierto, e.target.files?.[0])}
+                            />
+                          </label>
+                        )}
+                        {puedeRegistrar && (
+                          <button className="btn sm ghost" onClick={() => void quitarFoto(abierto)}>
+                            Borrar
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {puedeRegistrar && (
-                  <label className="btn add" style={{ marginTop: 8 }}>
-                    {subiendo ? 'Guardando la foto…' : (abierto.foto || miniatura(abierto.id) ? '+ Cambiar la foto' : '+ Foto de la sideport')}
-                    <input
-                      type="file" accept="image/*" capture="environment" hidden
-                      onChange={(e) => void ponerFoto(abierto, e.target.files?.[0])}
-                    />
-                  </label>
-                )}
+                  )
+                })()}
               </>
             )}
         </div>
