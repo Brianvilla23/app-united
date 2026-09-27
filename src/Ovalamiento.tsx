@@ -21,7 +21,7 @@ import { useModal } from './useModal'
 import PlanoRack from './PlanoRack'
 import {
   ESTADOS_SIDEPORT, colorSideport, enlaceFoto, filaOvalamiento, nombreSideport,
-  ovalId, resumirOval, subirFotoSideport,
+  borrarFotoSideport, ovalId, resumirOval, subirFotoSideport,
   type EstadoSideport, type Ovalamiento as Oval, type Sideport,
 } from './sideports'
 
@@ -63,7 +63,9 @@ export default function Ovalamiento() {
   const revisadas = filas.filter((f) => f.estado !== 'ok' || f.nota || f.foto)
   const resumen = resumirOval(filas.map((f) => ({ ...f, estado: f.estado as EstadoSideport })) as Oval[])
 
-  const guardar = async (o: Oval, cambio: Partial<Oval>) => {
+  /** `mini` va aparte del resto porque la miniatura vive solo en este celular:
+      `undefined` = déjala como está, `null` = bórrala. */
+  const guardar = async (o: Oval, cambio: Partial<Oval>, mini?: string | null) => {
     if (!puedeRegistrar) return
     const nuevo: Oval = { ...o, ...cambio }
     setError('')
@@ -71,7 +73,7 @@ export default function Ovalamiento() {
       await db.ovalamientos.put({
         id: nuevo.id, rack: nuevo.rack, lado: nuevo.lado, vasija: nuevo.vasija,
         sideport: nuevo.sideport, estado: nuevo.estado, nota: nuevo.nota, foto: nuevo.foto,
-        miniatura: (cambio as { miniatura?: string }).miniatura ?? miniatura(nuevo.id),
+        miniatura: mini === null ? undefined : (mini ?? miniatura(nuevo.id)),
         sincronizado: false,
       })
       await encolar('oval_upsert', filaOvalamiento(nuevo, quienSoy()))
@@ -94,12 +96,20 @@ export default function Ovalamiento() {
       } catch {
         setError('La foto quedó en el celular: sin señal no se pudo subir. Vuelve a tomarla con señal para compartirla.')
       }
-      await guardar(o, { foto: ruta ?? o.foto, miniatura: chica } as Partial<Oval>)
+      await guardar(o, { foto: ruta ?? o.foto }, chica)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo usar la foto.')
     } finally {
       setSubiendo(false)
     }
+  }
+
+  const quitarFoto = async (o: Oval) => {
+    setError('')
+    try {
+      if (o.foto) await borrarFotoSideport(o.foto)
+    } catch { /* si ya no está en el servidor, igual la sacamos de acá */ }
+    await guardar(o, { foto: null }, null)
   }
 
   const verFoto = async (ruta: string) => {
@@ -108,13 +118,21 @@ export default function Ovalamiento() {
     }
   }
 
-  // el color de cada vasija en el plano: el peor de sus dos sideport
+  // En el plano, cada vasija muestra sus DOS sideport a los costados con su
+  // color: verde bien, amarillo pendiente, rojo para cambio. La vasija misma
+  // se pinta con el peor de los dos, para verlo de lejos.
   const colores = new Map<string, { color: string; texto: string }>()
-  for (const f of filas) {
-    if (f.estado === 'ok') continue
-    const otra = filas.find((x) => x.vasija === f.vasija && x.sideport !== f.sideport)
-    const e = peor([f.estado as EstadoSideport, (otra?.estado as EstadoSideport) ?? 'ok'])
-    colores.set(f.vasija, { color: colorSideport(e), texto: '#fff' })
+  const sideports = new Map<string, { norte: string; sur: string }>()
+  const vasijas = [...new Set(filas.map((f) => f.vasija))]
+  for (const v of vasijas) {
+    const n = filas.find((f) => f.vasija === v && f.sideport === 'norte')
+    const s2 = filas.find((f) => f.vasija === v && f.sideport === 'sur')
+    sideports.set(v, {
+      norte: colorSideport((n?.estado as EstadoSideport) ?? 'ok'),
+      sur: colorSideport((s2?.estado as EstadoSideport) ?? 'ok'),
+    })
+    const e = peor([(n?.estado as EstadoSideport) ?? 'ok', (s2?.estado as EstadoSideport) ?? 'ok'])
+    if (e !== 'ok') colores.set(v, { color: colorSideport(e), texto: '#fff' })
   }
 
   const detalle = () => {
@@ -130,26 +148,35 @@ export default function Ovalamiento() {
             <button className="modal-x" onClick={() => { cerrarVasija(); setSelPort(null) }}>✕</button>
           </div>
 
-          {/* la vasija al medio y sus dos sideport a los costados */}
-          <svg viewBox="0 0 320 200" className="oval-dibujo">
-            <line x1={70} y1={100} x2={250} y2={100} stroke="#cbd5e1" strokeWidth={6} />
-            <circle cx={160} cy={100} r={52} fill="#f8fafc" stroke="#94a3b8" strokeWidth={3} />
-            <text x={160} y={108} textAnchor="middle" fontSize={26} fontWeight={800} fill="#0f172a">{sel}</text>
-            {([['norte', 70, norte], ['sur', 250, sur]] as const).map(([cod, x, o]) => (
+          {/* La vasija al medio con su número, y las sideport como rectángulos
+              a cada costado: es como se ven en terreno, no como círculos. */}
+          <svg viewBox="0 0 320 190" className="oval-dibujo">
+            <line x1={40} y1={95} x2={280} y2={95} stroke="#cbd5e1" strokeWidth={6} />
+            <circle cx={160} cy={95} r={50} fill="#f8fafc" stroke="#94a3b8" strokeWidth={3} />
+            <text x={160} y={103} textAnchor="middle" fontSize={25} fontWeight={800} fill="#0f172a">{sel}</text>
+            {([['norte', 34, norte], ['sur', 218, sur]] as const).map(([cod, x, o]) => (
               <g key={cod} onClick={() => setSelPort(cod as Sideport)} style={{ cursor: 'pointer' }}>
-                <circle
-                  cx={x} cy={100} r={30}
-                  fill={colorSideport(o.estado)} stroke="#0f172a" strokeWidth={selPort === cod ? 3.5 : 1.5}
-                  opacity={o.estado === 'ok' ? 0.25 : 1}
+                <rect
+                  x={x} y={68} width={68} height={54} rx={7}
+                  fill={colorSideport(o.estado)} stroke="#0f172a"
+                  strokeWidth={selPort === cod ? 3.5 : 1.4}
                 />
-                <text x={x} y={106} textAnchor="middle" fontSize={16} fontWeight={800}
-                  fill={o.estado === 'ok' ? '#0f172a' : '#fff'}>
+                <text
+                  x={x + 34} y={101} textAnchor="middle" fontSize={20} fontWeight={800}
+                  fill="#fff"
+                >
                   {ESTADOS_SIDEPORT.find((e) => e.codigo === o.estado)?.corto}
                 </text>
-                <text x={x} y={156} textAnchor="middle" fontSize={13} fontWeight={700} fill="#0f172a">
+                <text x={x + 34} y={144} textAnchor="middle" fontSize={13} fontWeight={700} fill="#0f172a">
                   {nombreSideport(cod as Sideport)}
                 </text>
-                {o.foto && <text x={x} y={172} textAnchor="middle" fontSize={11} fill="#64748b">con foto</text>}
+                <text x={x + 34} y={161} textAnchor="middle" fontSize={11} fill="#64748b">
+                  {ESTADOS_SIDEPORT.find((e) => e.codigo === o.estado)?.nombre}
+                </text>
+                {o.foto && <text x={x + 34} y={177} textAnchor="middle" fontSize={11} fill="#64748b">con foto</text>}
+                {/* zona de toque: cubre el rectángulo y sus rótulos, para que
+                    se pueda tocar con guantes sin apuntar fino */}
+                <rect x={x} y={60} width={68} height={122} fill="transparent" />
               </g>
             ))}
           </svg>
@@ -180,17 +207,26 @@ export default function Ovalamiento() {
                   onBlur={(e) => { if (e.target.value !== abierto.nota) void guardar(abierto, { nota: e.target.value }) }}
                 />
 
-                {miniatura(abierto.id) && (
+                {(miniatura(abierto.id) || abierto.foto) && (
                   <div className="oval-foto">
-                    <img src={miniatura(abierto.id)} alt="" />
-                    {abierto.foto && (
-                      <button className="btn sm ghost" onClick={() => void verFoto(abierto.foto!)}>Ver grande</button>
+                    <h4 className="sec">Foto</h4>
+                    {miniatura(abierto.id) && <img src={miniatura(abierto.id)} alt="" />}
+                    {!abierto.foto && miniatura(abierto.id) && (
+                      <small className="hint">Solo en este celular: falta subirla.</small>
                     )}
-                    {!abierto.foto && <small className="hint">Solo en este celular: falta subirla.</small>}
+                    <div className="row" style={{ gap: 8, marginTop: 4 }}>
+                      {abierto.foto && (
+                        <button className="btn sm ghost" onClick={() => void verFoto(abierto.foto!)}>
+                          Ver grande
+                        </button>
+                      )}
+                      {puedeRegistrar && (
+                        <button className="btn sm ghost" onClick={() => void quitarFoto(abierto)}>
+                          Borrar la foto
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
-                {!miniatura(abierto.id) && abierto.foto && (
-                  <button className="btn sm ghost" onClick={() => void verFoto(abierto.foto!)}>Ver la foto</button>
                 )}
 
                 {puedeRegistrar && (
@@ -218,8 +254,8 @@ export default function Ovalamiento() {
         </div>
         <div className="minuta-resumen" style={{ marginTop: 8 }}>
           <span className="ok"><b>{resumen.ok}</b> sin problema</span>
-          <span><b>{resumen.pendiente}</b> pendientes de retiro</span>
-          <span><b>{resumen.critica}</b> críticas para cambio</span>
+          <span><b>{resumen.pendiente}</b> pendiente cambio</span>
+          <span><b>{resumen.critica}</b> para cambio</span>
         </div>
       </div>
 
@@ -254,12 +290,14 @@ export default function Ovalamiento() {
         porVasija={new Map()}
         hechos={new Set()}
         colores={colores}
+        sideports={sideports}
         onVasija={(id) => { abrirVasija(id); setSelPort(null) }}
       />
 
       <p className="hint" style={{ marginTop: 10 }}>
-        La vasija se pinta con el peor estado de sus dos sideport:
-        naranjo si queda <b>pendiente de retiro</b>, rojo si está <b>crítica para cambio</b>.
+        Cada vasija muestra sus dos sideport a los costados: <b>verde</b> sin problema,
+        <b>amarillo</b> pendiente cambio, <b>rojo</b> para cambio. La vasija se pinta con
+        el peor de las dos, para verlo de lejos.
       </p>
 
       {sel && detalle()}

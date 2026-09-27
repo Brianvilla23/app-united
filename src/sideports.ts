@@ -18,12 +18,14 @@ export const SIDEPORTS: { codigo: Sideport; nombre: string }[] = [
   { codigo: 'sur', nombre: 'Sur' },
 ]
 
+// Los códigos que van a la base NO cambian; lo que cambia es cómo se llaman en
+// pantalla, que es como lo dice Brayan en terreno.
 export const ESTADOS_SIDEPORT: {
   codigo: EstadoSideport; nombre: string; corto: string; color: string
 }[] = [
   { codigo: 'ok', nombre: 'Sin problema', corto: '✓', color: '#0e9f6e' },
-  { codigo: 'pendiente', nombre: 'Pendiente de retiro', corto: '!', color: '#d97706' },
-  { codigo: 'critica', nombre: 'Crítica para cambio', corto: '✕', color: '#c00000' },
+  { codigo: 'pendiente', nombre: 'Pendiente cambio', corto: '!', color: '#eab308' },
+  { codigo: 'critica', nombre: 'Cambio', corto: '✕', color: '#c00000' },
 ]
 
 export const colorSideport = (e: EstadoSideport) =>

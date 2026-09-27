@@ -745,6 +745,35 @@ la PWA no se cerró.
 
 ---
 
+## 24. Lo de la cuadrilla se ve aunque tu equipo tenga algo trabado ✅ (27-09-2026)
+
+🔴 **Bug serio que encontró Brayan**: en su PC el outage del Rack 3 mostraba
+**0%** en codificación, retiro de manifold y retiro de membrana, que en la base
+estaban al **100%** (Claudio Araya, Moisés Navarrete, Francisco Rojas).
+
+Causa: la sincronización **no bajaba nada** de una tabla si en ese equipo había
+UN registro esperando subir, para no pisar lo local. Si ese registro nunca
+lograba subir, el equipo quedaba **ciego para siempre** a lo que registraba el
+resto. Arreglado en las cuatro bajadas (marcas, tapas, avance e ovalamiento):
+ahora se baja siempre y **solo se respetan las filas propias que están en la
+cola** (`idsEnCola` en `sync.ts`).
+
+**Ovalamiento, según lo que pidió Brayan al usarlo:**
+- Las sideport son **rectángulos** a los costados de la vasija, no círculos.
+- Los estados se llaman **Sin problema / Pendiente cambio / Cambio** (los códigos
+  en la base no cambiaron: `ok`, `pendiente`, `critica`).
+- **Sin problema se ve verde**, no desteñido; pendiente **amarillo**; cambio rojo.
+- **El plano grande dibuja las dos sideport de cada vasija con su color**, a los
+  costados, y la vasija se pinta con la peor de las dos.
+- La foto tiene **"Ver grande" y "Borrar la foto"** separados, no pegados.
+- Zona de toque más grande en cada sideport (se usa con guantes).
+
+⚠️ **La cuadrilla ya lo está usando**: Neimar Hernández marcó la sideport sur de
+A2 como cambio con foto. Las pruebas NO se vuelven a correr contra el Rack 3 en
+producción: usan la misma vasija y pueden confundir a la gente.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

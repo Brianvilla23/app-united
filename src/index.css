@@ -599,7 +599,8 @@ textarea { resize: vertical; }
 
 /* Control de ovalamiento: la vasija con sus dos sideport al costado. */
 .oval-dibujo { display: block; width: 100%; max-width: 340px; height: auto; margin: 4px auto 8px; }
-.oval-foto { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.oval-foto { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .oval-foto img { width: 100%; max-width: 280px; border-radius: 11px; border: 1px solid var(--border); }
+.oval-foto h4.sec { margin: 0; }
 .app-foot { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
 .app-foot .btn { padding: 6px 10px; font-size: 12px; }

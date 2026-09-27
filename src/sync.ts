@@ -170,15 +170,29 @@ async function bajarTabla(tabla: string, orden: string[]): Promise<FilaRemota[] 
   return filas
 }
 
+/** Los ids que este celular todavía no logra subir.
+    🔴 Antes, si había UNO pendiente, no se bajaba NADA y el celular se quedaba
+    ciego a lo que registraba el resto: a Brayan le salía 0% en actividades que
+    su cuadrilla ya tenía al 100%. Ahora se baja siempre y solo se respetan las
+    filas propias que están en la cola. */
+async function idsEnCola(tablas: TablaOutbox[], idDe: (p: Record<string, unknown>) => string): Promise<Set<string>> {
+  const pendientes = await db.outbox.where('tabla').anyOf(tablas).toArray()
+  return new Set(pendientes.map((p) => idDe(p.payload)))
+}
+
 export async function pullMarcas(): Promise<void> {
   if (!navigator.onLine) return
-  const pendientes = await db.outbox.where('tabla').anyOf(['marcas_upsert', 'marcas_delete']).count()
-  if (pendientes > 0) return // primero subir lo local, después bajar
+  const enCola = await idsEnCola(['marcas_upsert', 'marcas_delete'], (p) =>
+    marcaId(String(p.lado ?? 'alimentacion'), Number(p.rack), String(p.vasija), String(p.componente)))
   const data = await bajarTabla('marcas_fuga', ['lado', 'rack', 'vasija', 'componente'])
   if (!data) return
   await db.transaction('rw', db.marcas, async () => {
+    const mias = await db.marcas.filter((m) => enCola.has(m.id)).toArray()
     await db.marcas.clear()
-    await db.marcas.bulkAdd(data.map((r) => ({
+    await db.marcas.bulkAdd(mias)
+    await db.marcas.bulkPut(data
+      .filter((r) => !enCola.has(marcaId(r.lado ?? 'alimentacion', r.rack, r.vasija, r.componente)))
+      .map((r) => ({
       // `lado` puede faltar en filas viejas: eran todas de alimentación
       id: marcaId(r.lado ?? 'alimentacion', r.rack, r.vasija, r.componente),
       lado: (r.lado as LadoRack | null) ?? 'alimentacion',
@@ -194,13 +208,19 @@ export async function pullMarcas(): Promise<void> {
 
 export async function pullTapas(): Promise<void> {
   if (!navigator.onLine) return
-  const pend = await db.outbox.where('tabla').anyOf(['tapas_upsert', 'tapas_delete']).count()
-  if (pend > 0) return
+  const enCola = await idsEnCola(['tapas_upsert', 'tapas_delete'], (p) =>
+    tapaId(String(p.actividad ?? 'retiro_tapas_alim'), (p.lado as LadoRack) ?? 'alimentacion',
+      Number(p.rack), String(p.vasija)))
   const data = await bajarTabla('estado_tapas', ['actividad', 'lado', 'rack', 'vasija'])
   if (!data || data.length === 0) return // no pisar la data local con una tabla vacía
   await db.transaction('rw', db.tapas, async () => {
+    const mias = await db.tapas.filter((t) => enCola.has(t.id)).toArray()
     await db.tapas.clear()
-    await db.tapas.bulkAdd(data.map((r) => {
+    await db.tapas.bulkAdd(mias)
+    await db.tapas.bulkPut(data.filter((r) => !enCola.has(
+      tapaId((r.actividad as string | null) ?? 'retiro_tapas_alim',
+        (r.lado as LadoRack | null) ?? 'alimentacion', r.rack, r.vasija),
+    )).map((r) => {
       const lado = (r.lado as LadoRack | null) ?? 'alimentacion'
       const actividad = (r.actividad as string | null) ?? 'retiro_tapas_alim'
       return {
@@ -248,12 +268,17 @@ export async function pullHistorial(): Promise<void> {
 
 export async function pullItems(): Promise<void> {
   if (!navigator.onLine) return
-  if (await db.outbox.where('tabla').equals('item_upsert').count() > 0) return
+  const enCola = await idsEnCola(['item_upsert'], (p) =>
+    itemId(String(p.actividad), String(p.lado) as LadoRack, Number(p.rack ?? 12), String(p.item)))
   const data = await bajarTabla('avance_item', ['actividad', 'lado', 'rack', 'item'])
   if (!data) return
   await db.transaction('rw', db.items, async () => {
+    const mios = await db.items.filter((i) => enCola.has(i.id)).toArray()
     await db.items.clear()
-    await db.items.bulkAdd(data.map((r) => ({
+    await db.items.bulkAdd(mios)
+    await db.items.bulkPut(data
+      .filter((r) => !enCola.has(itemId(r.actividad, r.lado, r.rack ?? 12, r.item)))
+      .map((r) => ({
       // `rack` puede faltar si la fila la escribió una versión vieja de la app
       id: itemId(r.actividad, r.lado, r.rack ?? 12, r.item),
       actividad: r.actividad,
@@ -272,14 +297,16 @@ export async function pullItems(): Promise<void> {
 /** El control de ovalamiento: se baja entero, es chico (2 por vasija). */
 export async function pullOvalamiento(): Promise<void> {
   if (!navigator.onLine) return
-  if (await db.outbox.where('tabla').equals('oval_upsert').count() > 0) return
+  const enCola = await idsEnCola(['oval_upsert'], (p) => String(p.id))
   const data = await bajarTabla('sideport_ovalamiento', ['lado', 'rack', 'vasija', 'sideport'])
   if (!data) return
   // la miniatura es de este celular: se conserva al refrescar desde el servidor
   const miniaturas = new Map((await db.ovalamientos.toArray()).map((o) => [o.id, o.miniatura]))
   await db.transaction('rw', db.ovalamientos, async () => {
+    const mias = await db.ovalamientos.filter((o) => enCola.has(o.id)).toArray()
     await db.ovalamientos.clear()
-    await db.ovalamientos.bulkAdd(data.map((r) => ({
+    await db.ovalamientos.bulkAdd(mias)
+    await db.ovalamientos.bulkPut(data.filter((r) => !enCola.has(String(r.id))).map((r) => ({
       id: String(r.id),
       rack: Number(r.rack ?? 0),
       lado: r.lado as LadoRack,

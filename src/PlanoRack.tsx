@@ -50,12 +50,15 @@ export interface PlanoRackProps {
   /** modo 'simple': color propio por vasija, cuando no alcanza con hecho/pendiente
       (las pruebas de presión distinguen revisada sin fuga de revisada con fuga) */
   colores?: Map<string, { color: string; texto: string }>
+  /** El color de las dos sideport de cada vasija, para el control de
+      ovalamiento: se dibujan como rectángulos a cada costado. */
+  sideports?: Map<string, { norte: string; sur: string }>
   /** true cuando se dibuja para el PDF: sin cursor ni handlers */
   paraPdf?: boolean
 }
 
 export default function PlanoRack({
-  modo, vista, espejo, tapaRec, porVasija, onVasija, hechos, colores, paraPdf = false,
+  modo, vista, espejo, tapaRec, porVasija, onVasija, hechos, colores, sideports, paraPdf = false,
 }: PlanoRackProps) {
   const vb = viewBoxPara(vista, espejo)
   const vDib = vistaDibujo(vista, espejo)
@@ -136,6 +139,19 @@ export default function PlanoRack({
             {modo === 'fugas' && set?.has('US') && cpl(`us${celda.id}`, copleX(celda.fila, celda.col, 'S') - 3, y, true)}
             {modo === 'fugas' && set?.has('SN') && <circle cx={x + R} cy={y} r={4.6} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
             {modo === 'fugas' && set?.has('SS') && <circle cx={x - R} cy={y} r={4.6} fill={MARCA} stroke={MARCA_BORDE} strokeWidth={1} />}
+            {/* las dos sideport, una a cada costado de la vasija */}
+            {sideports && (() => {
+              const sp = sideports.get(celda.id)
+              if (!sp) return null
+              return (
+                <>
+                  <rect x={x - R - 9} y={y - 7} width={8} height={14} rx={2}
+                    fill={sp.sur} stroke="#0f172a" strokeWidth={0.8} />
+                  <rect x={x + R + 1} y={y - 7} width={8} height={14} rx={2}
+                    fill={sp.norte} stroke="#0f172a" strokeWidth={0.8} />
+                </>
+              )
+            })()}
           </g>
         )
       })}
