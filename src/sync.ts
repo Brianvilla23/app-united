@@ -120,6 +120,9 @@ async function subirPendientes(): Promise<boolean> {
         // insert y no upsert: la entrega es un parte firmado, no se reescribe
         ({ error } = await supabase.from('entregas_turno').insert(it.payload))
         if (!error) await db.entregas.update(String(it.payload.id), { sincronizado: true })
+      } else if (it.tabla === 'oval_upsert') {
+        ({ error } = await supabase.from('sideport_ovalamiento').upsert(it.payload))
+        if (!error) await db.ovalamientos.update(String(it.payload.id), { sincronizado: true })
       } else if (it.tabla === 'historial') {
         // upsert por id: si la respuesta se perdió, el reintento no duplica
         ({ error } = await supabase.from('historial').upsert(it.payload))
@@ -266,12 +269,37 @@ export async function pullItems(): Promise<void> {
   })
 }
 
+/** El control de ovalamiento: se baja entero, es chico (2 por vasija). */
+export async function pullOvalamiento(): Promise<void> {
+  if (!navigator.onLine) return
+  if (await db.outbox.where('tabla').equals('oval_upsert').count() > 0) return
+  const data = await bajarTabla('sideport_ovalamiento', ['lado', 'rack', 'vasija', 'sideport'])
+  if (!data) return
+  // la miniatura es de este celular: se conserva al refrescar desde el servidor
+  const miniaturas = new Map((await db.ovalamientos.toArray()).map((o) => [o.id, o.miniatura]))
+  await db.transaction('rw', db.ovalamientos, async () => {
+    await db.ovalamientos.clear()
+    await db.ovalamientos.bulkAdd(data.map((r) => ({
+      id: String(r.id),
+      rack: Number(r.rack ?? 0),
+      lado: r.lado as LadoRack,
+      vasija: String(r.vasija),
+      sideport: String(r.sideport),
+      estado: String(r.estado ?? 'ok'),
+      nota: (r.nota as string | null) ?? '',
+      foto: (r.foto as string | null) ?? null,
+      miniatura: miniaturas.get(String(r.id)),
+      sincronizado: true,
+    })))
+  })
+}
+
 // ---------- ciclo de sincronización ----------
 
 let iniciado = false
 
 function ciclo(): void {
-  void drenar().then(() => { void pullMarcas(); void pullTapas(); void pullHistorial(); void pullItems() })
+  void drenar().then(() => { void pullMarcas(); void pullTapas(); void pullHistorial(); void pullItems(); void pullOvalamiento() })
 }
 
 export function iniciarSync(): void {

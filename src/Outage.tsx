@@ -14,7 +14,7 @@ import { NOMBRE_MANIFOLD, cerrarOutage, rackDe, useCierre, useRack } from './rac
 import { usePuedeEditar } from './permisos'
 import { fechaCorta } from './fecha'
 import {
-  ACTIVIDADES, TIPOS_LISTOS, estaBloqueada, itemsDe, resumirManifold,
+  ACTIVIDADES, TIPOS_LISTOS, actividadesDe, estaBloqueada, itemsDe, resumirManifold,
   type Actividad, type TipoDiagrama,
 } from './actividades'
 
@@ -24,6 +24,7 @@ const ETIQUETA_TIPO: Record<TipoDiagrama, string> = {
   manifold: 'Manifold (40)',
   fugas: 'Plano de fugas',
   venteo: 'Venteos (6)',
+  oval: 'Sideport (2 por vasija)',
 }
 
 export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void }) {
@@ -77,8 +78,9 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
     return 0
   }
 
-  const total = ACTIVIDADES.reduce((n, a) => n + itemsDe(a), 0)
-  const hecho = ACTIVIDADES.reduce((n, a) => n + (avanceDe(a.id) / 100) * itemsDe(a), 0)
+  const actividades = actividadesDe(rack)
+  const total = actividades.reduce((n, a) => n + itemsDe(a), 0)
+  const hecho = actividades.reduce((n, a) => n + (avanceDe(a.id) / 100) * itemsDe(a), 0)
   const registrado = Math.round((hecho / total) * 1000) / 10
   // Un outage cerrado se muestra terminado aunque no todo haya quedado
   // registrado en la app: el trabajo se hizo, lo que faltó fue anotarlo.
@@ -118,7 +120,7 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
       </div>
 
       <ol className="actividades">
-        {ACTIVIDADES.map((a, i) => {
+        {actividades.map((a, i) => {
           const pct = avanceDe(a.id)
           const bloqueada = !cierre && estaBloqueada(i, avanceDe)
           // El candado AVISA el orden, no lo impone: en terreno las cuadrillas

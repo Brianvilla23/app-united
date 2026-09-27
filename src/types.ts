@@ -70,7 +70,7 @@ export const MODOS_FALLA: ModoFalla[] = [
 export type TablaOutbox =
   | 'avisos' | 'andamios' | 'marcas_upsert' | 'marcas_delete'
   | 'tapas_upsert' | 'tapas_delete' | 'historial' | 'item_upsert'
-  | 'entrega_turno'
+  | 'entrega_turno' | 'oval_upsert'
 
 // Avance de las actividades que no usan el plano de tapas (venteos, manifold,
 // pasos simples). Un registro por ítem marcado.
@@ -302,5 +302,21 @@ export interface Andamio {
   correoRespaldo: string
   creadoPor: string
   createdAt: number
+  sincronizado: boolean
+}
+
+/** Una sideport revisada, como queda guardada en el celular. */
+export interface OvalLocal {
+  id: string
+  rack: number
+  lado: LadoRack
+  vasija: string
+  sideport: string
+  estado: string
+  nota: string
+  /** Ruta de la foto en el bucket, cuando ya subió. */
+  foto: string | null
+  /** La foto reducida, para verla en el celular sin bajarla de nuevo. */
+  miniatura?: string
   sincronizado: boolean
 }

@@ -14,6 +14,7 @@ import Guardados from './Guardados'
 import Fugas from './Fugas'
 import Outage from './Outage'
 import Venteos from './Venteos'
+import Ovalamiento from './Ovalamiento'
 import PlanoActividad from './PlanoActividad'
 import Pruebas from './Pruebas'
 import EntregaTurno from './EntregaTurno'
@@ -21,12 +22,12 @@ import Planificacion from './Planificacion'
 import { ACTIVIDADES, type Actividad } from './actividades'
 import { fechaCorta, fechaLarga } from './fecha'
 
-type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba'
+type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'ovalamiento'
   | 'entrega' | 'planificacion' | 'guardados'
 
 /** Pantallas a las que solo se entra desde una actividad del outage: el rótulo
     del atrás lleva el nombre de la actividad y no el genérico de la pantalla. */
-const VISTAS_DE_ACTIVIDAD: Vista[] = ['tapas', 'actividad', 'prueba', 'venteos']
+const VISTAS_DE_ACTIVIDAD: Vista[] = ['tapas', 'actividad', 'prueba', 'venteos', 'ovalamiento']
 
 const TITULOS: Record<Vista, string> = {
   menu: 'App United',
@@ -38,6 +39,7 @@ const TITULOS: Record<Vista, string> = {
   venteos: 'Cambio de venteos',
   actividad: 'Actividad del outage',
   prueba: 'Prueba de presión',
+  ovalamiento: 'Control de ovalamiento',
   entrega: 'Entrega de turno',
   planificacion: 'Planificación',
   guardados: 'Guardados',
@@ -193,6 +195,28 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
   )
 }
 
+/** Fuerza la actualización cuando el celular quedó pegado con una versión
+    vieja. Pasa porque GitHub Pages manda `Cache-Control: max-age=600` y el
+    service worker puede seguir sirviendo lo guardado. Esto tira abajo el
+    caché del navegador y vuelve a registrar el service worker.
+    ⚠️ NO toca lo registrado en el celular: eso vive en otra base (Dexie). */
+async function forzarActualizacion(): Promise<void> {
+  try {
+    const regs = await navigator.serviceWorker?.getRegistrations() ?? []
+    await Promise.all(regs.map((r) => r.unregister()))
+    const claves = await caches?.keys() ?? []
+    await Promise.all(claves.map((k) => caches.delete(k)))
+  } catch { /* si el navegador no deja, igual recargamos */ }
+  location.reload()
+}
+
+/** Cuándo se compiló lo que está corriendo en este celular. Si no calza con
+    lo último que se subió, la app quedó pegada con una versión vieja. */
+function sello(): string {
+  const d = new Date(__COMPILADO__)
+  return d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
 export default function App() {
   const [vista, setVista] = useState<Vista>('menu')
   const [actAbierta, setActAbierta] = useState<Actividad | null>(null)
@@ -277,16 +301,30 @@ export default function App() {
           irA(a.tipo === 'tapa' ? 'tapas'
             : a.tipo === 'venteo' ? 'venteos'
             : a.tipo === 'fugas' ? 'prueba'
+            : a.tipo === 'oval' ? 'ovalamiento'
             : 'actividad')
         }} />}
         {vista === 'venteos' && <Venteos actividad="cambio_venteo" />}
+        {vista === 'ovalamiento' && <Ovalamiento />}
         {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} />}
         {vista === 'prueba' && actAbierta && <Pruebas actividad={actAbierta} />}
         {vista === 'entrega' && <EntregaTurno />}
         {vista === 'planificacion' && <Planificacion />}
         {vista === 'guardados' && <Guardados />}
       </main>
-      <footer className="app-foot">App United v0.2 · uso interno</footer>
+      <footer className="app-foot">
+        <span>App United v0.2 · uso interno · versión del {sello()}</span>
+        <button
+          className="btn sm ghost"
+          title="Si te aparece algo viejo, esto la deja al día. No borra lo que registraste."
+          onClick={() => {
+            if (!navigator.onLine) { alert('Necesitas señal para actualizar.'); return }
+            void forzarActualizacion()
+          }}
+        >
+          Actualizar la app
+        </button>
+      </footer>
     </div>
     </RackContexto>
     </ModoContexto>

@@ -3,7 +3,12 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
+// Sello de cuándo se compiló, para que en la app se pueda ver de un vistazo
+// si el celular tiene la versión nueva o quedó pegado con la vieja.
+const COMPILADO = new Date().toISOString()
+
 export default defineConfig({
+  define: { __COMPILADO__: JSON.stringify(COMPILADO) },
   base: './',
   plugins: [
     react(),

@@ -716,6 +716,35 @@ tareas que debemos monitorear y cómo se debe solucionar"*. Hecho (`sql/18`):
 
 ---
 
+## 23. Control de ovalamiento de sideport ✅ (27-09-2026)
+
+Actividad nueva en el outage del **Rack 3** (`sql/20`). Usa el mismo plano de
+vasijas del retiro de tapas —semi rack A y semi rack B— con **Alimentación** y
+**Descarga** arriba.
+
+- Al tocar una vasija se abre su detalle: **el número al medio y sus dos
+  sideport a los costados**, Norte y Sur (confirmado por Brayan; si algún día
+  son cuatro, se agregan en `SIDEPORTS`).
+- De cada sideport se anota **Sin problema / Pendiente de retiro / Crítica para
+  cambio**, una nota y **su foto**.
+- La vasija se pinta en el plano con el **peor** estado de sus dos sideport, así
+  se ve de una dónde está el problema.
+- **Offline como el resto del outage**: el estado se encola y sube solo; la foto
+  se reduce, queda en el celular para verla sin señal y se sube cuando hay.
+  Si no hubo señal al sacarla, lo dice.
+- ⚠️ Las fotos van al bucket privado bajo `sideports/`, con políticas para
+  `anon`: el outage se usa **sin cuenta**, igual que el resto del rack. Se
+  abren con enlace firmado, no quedan públicas.
+
+**Además:** en el pie de la app ahora se ve **de qué fecha y hora es la versión**
+que tiene ese celular, y hay un botón **"Actualizar la app"** que tira abajo el
+caché y vuelve a registrar el service worker —sin tocar lo registrado, que vive
+en otra base—. Hacía falta porque GitHub Pages manda `Cache-Control: max-age=600`
+y un celular se puede quedar hasta diez minutos con la versión vieja, o más si
+la PWA no se cerró.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

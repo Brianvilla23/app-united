@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Aviso, Andamio, MarcaFuga, TapaEstado, OutboxItem, HistorialItem, ItemAvance, EntregaLocal } from './types'
+import type { Aviso, Andamio, MarcaFuga, TapaEstado, OutboxItem, HistorialItem, ItemAvance, EntregaLocal, OvalLocal } from './types'
 
 export class UnitedDB extends Dexie {
   avisos!: Table<Aviso, string>
@@ -9,6 +9,7 @@ export class UnitedDB extends Dexie {
   historial!: Table<HistorialItem, string>
   items!: Table<ItemAvance, string>
   entregas!: Table<EntregaLocal, string>
+  ovalamientos!: Table<OvalLocal, string>
   outbox!: Table<OutboxItem, string>
 
   constructor() {
@@ -153,6 +154,18 @@ export class UnitedDB extends Dexie {
     // v16: la entrega de turno que manda el supervisor queda también acá, para
     // que pueda releer lo que entregó desde este celular (en la base solo la
     // leen los dos editores de planificación).
+    // v17: el control de ovalamiento de sideport
+    this.version(17).stores({
+      avisos: 'id, folio, createdAt, estado, sincronizado',
+      andamios: 'id, folio, createdAt, sincronizado',
+      marcas: 'id, lado, rack, vasija, componente, createdAt, [lado+rack+vasija]',
+      tapas: 'id, lado, rack, vasija, [lado+rack+vasija]',
+      historial: 'id, rack, vasija, createdAt, tipo',
+      items: 'id, actividad, lado, rack, item, [actividad+rack]',
+      entregas: 'id, fecha, turno, createdAt',
+      ovalamientos: 'id, rack, lado, vasija, [lado+rack]',
+      outbox: 'id, createdAt, tabla',
+    })
     this.version(16).stores({
       avisos: 'id, folio, createdAt, estado, sincronizado',
       andamios: 'id, folio, createdAt, sincronizado',

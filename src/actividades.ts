@@ -12,6 +12,7 @@ import type { DatosManifold, LadoRack } from './types'
 import { ARQUETIPOS, ARQUETIPO_DE, type FilaTubing } from './manifoldDetalle'
 
 export type TipoDiagrama =
+  | 'oval'       // control de ovalamiento de sideport (2 por vasija)
   | 'manifold'   // los 40 manifolds (10 filas × 4)
   | 'tapa'       // plano de 295 con seguros y pernos
   | 'simple'     // plano de 295, se marca hecho / no hecho
@@ -102,10 +103,17 @@ export interface Actividad {
   libre?: boolean
   /** true = es del rack completo, el lado no aplica (ej. las membranas). */
   sinLado?: boolean
+  /** Racks donde aplica. Sin esto, va en todos. */
+  racks?: number[]
   nota?: string
 }
 
 export const MANIFOLDS_POR_LADO = 40
+
+/** Las actividades que van en el outage de ese rack. */
+export function actividadesDe(rack: number): Actividad[] {
+  return ACTIVIDADES.filter((a) => !a.racks || a.racks.includes(rack))
+}
 
 export const ACTIVIDADES: Actividad[] = [
   {
@@ -143,6 +151,15 @@ export const ACTIVIDADES: Actividad[] = [
     tipo: 'tapa',
     lados: ['descarga'],
     nota: 'Va después de retirar el manifold.',
+  },
+  {
+    id: 'ovalamiento_sideport',
+    nombre: 'Control de ovalamiento de sideport',
+    tipo: 'oval',
+    lados: ['alimentacion', 'descarga'],
+    libre: true,
+    racks: [3],
+    nota: 'Cada vasija tiene su sideport norte y su sur, en los dos lados. Se anota cómo está cada una, con su foto.',
   },
   {
     id: 'retiro_membrana',
@@ -227,6 +244,8 @@ export const ACTIVIDADES: Actividad[] = [
 
 /** Cuántos ítems tiene una actividad (para calcular su avance). */
 export function itemsDe(a: Actividad): number {
+  // el ovalamiento se mide en sideport: 2 por vasija en cada lado
+  if (a.tipo === 'oval') return a.lados.length * TOTAL_VASIJAS * 2
   // el carguío se mide en membranas y no en vasijas: son 7 por vasija y cada
   // una es trabajo que se registra por separado
   if (a.membranas) return TOTAL_VASIJAS * MEMBRANAS_POR_VASIJA
@@ -250,7 +269,7 @@ export function piezasPorLado(partes: ParteManifold[]): number {
 /** Diagramas ya construidos. El resto se muestra pero todavía no se puede abrir. */
 // 'fugas' NO se enlaza al módulo de fugas existente: ese es del rack completo
 // y marca otros componentes. Las pruebas de baja y alta llevan diagrama propio.
-export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo', 'simple', 'manifold', 'fugas']
+export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo', 'simple', 'manifold', 'fugas', 'oval']
 
 // --- los 6 venteos del rack ---
 // 2 en alimentación (uno por semi rack, al medio), 2 en descarga, y 2 más
