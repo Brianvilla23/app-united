@@ -35,6 +35,7 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
   const [confirmando, setConfirmando] = useState(false)
   const tapas = useLiveQuery(() => db.tapas.toArray(), []) ?? []
   const itemsAv = useLiveQuery(() => db.items.toArray(), []) ?? []
+  const ovales = useLiveQuery(() => db.ovalamientos.toArray(), []) ?? []
 
   const delRack = itemsAv.filter((i) => i.rack === rack)
 
@@ -53,6 +54,13 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
         (t) => t.rack === rack && t.lado === lado && t.actividad === id && estaExtraida(t),
       ).length
       return Math.round((hechas / TOTAL_VASIJAS) * 1000) / 10
+    }
+    // el ovalamiento avanza por sideport revisada (tiene registro), en los
+    // dos lados: 2 por vasija × 295 × 2 = 1.180
+    if (act?.tipo === 'oval') {
+      const revisadas = ovales.filter((o) => o.rack === rack).length
+      const total = itemsDe(act)
+      return total > 0 ? Math.round((revisadas / total) * 1000) / 10 : 0
     }
     // el carguío cuenta membranas puestas, no vasijas terminadas
     if (act?.membranas) {

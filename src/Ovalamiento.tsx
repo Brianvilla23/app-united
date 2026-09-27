@@ -14,13 +14,13 @@ import { db } from './db'
 import { encolar } from './sync'
 import { quienSoy } from './identidad'
 import { fileToJpeg } from './util'
-import { ordenSemiRacks, TOTAL_VASIJAS, type Vista } from './rackLayout'
+import { celdasPara, ordenSemiRacks, TOTAL_VASIJAS, type Vista } from './rackLayout'
 import { LADOS, type LadoRack } from './types'
 import { usePuedeRegistrar, useRack } from './rackOutage'
 import { useModal } from './useModal'
 import PlanoRack from './PlanoRack'
 import {
-  ESTADOS_SIDEPORT, colorSideport, enlaceFoto, filaOvalamiento, nombreSideport,
+  ESTADOS_SIDEPORT, SIN_REVISAR, colorSideport, enlaceFoto, filaOvalamiento, nombreSideport,
   borrarFotoSideport, ovalId, resumirOval, subirFotoSideport,
   type EstadoSideport, type Ovalamiento as Oval, type Sideport,
 } from './sideports'
@@ -46,6 +46,9 @@ export default function Ovalamiento() {
     () => db.ovalamientos.where('[lado+rack]').equals([lado, rack]).toArray(),
     [lado, rack],
   ) ?? []
+
+  const revisada = (vasija: string, sideport: Sideport) =>
+    filas.some((x) => x.id === ovalId(lado, rack, vasija, sideport))
 
   const de = (vasija: string, sideport: Sideport): Oval => {
     const id = ovalId(lado, rack, vasija, sideport)
@@ -123,13 +126,13 @@ export default function Ovalamiento() {
   // se pinta con el peor de los dos, para verlo de lejos.
   const colores = new Map<string, { color: string; texto: string }>()
   const sideports = new Map<string, { norte: string; sur: string }>()
-  const vasijas = [...new Set(filas.map((f) => f.vasija))]
-  for (const v of vasijas) {
+  for (const celda of celdasPara(false)) {
+    const v = celda.id
     const n = filas.find((f) => f.vasija === v && f.sideport === 'norte')
     const s2 = filas.find((f) => f.vasija === v && f.sideport === 'sur')
     sideports.set(v, {
-      norte: colorSideport((n?.estado as EstadoSideport) ?? 'ok'),
-      sur: colorSideport((s2?.estado as EstadoSideport) ?? 'ok'),
+      norte: n ? colorSideport(n.estado as EstadoSideport) : SIN_REVISAR,
+      sur: s2 ? colorSideport(s2.estado as EstadoSideport) : SIN_REVISAR,
     })
     const e = peor([(n?.estado as EstadoSideport) ?? 'ok', (s2?.estado as EstadoSideport) ?? 'ok'])
     if (e !== 'ok') colores.set(v, { color: colorSideport(e), texto: '#fff' })
@@ -158,20 +161,22 @@ export default function Ovalamiento() {
               <g key={cod} onClick={() => setSelPort(cod as Sideport)} style={{ cursor: 'pointer' }}>
                 <rect
                   x={x} y={68} width={68} height={54} rx={7}
-                  fill={colorSideport(o.estado)} stroke="#0f172a"
+                  fill={revisada(sel, cod as Sideport) ? colorSideport(o.estado) : SIN_REVISAR} stroke="#0f172a"
                   strokeWidth={selPort === cod ? 3.5 : 1.4}
                 />
                 <text
                   x={x + 34} y={101} textAnchor="middle" fontSize={20} fontWeight={800}
                   fill="#fff"
                 >
-                  {ESTADOS_SIDEPORT.find((e) => e.codigo === o.estado)?.corto}
+                  {revisada(sel, cod as Sideport) ? ESTADOS_SIDEPORT.find((e) => e.codigo === o.estado)?.corto : '?'}
                 </text>
                 <text x={x + 34} y={144} textAnchor="middle" fontSize={13} fontWeight={700} fill="#0f172a">
                   {nombreSideport(cod as Sideport)}
                 </text>
                 <text x={x + 34} y={161} textAnchor="middle" fontSize={11} fill="#64748b">
-                  {ESTADOS_SIDEPORT.find((e) => e.codigo === o.estado)?.nombre}
+                  {revisada(sel, cod as Sideport)
+                    ? ESTADOS_SIDEPORT.find((e) => e.codigo === o.estado)?.nombre
+                    : 'Sin revisar'}
                 </text>
                 {o.foto && <text x={x + 34} y={177} textAnchor="middle" fontSize={11} fill="#64748b">con foto</text>}
                 {/* zona de toque: cubre el rectángulo y sus rótulos, para que
@@ -191,7 +196,7 @@ export default function Ovalamiento() {
                   {ESTADOS_SIDEPORT.map((e) => (
                     <button
                       key={e.codigo}
-                      className={abierto.estado === e.codigo ? 'on' : ''}
+                      className={revisada(sel, abierto.sideport) && abierto.estado === e.codigo ? 'on' : ''}
                       disabled={!puedeRegistrar}
                       onClick={() => void guardar(abierto, { estado: e.codigo })}
                     >
@@ -295,9 +300,9 @@ export default function Ovalamiento() {
       />
 
       <p className="hint" style={{ marginTop: 10 }}>
-        Cada vasija muestra sus dos sideport a los costados: <b>verde</b> sin problema,
-        <b>amarillo</b> pendiente cambio, <b>rojo</b> para cambio. La vasija se pinta con
-        el peor de las dos, para verlo de lejos.
+        Cada vasija muestra sus dos sideport a los costados: <b>gris</b> sin revisar,
+        <b>verde</b> sin problema, <b>amarillo</b> pendiente cambio, <b>rojo</b> para
+        cambio. La vasija se pinta con la peor de las dos, para verlo de lejos.
       </p>
 
       {sel && detalle()}

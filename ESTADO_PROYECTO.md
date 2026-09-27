@@ -774,6 +774,37 @@ producción: usan la misma vasija y pueden confundir a la gente.
 
 ---
 
+## 25. 🔴 La causa de fondo: el rack no dejaba entrar a quien tiene cuenta ✅ (27-09-2026)
+
+El arreglo de la sección 24 era real pero **no era lo que le pasaba a Brayan**.
+La causa de fondo (`sql/21`): todas las tablas del rack (`avance_item`,
+`estado_tapas`, `marcas_fuga`, `historial`, `sideport_ovalamiento`, `avisos`,
+`andamios`) tenían una sola política, **`to anon`**. Brayan inicia sesión en
+Planificación en su PC, y desde ese momento el navegador habla como
+**`authenticated`**: la base le negaba el rack entero.
+
+- **Al bajar** le devolvía cero filas → 0% en codificación, retiro de manifold y
+  retiro de membrana. Las tapas seguían en 100% solo porque `pullTapas` se
+  niega a vaciar la tabla local con una respuesta vacía; `pullItems` no tenía
+  ese freno y la vaciaba.
+- **Al subir** lo rechazaba → "7 por subir" para siempre.
+- A la cuadrilla no le pasaba porque no inicia sesión.
+
+Arreglo: las políticas ahora son `to anon, authenticated`. Comprobado como
+`authenticated`: se ven las 295 membranas, los 40 manifold y las 590 tapas. En
+cuanto se aplicó, la cola de Brayan se vació sola y su PC mostró el 100%.
+
+⚠️ **Regla para lo que venga: toda política del rack va `to anon, authenticated`.**
+Si se agrega una tabla nueva de terreno con solo `anon`, se repite este bug.
+
+**Además:**
+- El ovalamiento cuenta su avance: sideport con registro sobre 1.180.
+- En el plano, **toda vasija muestra sus dos sideport**; **gris = sin revisar**.
+  Antes una sideport que nadie tocó salía verde, y en un registro de inspección
+  eso dice "se miró y está bien", que no es cierto.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

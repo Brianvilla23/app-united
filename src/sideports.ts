@@ -29,7 +29,11 @@ export const ESTADOS_SIDEPORT: {
 ]
 
 export const colorSideport = (e: EstadoSideport) =>
-  ESTADOS_SIDEPORT.find((x) => x.codigo === e)?.color ?? '#c3cad3'
+  ESTADOS_SIDEPORT.find((x) => x.codigo === e)?.color ?? SIN_REVISAR
+
+/** Gris = nadie la ha revisado. NO es verde: verde dice "se miró y está
+    bien", y en un registro de inspección eso no se puede suponer. */
+export const SIN_REVISAR = '#c3cad3'
 
 export const nombreSideport = (s: Sideport) =>
   SIDEPORTS.find((x) => x.codigo === s)?.nombre ?? s
