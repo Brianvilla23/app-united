@@ -214,7 +214,8 @@ async function forzarActualizacion(): Promise<void> {
     lo último que se subió, la app quedó pegada con una versión vieja. */
 function sello(): string {
   const d = new Date(__COMPILADO__)
-  return d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  const dos = (n: number) => String(n).padStart(2, '0')
+  return `${dos(d.getDate())}-${dos(d.getMonth() + 1)} ${dos(d.getHours())}:${dos(d.getMinutes())}`
 }
 
 export default function App() {
