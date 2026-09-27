@@ -590,3 +590,9 @@ textarea { resize: vertical; }
 .entrega-caja.amenaza-en_curso { border-left: 4px solid var(--warning); }
 .entrega-caja.amenaza-resuelta { border-left: 4px solid #16a34a; }
 .entrega-caja.amenaza-resuelta .fila-entrega > div > b { text-decoration: line-through; color: var(--muted); }
+
+/* Una línea de la entrega que se abre para ver qué está quedando. */
+.plan-tarea.columna { flex-direction: column; align-items: stretch; }
+.linea-detalle { width: 100%; padding: 6px 0 2px 34px; }
+.linea-detalle p { margin: 0 0 6px; font-size: 13px; color: var(--muted); white-space: pre-wrap; }
+.linea-detalle .plan-lista { margin: 0; }

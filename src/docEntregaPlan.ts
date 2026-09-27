@@ -88,7 +88,12 @@ export async function pdfEntregaPlan(e: EntregaPlan): Promise<void> {
       startY: finY(),
       head: [['Nº', 'Detalle', 'De dónde viene']],
       body: filas.length > 0
-        ? filas.map((l, i) => [i + 1, l.titulo, l.detalle])
+        ? filas.flatMap((l, i) => [
+          [i + 1, l.titulo + (l.nota ? `
+${l.nota}` : ''), l.detalle],
+          // las subtareas debajo, para ver qué está quedando de cada una
+          ...(l.subtareas ?? []).map((sub) => ['', `    ${sub.lista ? '✓' : '·'}  ${sub.titulo}`, '']),
+        ])
         : [['', 'Sin nada en este bloque', '']],
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 1.6, valign: 'top', lineColor: [120, 120, 120], lineWidth: 0.2 },
@@ -164,8 +169,13 @@ export async function excelEntregaPlan(e: EntregaPlan): Promise<void> {
       c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8D8F91' } }
     })
     filas.forEach((l, i) => {
-      const fila = ws.addRow([i + 1, l.titulo, l.detalle])
+      const fila = ws.addRow([i + 1, l.titulo + (l.nota ? `
+${l.nota}` : ''), l.detalle])
       fila.getCell(2).alignment = { wrapText: true, vertical: 'top' }
+      for (const sub of l.subtareas ?? []) {
+        const f = ws.addRow(['', `    ${sub.lista ? '✓' : '·'}  ${sub.titulo}`, ''])
+        f.getCell(2).font = { italic: true, color: { argb: 'FF666666' } }
+      }
     })
     if (filas.length === 0) ws.addRow(['', 'Sin nada en este bloque', ''])
   }

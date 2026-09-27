@@ -31,17 +31,6 @@ export interface TareaMinuta {
   padreId: string | null
 }
 
-/** Un archivo colgado de una tarea: PDF, foto, lo que sea. */
-export interface Adjunto {
-  id: string
-  tareaId: string
-  nombre: string
-  ruta: string
-  tipo: string
-  tamano: number
-  subidoPor: string
-  subidoEn: string
-}
 
 /** El martes de la semana a la que pertenece una fecha (martes → lunes). */
 export function martesDe(fecha: string): string {
@@ -110,6 +99,27 @@ export async function traerSemanas(): Promise<string[]> {
   return [...new Set((data ?? []).map((r) => String(r.inicio)))].sort().reverse()
 }
 
+/** Cambia SOLO los campos que se tocaron.
+    ⚠️ Mandar la tarea entera hace que dos cambios casi juntos se pisen: al
+    salir del texto de la información con una fecha recién puesta, el segundo
+    guardado manda la copia vieja y borra la fecha. */
+export async function cambiarCampos(
+  id: string,
+  cambio: Partial<Pick<TareaMinuta, 'titulo' | 'estado' | 'proyectoId' | 'nota' | 'cierre' | 'correo' | 'orden'>>,
+  quien: string,
+): Promise<void> {
+  const fila: Record<string, unknown> = { actualizado_en: new Date().toISOString(), creado_por: quien }
+  if (cambio.titulo !== undefined) fila.titulo = cambio.titulo
+  if (cambio.estado !== undefined) fila.estado = cambio.estado
+  if (cambio.proyectoId !== undefined) fila.proyecto_id = cambio.proyectoId
+  if (cambio.nota !== undefined) fila.nota = cambio.nota
+  if (cambio.cierre !== undefined) fila.cierre = cambio.cierre
+  if (cambio.correo !== undefined) fila.correo = cambio.correo
+  if (cambio.orden !== undefined) fila.orden = cambio.orden
+  const { error } = await supabase.from('minuta_tareas').update(fila).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 export async function guardarTarea(t: TareaMinuta, quien: string): Promise<void> {
   const { error } = await supabase.from('minuta_tareas').upsert({
     id: t.id, inicio: t.inicio, titulo: t.titulo, estado: t.estado,
@@ -151,61 +161,3 @@ export function resumir(tareas: TareaMinuta[]): Record<EstadoMinuta, number> {
   return r
 }
 
-// ---------------------------------------------------------------- adjuntos
-
-const BUCKET = 'adjuntos'
-
-function aAdjunto(r: Record<string, unknown>): Adjunto {
-  return {
-    id: String(r.id), tareaId: String(r.tarea_id), nombre: String(r.nombre),
-    ruta: String(r.ruta), tipo: (r.tipo as string | null) ?? '',
-    tamano: Number(r.tamano ?? 0),
-    subidoPor: (r.subido_por as string | null) ?? '',
-    subidoEn: (r.subido_en as string | null) ?? '',
-  }
-}
-
-export async function traerAdjuntos(tareaId: string): Promise<Adjunto[]> {
-  const { data, error } = await supabase.from('minuta_adjuntos')
-    .select('*').eq('tarea_id', tareaId).order('subido_en')
-  if (error) throw new Error(error.message)
-  return (data ?? []).map(aAdjunto)
-}
-
-/** Sube el archivo al bucket privado y lo cuelga de la tarea. */
-export async function subirAdjunto(
-  tareaId: string, archivo: File, quien: string, nuevoId: () => string,
-): Promise<void> {
-  const id = nuevoId()
-  const limpio = archivo.name.replace(/[^\w.\-]+/g, '_')
-  const ruta = `${tareaId}/${id}-${limpio}`
-  const { error } = await supabase.storage.from(BUCKET).upload(ruta, archivo, {
-    contentType: archivo.type || undefined,
-    upsert: false,
-  })
-  if (error) throw new Error(error.message)
-  const { error: e2 } = await supabase.from('minuta_adjuntos').insert({
-    id, tarea_id: tareaId, nombre: archivo.name, ruta,
-    tipo: archivo.type, tamano: archivo.size, subido_por: quien,
-  })
-  if (e2) throw new Error(e2.message)
-}
-
-/** Enlace temporal para abrirlo: el bucket es privado a propósito. */
-export async function enlaceAdjunto(ruta: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(ruta, 300)
-  if (error || !data) throw new Error(error?.message ?? 'No se pudo abrir el archivo.')
-  return data.signedUrl
-}
-
-export async function borrarAdjunto(a: Adjunto): Promise<void> {
-  await supabase.storage.from(BUCKET).remove([a.ruta])
-  const { error } = await supabase.from('minuta_adjuntos').delete().eq('id', a.id)
-  if (error) throw new Error(error.message)
-}
-
-export function pesoLegible(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}

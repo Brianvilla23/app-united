@@ -31,6 +31,7 @@ export default function EntregaPlanificacion() {
   const [aviso, setAviso] = useState('')
   const [error, setError] = useState('')
   const [trabajando, setTrabajando] = useState(false)
+  const [verLinea, setVerLinea] = useState<string | null>(null)
 
   const armar = useCallback(async (semana: string) => {
     try { setBloques(await armarDesdeLaMinuta(semana)); setError('') } catch (e) {
@@ -93,14 +94,43 @@ export default function EntregaPlanificacion() {
   const total = BLOQUES.reduce((n, b) => n + bloques[b.clave].length, 0)
   const listo = entrega.nombre.trim().length >= 3 && total > 0
 
-  const lineas = (ls: LineaEntregaPlan[]) => (
-    <ul className="plan-lista">
-      {ls.map((l, i) => (
-        <li key={l.titulo + i} className="plan-tarea">
-          <span className="plan-cuerpo"><b>{l.titulo}</b>{l.detalle && <small>{l.detalle}</small>}</span>
-        </li>
-      ))}
-    </ul>
+  /** Una línea de la entrega, que se abre para ver qué está quedando:
+      la información, para cuándo y sus subtareas con lo que falta. */
+  const linea = (l: LineaEntregaPlan, clave: string, quitarla?: () => void) => {
+    const tieneDetalle = !!(l.nota || (l.subtareas && l.subtareas.length > 0))
+    return (
+      <li key={clave} className="plan-tarea columna">
+        <div className="row" style={{ width: '100%', gap: 8 }}>
+          <span
+            className="plan-cuerpo"
+            onClick={() => tieneDetalle && setVerLinea(verLinea === clave ? null : clave)}
+          >
+            <b>{l.titulo}</b>
+            {l.detalle && <small>{l.detalle}{tieneDetalle ? (verLinea === clave ? ' · cerrar' : ' · ver qué falta') : ''}</small>}
+          </span>
+          {quitarla && <button className="memb-x" onClick={quitarla} title="Sacar de la entrega">✕</button>}
+        </div>
+        {tieneDetalle && verLinea === clave && (
+          <div className="linea-detalle">
+            {l.nota && <p>{l.nota}</p>}
+            {l.subtareas && l.subtareas.length > 0 && (
+              <ul className="plan-lista">
+                {l.subtareas.map((s, k) => (
+                  <li key={k} className={'plan-tarea sub' + (s.lista ? ' tachada' : '')}>
+                    <span className="plan-check">{s.lista ? '✓' : ''}</span>
+                    <span className="plan-cuerpo"><b>{s.titulo}</b></span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </li>
+    )
+  }
+
+  const lineas = (ls: LineaEntregaPlan[], prefijo: string) => (
+    <ul className="plan-lista">{ls.map((l, i) => linea(l, `${prefijo}-${i}`))}</ul>
   )
 
   return (
@@ -157,12 +187,7 @@ export default function EntregaPlanificacion() {
           <h3 className="sec">{b.nombre} · {bloques[b.clave].length}</h3>
           <p className="hint" style={{ margin: '0 0 6px' }}>{b.bajada}</p>
           <ul className="plan-lista">
-            {bloques[b.clave].map((l, i) => (
-              <li key={l.titulo + i} className="plan-tarea">
-                <span className="plan-cuerpo"><b>{l.titulo}</b>{l.detalle && <small>{l.detalle}</small>}</span>
-                <button className="memb-x" onClick={() => quitarLinea(b.clave, i)} title="Sacar de la entrega">✕</button>
-              </li>
-            ))}
+            {bloques[b.clave].map((l, i) => linea(l, `${b.clave}-${i}`, () => quitarLinea(b.clave, i)))}
             <li className="plan-nueva">
               <input
                 value={nueva[b.clave] ?? ''}
@@ -218,7 +243,7 @@ export default function EntregaPlanificacion() {
                         e[b.clave].length > 0 && (
                           <div key={b.clave}>
                             <h4 className="sec">{b.nombre}</h4>
-                            {lineas(e[b.clave])}
+                            {lineas(e[b.clave], `${e.id}-${b.clave}`)}
                           </div>
                         )
                       ))}

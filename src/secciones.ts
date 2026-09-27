@@ -44,6 +44,12 @@ export interface ItemSeccion {
   datos: Record<string, string | number | boolean>
   estado: string
   orden: number
+  /** Con padre = subtarea de esa actividad. */
+  padreId: string | null
+  /** La ficha: información, para cuándo y con quién. */
+  nota: string
+  cierre: string | null
+  correo: string
 }
 
 /** Las de siempre, por si la base no contesta: la app no se queda en blanco. */
@@ -107,6 +113,10 @@ function aItem(r: Record<string, unknown>): ItemSeccion {
     datos: (r.datos as Record<string, string | number | boolean>) ?? {},
     estado: String(r.estado ?? 'pendiente'),
     orden: Number(r.orden ?? 0),
+    padreId: (r.padre_id as string | null) ?? null,
+    nota: (r.nota as string | null) ?? '',
+    cierre: (r.cierre as string | null) ?? null,
+    correo: (r.correo as string | null) ?? '',
   }
 }
 
@@ -120,12 +130,42 @@ export async function traerItems(seccionId: string): Promise<ItemSeccion[]> {
 export async function guardarItem(i: ItemSeccion, quien: string): Promise<void> {
   const { error } = await supabase.from('plan_seccion_items').upsert({
     id: i.id, seccion_id: i.seccionId, datos: i.datos,
-    estado: i.estado, orden: i.orden, creado_por: quien,
+    estado: i.estado, orden: i.orden, padre_id: i.padreId,
+    nota: i.nota, cierre: i.cierre, correo: i.correo,
+    creado_por: quien,
   })
+  if (error) throw new Error(error.message)
+}
+
+/** Cambia SOLO los campos que se tocaron: ver el porqué en `cambiarCampos`
+    de la minuta. Mandar la fila entera hacía que un guardado pisara al otro. */
+export async function cambiarItem(
+  id: string,
+  cambio: Partial<Pick<ItemSeccion, 'datos' | 'estado' | 'nota' | 'cierre' | 'correo' | 'orden'>>,
+  quien: string,
+): Promise<void> {
+  const fila: Record<string, unknown> = { creado_por: quien }
+  if (cambio.datos !== undefined) fila.datos = cambio.datos
+  if (cambio.estado !== undefined) fila.estado = cambio.estado
+  if (cambio.nota !== undefined) fila.nota = cambio.nota
+  if (cambio.cierre !== undefined) fila.cierre = cambio.cierre
+  if (cambio.correo !== undefined) fila.correo = cambio.correo
+  if (cambio.orden !== undefined) fila.orden = cambio.orden
+  const { error } = await supabase.from('plan_seccion_items').update(fila).eq('id', id)
   if (error) throw new Error(error.message)
 }
 
 export async function borrarItem(id: string): Promise<void> {
   const { error } = await supabase.from('plan_seccion_items').delete().eq('id', id)
   if (error) throw new Error(error.message)
+}
+
+/** Cómo se llama una actividad de sección: su primera columna con texto. */
+export function tituloItem(i: ItemSeccion, campos: Campo[]): string {
+  if (typeof i.datos.nota === 'string' && i.datos.nota.trim()) return i.datos.nota.trim()
+  for (const c of campos) {
+    const v = i.datos[c.clave]
+    if (typeof v === 'string' && v.trim()) return v.trim()
+  }
+  return 'Sin título'
 }

@@ -692,6 +692,30 @@ tareas que debemos monitorear y cómo se debe solucionar"*. Hecho (`sql/18`):
 
 ---
 
+## 22. Toda actividad tiene ficha, y la entrega muestra qué falta ✅ (27-09-2026)
+
+- **Las actividades de las secciones nuevas se abren igual que las de la
+  minuta** (`sql/19`): información, **archivos** (PDF/fotos), fecha de cierre,
+  quién responde y **subtareas**. En la lista, cada una muestra para cuándo es,
+  con quién y **cuántas subtareas quedan abiertas**; en las de tipo tabla hay un
+  botón "Ficha".
+- Los archivos pasaron a una tabla **genérica** (`adjuntos`, con `ambito` +
+  `objeto_id`), así sirven para cualquier lista. `minuta_adjuntos` se borró:
+  estaba vacía.
+- **En la entrega de turno de planificación cada línea se abre** y muestra la
+  información y sus subtareas con lo que falta. Eso también sale en el Excel y
+  el PDF, con las subtareas debajo de cada actividad.
+- El título de las secciones nuevas salía **repetido**: lo pone la pantalla de
+  Planificación y la sección lo ponía otra vez.
+- 🔴 **El mismo bug de guardado, en tres lugares**: mandar la fila entera hacía
+  que dos cambios casi juntos se pisaran —poner la fecha de cierre y escribir
+  la información seguido **borraba la fecha**—. Arreglado con guardado parcial
+  en amenazas, en la ficha de la minuta y en la de las secciones
+  (`cambiarCampos`, `cambiarItem`). **Regla: si dos campos de la misma fila se
+  guardan al salir del foco, el guardado tiene que ser parcial.**
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

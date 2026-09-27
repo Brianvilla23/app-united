@@ -16,6 +16,11 @@ export interface LineaEntregaPlan {
   titulo: string
   /** El proyecto o el origen, para ubicarla de una. */
   detalle: string
+  /** Lo que hay que saber al abrirla: qué está quedando. */
+  nota?: string
+  cierre?: string | null
+  /** Las subtareas, con su estado, para ver qué falta de cada una. */
+  subtareas?: { titulo: string; lista: boolean }[]
 }
 
 export interface EntregaPlan {
@@ -71,12 +76,20 @@ export async function armarDesdeLaMinuta(inicio: string): Promise<{
   const nombreProyecto = (id: string | null) => proyectos.find((p) => p.id === id)?.nombre ?? ''
 
   const linea = (t: TareaMinuta): LineaEntregaPlan => {
-    const partes = [nombreProyecto(t.proyectoId)]
     const hijas = tareas.filter((x) => x.padreId === t.id)
-    if (hijas.length > 0) partes.push(`${hijas.length} subtareas`)
-    if (t.cierre) partes.push(`cierra ${t.cierre}`)
-    if (t.nota) partes.push(t.nota)
-    return { titulo: t.titulo, detalle: partes.filter(Boolean).join(' · ') }
+    const abiertas = hijas.filter((x) => x.estado !== 'lista').length
+    const partes = [
+      nombreProyecto(t.proyectoId),
+      hijas.length > 0 ? `${abiertas} de ${hijas.length} subtareas abiertas` : '',
+      t.cierre ? `cierra ${t.cierre}` : '',
+    ]
+    return {
+      titulo: t.titulo,
+      detalle: partes.filter(Boolean).join(' · '),
+      nota: t.nota,
+      cierre: t.cierre,
+      subtareas: hijas.map((h) => ({ titulo: h.titulo, lista: h.estado === 'lista' })),
+    }
   }
 
   const madres = tareas.filter((t) => !t.padreId)

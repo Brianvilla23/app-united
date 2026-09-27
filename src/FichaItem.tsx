@@ -1,32 +1,23 @@
-// La ficha de una tarea de la minuta: todo lo que hay que saber de ella en un
-// solo lugar — para cuándo, con quién, la información anexa, los archivos
-// (PDF, fotos, lo que sea) y sus subtareas.
-//
-// Los archivos van a un bucket PRIVADO de Supabase y se abren con un enlace
-// firmado que dura 5 minutos: nadie llega a ellos con la URL suelta.
+// La ficha de una actividad de las secciones que se crean desde la app: lo
+// mismo que tienen las tareas de la minuta —información, fecha de cierre,
+// responsable, archivos y subtareas— para que toda actividad se pueda abrir.
 import { useCallback, useEffect, useState } from 'react'
 import { quienSoy } from './identidad'
 import { uuid } from './util'
 import {
-  ESTADOS_MINUTA, borrarTarea, cambiarCampos, guardarTarea,
-  type EstadoMinuta, type TareaMinuta,
-} from './minuta'
-import {
   borrarAdjunto, enlaceAdjunto, pesoLegible, subirAdjunto, traerAdjuntos, type Adjunto,
 } from './adjuntos'
-import type { Proyecto } from './planDatos'
+import {
+  borrarItem, cambiarItem, guardarItem, tituloItem,
+  type Campo, type ItemSeccion, type Seccion,
+} from './secciones'
 
-function siguienteEstado(e: EstadoMinuta): EstadoMinuta {
-  return e === 'pendiente' ? 'en_curso' : e === 'en_curso' ? 'lista' : 'pendiente'
-}
-
-export default function FichaTarea({
-  tarea, subtareas, proyectos, onCambio, onCerrar,
+export default function FichaItem({
+  seccion, item, subtareas, onCambio, onCerrar,
 }: {
-  tarea: TareaMinuta
-  subtareas: TareaMinuta[]
-  proyectos: Proyecto[]
-  /** Se llama después de cada cambio para que la lista de atrás se refresque. */
+  seccion: Seccion
+  item: ItemSeccion
+  subtareas: ItemSeccion[]
   onCambio: () => Promise<void> | void
   onCerrar: () => void
 }) {
@@ -36,15 +27,15 @@ export default function FichaTarea({
   const [nuevaSub, setNuevaSub] = useState('')
 
   const cargarAdjuntos = useCallback(async () => {
-    try { setAdjuntos(await traerAdjuntos('minuta', tarea.id)) } catch (e) {
+    try { setAdjuntos(await traerAdjuntos('seccion', item.id)) } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron leer los archivos.')
     }
-  }, [tarea.id])
+  }, [item.id])
 
   useEffect(() => { void cargarAdjuntos() }, [cargarAdjuntos])
 
-  const guardar = async (cambio: Parameters<typeof cambiarCampos>[1]) => {
-    await cambiarCampos(tarea.id, cambio, quienSoy())
+  const guardar = async (cambio: Parameters<typeof cambiarItem>[1]) => {
+    await cambiarItem(item.id, cambio, quienSoy())
     await onCambio()
   }
 
@@ -52,7 +43,7 @@ export default function FichaTarea({
     if (!archivo) return
     setSubiendo(true); setError('')
     try {
-      await subirAdjunto('minuta', tarea.id, archivo, quienSoy(), uuid)
+      await subirAdjunto('seccion', item.id, archivo, quienSoy(), uuid)
       await cargarAdjuntos()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo subir.')
@@ -67,77 +58,93 @@ export default function FichaTarea({
     }
   }
 
-  const quitarAdjunto = async (a: Adjunto) => {
-    await borrarAdjunto(a)
-    await cargarAdjuntos()
-  }
-
   const agregarSub = async () => {
     const t = nuevaSub.trim()
     if (!t) return
-    await guardarTarea({
-      id: uuid(), inicio: tarea.inicio, titulo: t, estado: 'pendiente',
-      proyectoId: tarea.proyectoId, nota: '', orden: subtareas.length + 1,
-      vieneDe: null, cierre: null, correo: '', padreId: tarea.id,
+    await guardarItem({
+      id: uuid(), seccionId: seccion.id, datos: { nota: t }, estado: 'pendiente',
+      orden: subtareas.length + 1, padreId: item.id, nota: '', cierre: null, correo: '',
     }, quienSoy())
     setNuevaSub('')
     await onCambio()
+  }
+
+  /** Los campos de la sección, editables acá también. */
+  const campo = (c: Campo) => {
+    const valor = item.datos[c.clave]
+    const poner = (v: string | number | boolean) =>
+      void guardar({ datos: { ...item.datos, [c.clave]: v } })
+    if (c.tipo === 'si_no') {
+      return (
+        <label key={c.clave} className="lab">
+          {c.nombre}
+          <button className={'btn sm' + (valor ? '' : ' ghost')} onClick={() => poner(!valor)}>
+            {valor ? 'Sí' : 'No'}
+          </button>
+        </label>
+      )
+    }
+    if (c.tipo === 'parrafo') {
+      return (
+        <label key={c.clave} className="lab">
+          {c.nombre}
+          <textarea rows={2} defaultValue={String(valor ?? '')}
+            onBlur={(e) => { if (e.target.value !== String(valor ?? '')) poner(e.target.value) }} />
+        </label>
+      )
+    }
+    return (
+      <label key={c.clave} className="lab">
+        {c.nombre}
+        <input
+          type={c.tipo === 'fecha' ? 'date' : c.tipo === 'numero' ? 'number' : 'text'}
+          defaultValue={String(valor ?? '')}
+          onBlur={(e) => { if (e.target.value !== String(valor ?? '')) poner(e.target.value) }}
+        />
+      </label>
+    )
   }
 
   return (
     <div className="modal-overlay" onClick={onCerrar}>
       <div className="modal ancho" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <b>Tarea de la semana</b>
+          <b>{seccion.nombre}</b>
           <button className="modal-x" onClick={onCerrar}>✕</button>
         </div>
 
-        <label className="lab">Título</label>
-        <input
-          defaultValue={tarea.titulo}
-          onBlur={(e) => { if (e.target.value.trim() && e.target.value !== tarea.titulo) void guardar({ titulo: e.target.value.trim() }) }}
-        />
+        {seccion.campos.map(campo)}
 
         <div className="row" style={{ gap: 8 }}>
           <label className="lab" style={{ flex: 1 }}>
             Estado
             <button
-              className={'btn sm estado-' + tarea.estado}
-              onClick={() => void guardar({ estado: siguienteEstado(tarea.estado) })}
+              className={'btn sm' + (item.estado === 'lista' ? '' : ' ghost')}
+              onClick={() => void guardar({ estado: item.estado === 'lista' ? 'pendiente' : 'lista' })}
             >
-              {ESTADOS_MINUTA.find((e) => e.codigo === tarea.estado)?.nombre}
+              {item.estado === 'lista' ? 'Lista' : 'Pendiente'}
             </button>
           </label>
           <label className="lab" style={{ flex: 1 }}>
             Fecha de cierre
             <input
-              type="date" defaultValue={tarea.cierre ?? ''}
+              type="date" defaultValue={item.cierre ?? ''}
               onChange={(e) => void guardar({ cierre: e.target.value || null })}
             />
           </label>
         </div>
 
-        <label className="lab">Proyecto</label>
-        <select
-          value={tarea.proyectoId ?? ''}
-          onChange={(e) => void guardar({ proyectoId: e.target.value || null })}
-        >
-          <option value="">Sin proyecto</option>
-          {proyectos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-        </select>
-
-        <label className="lab">Correo de contacto</label>
+        <label className="lab">Quién responde</label>
         <input
-          type="email" inputMode="email" defaultValue={tarea.correo}
-          placeholder="A quién se le pidió o con quién se coordina"
-          onBlur={(e) => { if (e.target.value !== tarea.correo) void guardar({ correo: e.target.value.trim() }) }}
+          defaultValue={item.correo} placeholder="Nombre, empresa o correo"
+          onBlur={(e) => { if (e.target.value !== item.correo) void guardar({ correo: e.target.value.trim() }) }}
         />
 
         <label className="lab">Información</label>
         <textarea
-          rows={4} defaultValue={tarea.nota}
+          rows={4} defaultValue={item.nota}
           placeholder="Todo lo que haya que saber: acuerdos, números de OT, qué se respondió"
-          onBlur={(e) => { if (e.target.value !== tarea.nota) void guardar({ nota: e.target.value }) }}
+          onBlur={(e) => { if (e.target.value !== item.nota) void guardar({ nota: e.target.value }) }}
         />
 
         <h3 className="sec">Archivos</h3>
@@ -151,7 +158,7 @@ export default function FichaTarea({
               </div>
               <div className="row" style={{ gap: 6 }}>
                 <button className="btn sm ghost" onClick={() => void abrir(a)}>Abrir</button>
-                <button className="memb-x" onClick={() => void quitarAdjunto(a)}>✕</button>
+                <button className="memb-x" onClick={() => void borrarAdjunto(a).then(cargarAdjuntos)}>✕</button>
               </div>
             </div>
           ))}
@@ -164,18 +171,17 @@ export default function FichaTarea({
         <h3 className="sec">Subtareas</h3>
         <ul className="plan-lista">
           {subtareas.map((s) => (
-            <li key={s.id} className={'plan-tarea sub min-' + s.estado}>
+            <li key={s.id} className={'plan-tarea sub' + (s.estado === 'lista' ? ' tachada' : '')}>
               <button
                 className="plan-check"
-                onClick={() => void guardarTarea({ ...s, estado: siguienteEstado(s.estado) }, quienSoy()).then(onCambio)}
+                onClick={() => void guardarItem(
+                  { ...s, estado: s.estado === 'lista' ? 'pendiente' : 'lista' }, quienSoy(),
+                ).then(onCambio)}
               >
-                {ESTADOS_MINUTA.find((e) => e.codigo === s.estado)?.corto}
+                {s.estado === 'lista' ? '✓' : ''}
               </button>
-              <span className="plan-cuerpo"><b>{s.titulo}</b></span>
-              <button
-                className="memb-x"
-                onClick={() => void borrarTarea(s.id).then(onCambio)}
-              >✕</button>
+              <span className="plan-cuerpo"><b>{tituloItem(s, seccion.campos)}</b></span>
+              <button className="memb-x" onClick={() => void borrarItem(s.id).then(onCambio)}>✕</button>
             </li>
           ))}
           <li className="plan-nueva">
