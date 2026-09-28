@@ -1,0 +1,40 @@
+# Publica la app en GitHub Pages (brianvilla23.github.io/app-united) cada vez
+# que algo entra a main, igual que Cloudflare publica app-united.pages.dev.
+#
+# 🔴 27-09-2026: la corrección para que no se borre lo que el celular no
+# alcanzó a subir llegó sola a pages.dev, pero github.io se publicaba a mano
+# con `npm run deploy` y 4 equipos siguieron con el código viejo. Con esto las
+# dos direcciones salen siempre del mismo main. `npm run deploy` sigue sirviendo
+# para publicar a mano si hace falta.
+name: Publicar en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          commit_message: deploy
