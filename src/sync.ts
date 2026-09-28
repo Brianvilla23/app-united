@@ -4,7 +4,9 @@ import { uuid } from './util'
 import { quienSoy } from './identidad'
 import { tapaId, itemId } from './types'
 import type { Aviso, Andamio, TablaOutbox, HistorialItem, LadoRack, OvalLocal } from './types'
-import { filaOvalamiento, type EstadoSideport, type Sideport } from './sideports'
+import {
+  borrarFotoSideport, filaOvalamiento, subirFotoSideport, type EstadoSideport, type Sideport,
+} from './sideports'
 
 // ---------- historial (trazabilidad) ----------
 
@@ -347,6 +349,39 @@ export async function pullOvalamiento(): Promise<void> {
   if (reencoladas > 0) void drenar()
 }
 
+let subiendoFotos = false
+
+/** La foto de sideport que no subió por falta de señal quedaba solo en este
+    celular (la miniatura) hasta que alguien la volviera a sacar: si el celular
+    se perdía o se borraba, la foto se iba con él. Ahora se reintenta sola en
+    cada ciclo con la copia que quedó guardada, y la fila se sube con su ruta. */
+export async function subirFotosPendientes(): Promise<void> {
+  if (!navigator.onLine || subiendoFotos) return
+  subiendoFotos = true
+  try {
+    const sinSubir = await db.ovalamientos.filter((o) => !o.foto && !!o.miniatura).toArray()
+    for (const o of sinSubir) {
+      let ruta: string
+      try {
+        const blob = await (await fetch(o.miniatura!)).blob()
+        ruta = await subirFotoSideport(o.id, blob, 'sideport.jpg')
+      } catch {
+        return // sin señal o el servidor falla: al próximo ciclo
+      }
+      // mientras subía pudieron cambiarle o borrarle la foto: se relee
+      const actual = await db.ovalamientos.get(o.id)
+      if (!actual || actual.foto || !actual.miniatura) {
+        await borrarFotoSideport(ruta).catch(() => {})
+        continue
+      }
+      await db.ovalamientos.update(o.id, { foto: ruta, sincronizado: false })
+      await encolar('oval_upsert', filaOvalamiento(aOval({ ...actual, foto: ruta }), quienSoy()))
+    }
+  } finally {
+    subiendoFotos = false
+  }
+}
+
 function aOval(o: OvalLocal) {
   return {
     id: o.id, rack: o.rack, lado: o.lado, vasija: o.vasija, sideport: o.sideport as Sideport,
@@ -359,7 +394,10 @@ function aOval(o: OvalLocal) {
 let iniciado = false
 
 function ciclo(): void {
-  void drenar().then(() => { void pullMarcas(); void pullTapas(); void pullHistorial(); void pullItems(); void pullOvalamiento() })
+  void drenar().then(() => {
+    void pullMarcas(); void pullTapas(); void pullHistorial(); void pullItems(); void pullOvalamiento()
+    void subirFotosPendientes()
+  })
 }
 
 export function iniciarSync(): void {
