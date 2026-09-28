@@ -113,7 +113,7 @@ export default function Ovalamiento() {
       try {
         ruta = await subirFotoSideport(o.id, blob, archivo.name)
       } catch {
-        setError('La foto quedó en el celular: sin señal no se pudo subir. Vuelve a tomarla con señal para compartirla.')
+        setError('La foto quedó guardada en el celular: sin señal no se pudo subir. Se sube sola apenas vuelva la señal.')
       }
       await guardar(o, { foto: ruta ?? o.foto }, chica)
     } catch (e) {
@@ -254,7 +254,7 @@ export default function Ovalamiento() {
                         ? <img src={imagen} alt={`Sideport ${nombreSideport(abierto.sideport)} de ${sel}`} />
                         : <div className="oval-foto-cargando">Cargando la foto…</div>}
                       {!abierto.foto && miniatura(abierto.id) && (
-                        <small className="hint">Solo en este celular: falta subirla.</small>
+                        <small className="hint">Solo en este celular: se sube sola cuando haya señal.</small>
                       )}
                       <div className="oval-foto-botones">
                         {abierto.foto && (

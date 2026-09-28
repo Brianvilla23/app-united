@@ -833,6 +833,9 @@ el estado real. **No se cargaron como `ok`**: sería inventar un "sin problema".
   **dentro** de la transacción que reemplaza lo local. Antes se leía antes de
   bajar, y lo que se guardaba mientras la bajada venía en camino se borraba
   hasta el ciclo siguiente — y si alguien lo volvía a tocar, lo pisaba.
+- **La foto que no subió por falta de señal se reintenta sola** en cada ciclo
+  (`subirFotosPendientes`), con la copia que quedó en el celular. Antes quedaba
+  solo en ese teléfono hasta que alguien la volviera a sacar.
 
 ---
 
