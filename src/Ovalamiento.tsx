@@ -20,15 +20,17 @@ import { usePuedeRegistrar, useRack } from './rackOutage'
 import { useModal } from './useModal'
 import PlanoRack from './PlanoRack'
 import {
-  ESTADOS_SIDEPORT, SIN_REVISAR, colorSideport, enlaceFoto, filaOvalamiento, nombreSideport,
-  borrarFotoSideport, ovalId, resumirOval, subirFotoSideport,
+  ESTADOS_SIDEPORT, FALTA_ESTADO, SIN_REVISAR, colorSideport, enlaceFoto, filaOvalamiento,
+  infoEstado, nombreSideport, borrarFotoSideport, ovalId, resumirOval, subirFotoSideport,
   type EstadoSideport, type Ovalamiento as Oval, type Sideport,
 } from './sideports'
 
-/** El peor de los dos: si una está crítica, la vasija se ve crítica. */
+/** El peor de los dos: si una está crítica, la vasija se ve crítica. La que
+    tiene foto pero no estado también pinta la vasija, para encontrarla. */
 function peor(estados: EstadoSideport[]): EstadoSideport {
   if (estados.includes('critica')) return 'critica'
   if (estados.includes('pendiente')) return 'pendiente'
+  if (estados.includes('revisar')) return 'revisar'
   return 'ok'
 }
 
@@ -182,14 +184,14 @@ export default function Ovalamiento() {
                   x={x + 34} y={101} textAnchor="middle" fontSize={20} fontWeight={800}
                   fill="#fff"
                 >
-                  {revisada(sel, cod as Sideport) ? ESTADOS_SIDEPORT.find((e) => e.codigo === o.estado)?.corto : '?'}
+                  {revisada(sel, cod as Sideport) ? infoEstado(o.estado)?.corto : '?'}
                 </text>
                 <text x={x + 34} y={144} textAnchor="middle" fontSize={13} fontWeight={700} fill="#0f172a">
                   {nombreSideport(cod as Sideport)}
                 </text>
                 <text x={x + 34} y={161} textAnchor="middle" fontSize={11} fill="#64748b">
                   {revisada(sel, cod as Sideport)
-                    ? ESTADOS_SIDEPORT.find((e) => e.codigo === o.estado)?.nombre
+                    ? infoEstado(o.estado)?.nombre
                     : 'Sin revisar'}
                 </text>
                 {o.foto && <text x={x + 34} y={177} textAnchor="middle" fontSize={11} fill="#64748b">con foto</text>}
@@ -206,6 +208,11 @@ export default function Ovalamiento() {
               <>
                 <h3 className="sec">Sideport {nombreSideport(abierto.sideport)}</h3>
                 {error && <p className="memb-aviso">{error}</p>}
+                {abierto.estado === FALTA_ESTADO.codigo && (
+                  <p className="hint">
+                    Se recuperó la foto pero no el estado: mírala abajo y toca cómo está.
+                  </p>
+                )}
                 <div className="seg">
                   {ESTADOS_SIDEPORT.map((e) => (
                     <button
@@ -291,6 +298,7 @@ export default function Ovalamiento() {
           <span className="ok"><b>{resumen.ok}</b> sin problema</span>
           <span><b>{resumen.pendiente}</b> pendiente cambio</span>
           <span><b>{resumen.critica}</b> para cambio</span>
+          {resumen.revisar > 0 && <span><b>{resumen.revisar}</b> falta el estado</span>}
         </div>
       </div>
 
@@ -332,7 +340,8 @@ export default function Ovalamiento() {
       <p className="hint" style={{ marginTop: 10 }}>
         Cada vasija muestra sus dos sideport a los costados: <b>gris</b> sin revisar,
         <b>verde</b> sin problema, <b>amarillo</b> pendiente cambio, <b>rojo</b> para
-        cambio. La vasija se pinta con la peor de las dos, para verlo de lejos.
+        cambio, <b>morado</b> tiene foto pero falta el estado. La vasija se pinta con
+        la peor de las dos, para verlo de lejos.
       </p>
 
       {sel && detalle()}

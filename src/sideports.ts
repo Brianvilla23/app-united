@@ -10,7 +10,9 @@ import { supabase } from './supabase'
 import type { LadoRack } from './types'
 
 export type Sideport = 'norte' | 'sur'
-export type EstadoSideport = 'ok' | 'pendiente' | 'critica'
+/** 'revisar' no se elige en pantalla: es la sideport que tiene foto pero no
+    estado (ver `FALTA_ESTADO`). */
+export type EstadoSideport = 'ok' | 'pendiente' | 'critica' | 'revisar'
 
 /** Las sideport de cada vasija. Si algún día son cuatro, se agregan acá. */
 export const SIDEPORTS: { codigo: Sideport; nombre: string }[] = [
@@ -28,8 +30,18 @@ export const ESTADOS_SIDEPORT: {
   { codigo: 'critica', nombre: 'Cambio', corto: '✕', color: '#c00000' },
 ]
 
-export const colorSideport = (e: EstadoSideport) =>
-  ESTADOS_SIDEPORT.find((x) => x.codigo === e)?.color ?? SIN_REVISAR
+/** Sideport revisada en terreno —tiene foto— a la que le falta el estado.
+    Salieron de lo que se le borró a Neimar el 27-09-2026: las fotos habían
+    llegado al servidor y el estado no (ver `sql/22`). No es uno de los botones:
+    se sale de acá tocando uno de los tres de arriba. */
+export const FALTA_ESTADO = {
+  codigo: 'revisar' as EstadoSideport, nombre: 'Falta el estado', corto: '?', color: '#7c3aed',
+}
+
+export const infoEstado = (e: EstadoSideport) =>
+  e === FALTA_ESTADO.codigo ? FALTA_ESTADO : ESTADOS_SIDEPORT.find((x) => x.codigo === e)
+
+export const colorSideport = (e: EstadoSideport) => infoEstado(e)?.color ?? SIN_REVISAR
 
 /** Gris = nadie la ha revisado. NO es verde: verde dice "se miró y está
     bien", y en un registro de inspección eso no se puede suponer. */
@@ -107,5 +119,6 @@ export function resumirOval(os: Ovalamiento[]): Record<EstadoSideport, number> {
     ok: os.filter((o) => o.estado === 'ok').length,
     pendiente: os.filter((o) => o.estado === 'pendiente').length,
     critica: os.filter((o) => o.estado === 'critica').length,
+    revisar: os.filter((o) => o.estado === 'revisar').length,
   }
 }

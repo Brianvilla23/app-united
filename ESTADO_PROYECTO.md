@@ -805,6 +805,37 @@ Si se agrega una tabla nueva de terreno con solo `anon`, se repite este bug.
 
 ---
 
+## 26. 🔴 A Neimar se le borró el ovalamiento: recuperado y cerrado ✅ (27/28-09-2026)
+
+**Qué pasó** (reconstruido con los logs de Supabase de su celular, que usa
+`app-united.pages.dev`):
+- 15:17–15:55 registró 55 sideport y subieron bien.
+- **15:57 su celular dejó de sincronizar**: ni una subida ni una bajada más. Las
+  fotos sí siguieron llegando al bucket (van directo, sin cola) hasta las 16:47.
+- 17:54 la app se actualizó sola, subió 49 pendientes (todas de antes de las
+  15:57) y el refresco **reemplazó lo local por lo del servidor**, respetando
+  solo lo que estaba en la cola. Todo lo de 15:58–16:47 desapareció.
+- Por qué se trabó a las 15:57 no se pudo saber desde el servidor.
+- Entre 16:47 y 17:54 su celular no le habló al servidor: si registró algo ahí,
+  no quedó en ningún lado.
+
+**Recuperación (`sql/22`)**: 76 sideport tenían foto y no fila. Se cargaron con
+su foto (la última que subió) y el estado nuevo **`revisar`**, "Falta el
+estado": morado en el plano, y al abrirla muestra la foto para que Neimar toque
+el estado real. **No se cargaron como `ok`**: sería inventar un "sin problema".
+
+**Arreglo en la app (`sync.ts`)**:
+- `pullOvalamiento` ya no pisa lo que este celular no ha subido
+  (`sincronizado: false`), esté o no en la cola; y si no está en la cola lo
+  vuelve a encolar. Probado con Supabase simulado: con el código viejo la fila
+  se borraba; con el nuevo se conserva y se sube.
+- En los cuatro refrescos (marcas, tapas, ítems, ovalamiento) la cola se lee
+  **dentro** de la transacción que reemplaza lo local. Antes se leía antes de
+  bajar, y lo que se guardaba mientras la bajada venía en camino se borraba
+  hasta el ciclo siguiente — y si alguien lo volvía a tocar, lo pisaba.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
