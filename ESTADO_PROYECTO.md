@@ -13,7 +13,7 @@ Funciona offline en planta y se instala en el celular sin tienda de apps.
 
 | Qué | Dónde |
 |---|---|
-| **App online** | https://brianvilla23.github.io/app-united/ |
+| **App online** | https://brianvilla23.github.io/app-united/ y https://app-united.pages.dev/ — las dos se publican solas desde `main` |
 | Código | https://github.com/Brianvilla23/app-united (cuenta Brianvilla23) |
 | Proyecto local | `C:\Users\braya\Desktop\app_united\` |
 | Arrancar en local | doble-click `iniciar.bat` → http://localhost:5173 |
@@ -837,6 +837,14 @@ el estado real. **No se cargaron como `ok`**: sería inventar un "sin problema".
   (`subirFotosPendientes`), con la copia que quedó en el celular. Antes quedaba
   solo en ese teléfono hasta que alguien la volviera a sacar.
 
+**Las dos direcciones de la app.** La cuadrilla usa las dos: `pages.dev` (5
+equipos, entre ellos Neimar) y `github.io` (4 equipos, entre ellos Brayan).
+`pages.dev` la publica Cloudflare solo con cada cambio en `main`; `github.io`
+se publicaba a mano, y el arreglo quedó horas solo en una. Desde el 28-09 la
+Action `.github/workflows/publicar-github-pages.yml` publica `github.io` sola
+con cada push a `main`. Ojo: son orígenes distintos, así que cada una tiene
+su propia base local en el celular; la de Supabase es la misma.
+
 ---
 
 ## 📋 Otros pendientes
@@ -862,7 +870,9 @@ el estado real. **No se cargaron como `ok`**: sería inventar un "sin problema".
 
 ## 🛠 Notas técnicas
 - **Stack**: Vite + React + TypeScript · Dexie/IndexedDB (offline) · jsPDF ·
-  vite-plugin-pwa · Supabase (sync) · deploy con `npm run deploy` a GitHub Pages.
+  vite-plugin-pwa · Supabase (sync) · se publica solo al entrar a `main`: Cloudflare
+  → `app-united.pages.dev`, y la Action `publicar-github-pages.yml` → GitHub Pages.
+  `npm run deploy` queda para publicar GitHub Pages a mano.
 - **Identidad visual**: rojo corporativo `rgb(192,0,0)` (`--accent`), el mismo
   del escáner de membranas, y el logo de United en la barra superior
   (`public/united.png`, 1738×595 con fondo transparente). Va sobre placa
