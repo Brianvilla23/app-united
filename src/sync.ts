@@ -3,7 +3,8 @@ import { supabase } from './supabase'
 import { uuid } from './util'
 import { quienSoy } from './identidad'
 import { tapaId, itemId } from './types'
-import type { Aviso, Andamio, TablaOutbox, HistorialItem, LadoRack } from './types'
+import type { Aviso, Andamio, TablaOutbox, HistorialItem, LadoRack, OvalLocal } from './types'
+import { filaOvalamiento, type EstadoSideport, type Sideport } from './sideports'
 
 // ---------- historial (trazabilidad) ----------
 
@@ -174,7 +175,11 @@ async function bajarTabla(tabla: string, orden: string[]): Promise<FilaRemota[] 
     🔴 Antes, si había UNO pendiente, no se bajaba NADA y el celular se quedaba
     ciego a lo que registraba el resto: a Brayan le salía 0% en actividades que
     su cuadrilla ya tenía al 100%. Ahora se baja siempre y solo se respetan las
-    filas propias que están en la cola. */
+    filas propias que están en la cola.
+    🔴 Se lee DENTRO de la transacción que reemplaza lo local, no antes de
+    bajar: lo que se guardaba mientras la bajada venía en camino no estaba en
+    la lista, el `clear()` lo borraba y la vasija se veía sin registrar hasta
+    el próximo ciclo (27-09-2026). */
 async function idsEnCola(tablas: TablaOutbox[], idDe: (p: Record<string, unknown>) => string): Promise<Set<string>> {
   const pendientes = await db.outbox.where('tabla').anyOf(tablas).toArray()
   return new Set(pendientes.map((p) => idDe(p.payload)))
@@ -182,11 +187,11 @@ async function idsEnCola(tablas: TablaOutbox[], idDe: (p: Record<string, unknown
 
 export async function pullMarcas(): Promise<void> {
   if (!navigator.onLine) return
-  const enCola = await idsEnCola(['marcas_upsert', 'marcas_delete'], (p) =>
-    marcaId(String(p.lado ?? 'alimentacion'), Number(p.rack), String(p.vasija), String(p.componente)))
   const data = await bajarTabla('marcas_fuga', ['lado', 'rack', 'vasija', 'componente'])
   if (!data) return
-  await db.transaction('rw', db.marcas, async () => {
+  await db.transaction('rw', db.marcas, db.outbox, async () => {
+    const enCola = await idsEnCola(['marcas_upsert', 'marcas_delete'], (p) =>
+      marcaId(String(p.lado ?? 'alimentacion'), Number(p.rack), String(p.vasija), String(p.componente)))
     const mias = await db.marcas.filter((m) => enCola.has(m.id)).toArray()
     await db.marcas.clear()
     await db.marcas.bulkAdd(mias)
@@ -208,12 +213,12 @@ export async function pullMarcas(): Promise<void> {
 
 export async function pullTapas(): Promise<void> {
   if (!navigator.onLine) return
-  const enCola = await idsEnCola(['tapas_upsert', 'tapas_delete'], (p) =>
-    tapaId(String(p.actividad ?? 'retiro_tapas_alim'), (p.lado as LadoRack) ?? 'alimentacion',
-      Number(p.rack), String(p.vasija)))
   const data = await bajarTabla('estado_tapas', ['actividad', 'lado', 'rack', 'vasija'])
   if (!data || data.length === 0) return // no pisar la data local con una tabla vacía
-  await db.transaction('rw', db.tapas, async () => {
+  await db.transaction('rw', db.tapas, db.outbox, async () => {
+    const enCola = await idsEnCola(['tapas_upsert', 'tapas_delete'], (p) =>
+      tapaId(String(p.actividad ?? 'retiro_tapas_alim'), (p.lado as LadoRack) ?? 'alimentacion',
+        Number(p.rack), String(p.vasija)))
     const mias = await db.tapas.filter((t) => enCola.has(t.id)).toArray()
     await db.tapas.clear()
     await db.tapas.bulkAdd(mias)
@@ -268,11 +273,11 @@ export async function pullHistorial(): Promise<void> {
 
 export async function pullItems(): Promise<void> {
   if (!navigator.onLine) return
-  const enCola = await idsEnCola(['item_upsert'], (p) =>
-    itemId(String(p.actividad), String(p.lado) as LadoRack, Number(p.rack ?? 12), String(p.item)))
   const data = await bajarTabla('avance_item', ['actividad', 'lado', 'rack', 'item'])
   if (!data) return
-  await db.transaction('rw', db.items, async () => {
+  await db.transaction('rw', db.items, db.outbox, async () => {
+    const enCola = await idsEnCola(['item_upsert'], (p) =>
+      itemId(String(p.actividad), String(p.lado) as LadoRack, Number(p.rack ?? 12), String(p.item)))
     const mios = await db.items.filter((i) => enCola.has(i.id)).toArray()
     await db.items.clear()
     await db.items.bulkAdd(mios)
@@ -294,19 +299,39 @@ export async function pullItems(): Promise<void> {
   })
 }
 
-/** El control de ovalamiento: se baja entero, es chico (2 por vasija). */
+/** El control de ovalamiento: se baja entero, es chico (2 por vasija).
+ *
+ * 🔴 27-09-2026: a Neimar se le borró de la pantalla una hora de registro. Su
+ * celular dejó de subir, y cuando la app se actualizó el refresco reemplazó lo
+ * local por lo del servidor, respetando solo lo que estaba en la cola. Lo que
+ * no estaba en la cola —pero sí en el celular, sin subir— se perdió.
+ *
+ * Ahora lo que este celular no ha logrado subir (`sincronizado: false`) NO se
+ * pisa nunca, esté o no en la cola; y si no está en la cola, se vuelve a
+ * encolar. La fila local es la red de seguridad: mientras no suba, se queda.
+ */
 export async function pullOvalamiento(): Promise<void> {
   if (!navigator.onLine) return
-  const enCola = await idsEnCola(['oval_upsert'], (p) => String(p.id))
   const data = await bajarTabla('sideport_ovalamiento', ['lado', 'rack', 'vasija', 'sideport'])
   if (!data) return
-  // la miniatura es de este celular: se conserva al refrescar desde el servidor
-  const miniaturas = new Map((await db.ovalamientos.toArray()).map((o) => [o.id, o.miniatura]))
-  await db.transaction('rw', db.ovalamientos, async () => {
-    const mias = await db.ovalamientos.filter((o) => enCola.has(o.id)).toArray()
+  let reencoladas = 0
+  await db.transaction('rw', db.ovalamientos, db.outbox, async () => {
+    const enCola = await idsEnCola(['oval_upsert'], (p) => String(p.id))
+    const locales = await db.ovalamientos.toArray()
+    // la miniatura es de este celular: se conserva al refrescar desde el servidor
+    const miniaturas = new Map(locales.map((o) => [o.id, o.miniatura]))
+    const mias = locales.filter((o) => !o.sincronizado || enCola.has(o.id))
+    const propias = new Set(mias.map((o) => o.id))
+    // sin subir y fuera de la cola: se perdió la cola, no el registro
+    for (const o of mias.filter((m) => !enCola.has(m.id))) {
+      await db.outbox.add({
+        id: uuid(), tabla: 'oval_upsert', payload: filaOvalamiento(aOval(o), quienSoy()), createdAt: Date.now(),
+      })
+      reencoladas++
+    }
     await db.ovalamientos.clear()
     await db.ovalamientos.bulkAdd(mias)
-    await db.ovalamientos.bulkPut(data.filter((r) => !enCola.has(String(r.id))).map((r) => ({
+    await db.ovalamientos.bulkPut(data.filter((r) => !propias.has(String(r.id))).map((r) => ({
       id: String(r.id),
       rack: Number(r.rack ?? 0),
       lado: r.lado as LadoRack,
@@ -319,6 +344,14 @@ export async function pullOvalamiento(): Promise<void> {
       sincronizado: true,
     })))
   })
+  if (reencoladas > 0) void drenar()
+}
+
+function aOval(o: OvalLocal) {
+  return {
+    id: o.id, rack: o.rack, lado: o.lado, vasija: o.vasija, sideport: o.sideport as Sideport,
+    estado: o.estado as EstadoSideport, nota: o.nota, foto: o.foto,
+  }
 }
 
 // ---------- ciclo de sincronización ----------
