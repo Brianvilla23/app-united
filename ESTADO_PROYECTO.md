@@ -847,6 +847,32 @@ su propia base local en el celular; la de Supabase es la misma.
 
 ---
 
+## 27. Cerrar la semana, y las observaciones con ficha ✅ (28-09-2026)
+
+- **"Cerrar la semana y entregar el turno"** (botón en la minuta): pide quién
+  recibe, **guarda la entrega de turno de planificación** con lo que hay en la
+  minuta y **pasa a la semana siguiente todo lo que no quedó listo**, para el
+  contraturno. Se **mueve**, no se copia (`cerrarSemana` en `minuta.ts`): así
+  viajan las subtareas y los archivos, que cuelgan del id. Lo listo se queda en
+  su semana, que además guarda su entrega. ⚠️ "Traer lo que quedó abierto la
+  semana pasada" todavía **copia** y pierde las subtareas: con el cierre ya no
+  debería hacer falta.
+- **Las observaciones son tareas de la minuta** con `tipo = 'observacion'`
+  (`sql/23`): tienen la misma ficha (información, archivos, subtareas, cierre) y
+  en la entrega salen con sus subtareas. Se fue el selector 3.2/3.3, que era de
+  cuando iban al formato de supervisión. `turno_observaciones` se migró (1 fila)
+  y se borró.
+- El botón "Al turno" de cada tarea se fue: la entrega ya se arma con toda la
+  minuta.
+- "Nuestras entregas de turno de esta semana" en la minuta leía la tabla vieja y
+  siempre salía vacía: ahora lee `entregas_planificacion`.
+- **Proyectos**: cada actividad tiene **archivos** (componente `Archivos.tsx`,
+  ámbito `proyecto`).
+- Probado en la semana vacía del 29-06-2027, NO en la real: cerrar la de hoy
+  habría movido las tareas de Brayan.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

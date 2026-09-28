@@ -6,21 +6,19 @@ import { useCallback, useEffect, useState } from 'react'
 import { quienSoy } from './identidad'
 import { uuid } from './util'
 import {
-  ESTADOS_MINUTA, arrastrarPendientes, borrarTarea, esSemanaDeHoy, guardarTarea,
+  ESTADOS_MINUTA, arrastrarPendientes, borrarTarea, cerrarSemana, esSemanaDeHoy, guardarTarea,
   martesDe, resumir, rotuloSemana, sumarDias, traerMinuta,
   type EstadoMinuta, type TareaMinuta,
 } from './minuta'
+import { armarArbol, traerProyectos, traerTareas, type Proyecto, type Tarea } from './planDatos'
 import {
-  armarArbol, guardarObsPlan, nombreTurno, traerEntregasEntre, traerProyectos, traerTareas,
-  type Entrega, type Proyecto, type Tarea, type Turno,
-} from './planDatos'
-import { CUADROS, borrarObs, guardarObs, traerObs, type CuadroObs, type ObsTurno } from './turnoObs'
+  armarDesdeLaMinuta, guardarEntregaPlan, traerEntregasPlan, type EntregaPlan,
+} from './entregaPlan'
+import { excelEntregaPlan, pdfEntregaPlan } from './docEntregaPlan'
 import {
   ESTADOS_AMENAZA, guardarAmenaza, resumirAmenazas, siguienteEstadoAmenaza, traerAmenazas,
   type Amenaza,
 } from './amenazas'
-import { generarPDFEntrega } from './pdfEntrega'
-import { bajarExcelEntrega } from './xlsxEntrega'
 import FichaTarea from './FichaTarea'
 import { useModal } from './useModal'
 
@@ -41,10 +39,11 @@ export default function PanelMinuta() {
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
   const [abierta, abrirFicha, cerrarFicha] = useModal<string>()
-  const [obs, setObs] = useState<ObsTurno[]>([])
   const [nuevaObs, setNuevaObs] = useState('')
-  const [cuadroObs, setCuadroObs] = useState<CuadroObs>('adicional')
-  const [entregas, setEntregas] = useState<Entrega[]>([])
+  const [entregas, setEntregas] = useState<EntregaPlan[]>([])
+  /** El cierre de semana pide quién recibe antes de hacer nada. */
+  const [cerrando, setCerrando] = useState<{ recibe: string } | null>(null)
+  const [trabajando, setTrabajando] = useState(false)
   const [errorBajada, setErrorBajada] = useState('')
   const [amenazas, setAmenazas] = useState<Amenaza[]>([])
 
@@ -54,17 +53,12 @@ export default function PanelMinuta() {
     }
   }, [])
 
-  /** Lo que planificación le manda al turno esa semana. */
-  const cargarObs = useCallback(async (semana: string) => {
-    try { setObs(await traerObs(semana)) } catch { /* la minuta sirve igual */ }
-  }, [])
-
-  /** Y las entregas de turno de PLANIFICACIÓN de esa semana: las nuestras. Las
+  /** Las entregas de turno de PLANIFICACIÓN de esa semana: las nuestras. Las
       de supervisión son otra área y se leen en su propia pantalla. */
   const cargarEntregas = useCallback(async (semana: string) => {
     try {
-      setEntregas(await traerEntregasEntre(semana, sumarDias(semana, 6), 'planificacion'))
-    } catch { /* idem */ }
+      setEntregas((await traerEntregasPlan()).filter((e) => e.inicio === semana))
+    } catch { /* la minuta sirve igual */ }
   }, [])
 
   /** Las amenazas que reportó supervisión esa semana, para monitorearlas. */
@@ -74,7 +68,7 @@ export default function PanelMinuta() {
 
   useEffect(() => { void cargar(inicio) }, [inicio, cargar])
   useEffect(() => { void cargarAmenazas(inicio) }, [inicio, cargarAmenazas])
-  useEffect(() => { void cargarObs(inicio); void cargarEntregas(inicio) }, [inicio, cargarObs, cargarEntregas])
+  useEffect(() => { void cargarEntregas(inicio) }, [inicio, cargarEntregas])
 
   // lo que sigue abierto en los proyectos, para tenerlo a la vista en la minuta
   useEffect(() => {
@@ -94,25 +88,55 @@ export default function PanelMinuta() {
     })()
   }, [])
 
-  const madres = tareas.filter((t) => !t.padreId)
+  const madres = tareas.filter((t) => !t.padreId && t.tipo !== 'observacion')
+  /** Lo que se deja escrito para nuestra entrega de turno: son tareas más, con
+      la misma ficha (información, archivos, subtareas). */
+  const observaciones = tareas.filter((t) => !t.padreId && t.tipo === 'observacion')
   const subtareasDe = (id: string) => tareas.filter((t) => t.padreId === id)
   const resumen = resumir(madres)
+  const obsAbiertas = observaciones.filter((o) => o.estado !== 'lista').length
 
   const yaEsta = (titulo: string) =>
     madres.some((m) => m.titulo.trim().toLowerCase() === titulo.trim().toLowerCase())
 
-  const agregar = async (titulo: string, proyectoId: string | null) => {
+  const agregar = async (titulo: string, proyectoId: string | null, tipo: 'tarea' | 'observacion' = 'tarea') => {
     const t = titulo.trim()
     if (!t) return
     // sin esto, tocar dos veces "A la semana" deja la tarea repetida
-    if (yaEsta(t)) { setNueva(''); return }
+    if (tipo === 'tarea' && yaEsta(t)) { setNueva(''); return }
+    const hermanas = tipo === 'tarea' ? madres : observaciones
     await guardarTarea({
       id: uuid(), inicio, titulo: t, estado: 'pendiente',
-      proyectoId, nota: '', orden: madres.length + 1, vieneDe: null,
-      cierre: null, correo: '', padreId: null,
+      proyectoId, nota: '', orden: hermanas.length + 1, vieneDe: null,
+      cierre: null, correo: '', padreId: null, tipo,
     }, quienSoy())
-    setNueva('')
+    if (tipo === 'tarea') setNueva(''); else setNuevaObs('')
     await cargar(inicio)
+  }
+
+  /** Cerrar la semana: se guarda la entrega de turno de planificación con lo
+      que hay (realizadas, en seguimiento, pendientes, observaciones) y todo lo
+      que no quedó listo pasa a la semana siguiente, para el contraturno. */
+  const cerrar = async (recibe: string) => {
+    setTrabajando(true); setError('')
+    try {
+      const bloques = await armarDesdeLaMinuta(inicio)
+      await guardarEntregaPlan({
+        id: uuid(), inicio, fecha: hoy(),
+        entrega: { nombre: quienSoy(), cargo: 'Planificador' },
+        recibe: { nombre: recibe.trim(), cargo: 'Planificador' },
+        ...bloques,
+      }, quienSoy())
+      const n = await cerrarSemana(inicio, quienSoy())
+      setCerrando(null)
+      setAviso(`Semana cerrada: la entrega de turno quedó guardada y ${n} ${n === 1 ? 'actividad pasó' : 'actividades pasaron'} a la semana siguiente.`)
+      setTimeout(() => setAviso(''), 9000)
+      setInicio(sumarDias(inicio, 7))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo cerrar la semana.')
+    } finally {
+      setTrabajando(false)
+    }
   }
 
   const cambiar = async (t: TareaMinuta, cambio: Partial<TareaMinuta>) => {
@@ -125,33 +149,13 @@ export default function PanelMinuta() {
     await cargar(inicio)
   }
 
-  const agregarObs = async (texto: string, cuadro: CuadroObs, tareaId: string | null) => {
-    const t = texto.trim()
-    if (!t) return
-    await guardarObs({ id: uuid(), inicio, texto: t, cuadro, tareaId, creadoPor: quienSoy() })
-    setNuevaObs('')
-    await cargarObs(inicio)
-  }
-
-  const quitarObs = async (id: string) => {
-    await borrarObs(id)
-    await cargarObs(inicio)
-  }
-
-  const anotarEntrega = async (e: Entrega, texto: string) => {
+  const bajarEntrega = async (e: EntregaPlan, como: 'excel' | 'pdf') => {
     setErrorBajada('')
     try {
-      await guardarObsPlan(e.id, texto, quienSoy())
-      await cargarEntregas(inicio)
+      if (como === 'excel') await excelEntregaPlan(e)
+      else await pdfEntregaPlan(e)
     } catch (err) {
-      setErrorBajada(err instanceof Error ? err.message : 'No se pudo guardar la observación.')
-    }
-  }
-
-  const bajarExcel = async (e: Entrega) => {
-    setErrorBajada('')
-    try { await bajarExcelEntrega(e) } catch (err) {
-      setErrorBajada(err instanceof Error ? err.message : 'No se pudo armar el Excel.')
+      setErrorBajada(err instanceof Error ? err.message : 'No se pudo bajar.')
     }
   }
 
@@ -217,13 +221,6 @@ export default function PanelMinuta() {
                   {t.vieneDe ? ' · viene de la semana anterior' : ''}
                 </small>
               </span>
-              <button
-                className="btn sm ghost al-turno"
-                title="Mandarla al turno: le aparece al supervisor en su entrega"
-                onClick={() => void agregarObs(t.titulo, 'adicional', t.id)}
-              >
-                Al turno
-              </button>
               <button className="memb-x" onClick={() => void quitar(t.id)} title="Borrar">✕</button>
             </li>
           )
@@ -244,11 +241,44 @@ export default function PanelMinuta() {
         </li>
       </ul>
 
-      <div className="row" style={{ gap: 8, marginTop: 12 }}>
+      <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        <button className="btn sm" onClick={() => setCerrando({ recibe: '' })}>
+          Cerrar la semana y entregar el turno
+        </button>
         <button className="btn sm ghost" onClick={() => void arrastrar()}>
           Traer lo que quedó abierto la semana pasada
         </button>
       </div>
+
+      {cerrando && (
+        <div className="modal-overlay" onClick={() => { if (!trabajando) setCerrando(null) }}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <b>Cerrar la semana</b>
+              <button className="modal-x" onClick={() => setCerrando(null)}>✕</button>
+            </div>
+            <p className="hint" style={{ margin: '0 0 10px' }}>
+              Se guarda la entrega de turno de planificación de esta semana con lo que
+              hay en la minuta: <b>{resumen.lista}</b> realizadas, <b>{resumen.en_curso}</b> en
+              seguimiento, <b>{resumen.pendiente}</b> pendientes y <b>{observaciones.length}</b> observaciones.
+              Después, las <b>{resumen.pendiente + resumen.en_curso + obsAbiertas}</b> que no
+              quedaron listas <b>pasan a la semana siguiente</b> con sus subtareas y
+              archivos, para tu contraturno.
+            </p>
+            <label className="lab">Quién recibe el turno</label>
+            <input
+              autoFocus value={cerrando.recibe} placeholder="Nombre y apellido"
+              onChange={(e) => setCerrando({ recibe: e.target.value })}
+            />
+            <div className="row" style={{ gap: 8, marginTop: 12 }}>
+              <button className="btn primary" disabled={trabajando} onClick={() => void cerrar(cerrando.recibe)}>
+                {trabajando ? 'Cerrando…' : 'Cerrar y pasar al contraturno'}
+              </button>
+              <button className="btn ghost" disabled={trabajando} onClick={() => setCerrando(null)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {abierta && tareas.some((t) => t.id === abierta) && (
         <FichaTarea
@@ -322,24 +352,29 @@ export default function PanelMinuta() {
 
       <h3 className="sec">Para nuestra entrega de turno</h3>
       <p className="hint" style={{ margin: '0 0 8px' }}>
-        Lo que escribas acá aparece <b>ya cargado en la entrega de turno de
-        planificación</b> de esta semana, en el cuadro del formato oficial que elijas.
-        Ahí se corrige o se saca. (La de supervisión es otra área, no se toca.)
+        Lo que escribas acá va a la <b>entrega de turno de planificación</b>, en
+        Observaciones. Tócala para cargarle información, archivos y subtareas, igual
+        que a cualquier tarea. (La de supervisión es otra área, no se toca.)
       </p>
       <ul className="plan-lista">
-        {obs.map((o) => (
-          <li key={o.id} className="plan-tarea">
-            <span className={'obs-cuadro ' + o.cuadro}>
-              {CUADROS.find((c) => c.codigo === o.cuadro)?.nombre}
-            </span>
-            <span className="plan-cuerpo">
-              <b>{o.texto}</b>
+        {observaciones.map((o) => (
+          <li key={o.id} className={'plan-tarea min-' + o.estado}>
+            <button
+              className="plan-check" title={ESTADOS_MINUTA.find((e) => e.codigo === o.estado)?.nombre}
+              onClick={() => void cambiar(o, { estado: siguienteEstado(o.estado) })}
+            >
+              {ESTADOS_MINUTA.find((e) => e.codigo === o.estado)?.corto}
+            </button>
+            <span className="plan-cuerpo" onClick={() => abrirFicha(o.id)}>
+              <b>{o.titulo}</b>
               <small>
-                Va en {CUADROS.find((c) => c.codigo === o.cuadro)?.donde}
-                {o.creadoPor ? ` · ${o.creadoPor}` : ''}
+                Observación
+                {o.cierre ? ` · cierra ${o.cierre}` : ''}
+                {subtareasDe(o.id).length > 0 ? ` · ${subtareasDe(o.id).length} subtareas` : ''}
+                {o.vieneDe ? ' · viene de la semana anterior' : ''}
               </small>
             </span>
-            <button className="memb-x" onClick={() => void quitarObs(o.id)} title="Sacar">✕</button>
+            <button className="memb-x" onClick={() => void quitar(o.id)} title="Borrar">✕</button>
           </li>
         ))}
         <li className="plan-nueva">
@@ -347,42 +382,31 @@ export default function PanelMinuta() {
             value={nuevaObs}
             placeholder="Observación para el turno"
             onChange={(e) => setNuevaObs(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') void agregarObs(nuevaObs, cuadroObs, null) }}
+            onKeyDown={(e) => { if (e.key === 'Enter') void agregar(nuevaObs, null, 'observacion') }}
           />
-          <select value={cuadroObs} onChange={(e) => setCuadroObs(e.target.value as CuadroObs)}>
-            {CUADROS.map((c) => <option key={c.codigo} value={c.codigo}>{c.donde}</option>)}
-          </select>
-          <button className="btn sm" onClick={() => void agregarObs(nuevaObs, cuadroObs, null)}>Agregar</button>
+          <button className="btn sm" onClick={() => void agregar(nuevaObs, null, 'observacion')}>Agregar</button>
         </li>
       </ul>
 
       <h3 className="sec">Nuestras entregas de turno de esta semana</h3>
       {errorBajada && <p className="memb-aviso">{errorBajada}</p>}
       {entregas.length === 0
-        ? <p className="hint">Esta semana todavía no hay ninguna de planificación.</p>
+        ? <p className="hint">Esta semana todavía no se entrega el turno. Se hace con "Cerrar la semana".</p>
         : (
           <div className="lista">
             {entregas.map((e) => (
-              <div key={e.id} className="entrega-caja">
-                <div className="fila-entrega">
-                  <div>
-                    <b>{e.fecha} · {nombreTurno(e.turno as Turno)}</b>
-                    <small>{e.entrega.nombre} · {e.ots.length} OT · {e.adicionales.length} adicionales</small>
-                  </div>
-                  <div className="row" style={{ gap: 6 }}>
-                    <button className="btn sm" onClick={() => void bajarExcel(e)}>Excel</button>
-                    <button className="btn sm ghost" onClick={() => void generarPDFEntrega(e)}>PDF</button>
-                  </div>
+              <div key={e.id} className="fila-entrega">
+                <div>
+                  <b>{e.fecha} · {e.entrega.nombre}{e.recibe.nombre ? ` → ${e.recibe.nombre}` : ''}</b>
+                  <small>
+                    {e.realizadas.length} realizadas · {e.seguimiento.length} en seguimiento
+                    {' · '}{e.pendientes.length} pendientes
+                  </small>
                 </div>
-                <label className="lab" style={{ marginTop: 6 }}>
-                  Observación de planificación
-                  <textarea
-                    rows={2} defaultValue={e.obsPlan ?? ''}
-                    placeholder="Qué hay que seguir de esta entrega"
-                    onBlur={(ev) => { if (ev.target.value !== (e.obsPlan ?? '')) void anotarEntrega(e, ev.target.value) }}
-                  />
-                </label>
-                {e.obsPlanPor && <small className="hint">Anotada por {e.obsPlanPor}. Sale en el PDF, no en el Excel firmado.</small>}
+                <div className="row" style={{ gap: 6 }}>
+                  <button className="btn sm" onClick={() => void bajarEntrega(e, 'excel')}>Excel</button>
+                  <button className="btn sm ghost" onClick={() => void bajarEntrega(e, 'pdf')}>PDF</button>
+                </div>
               </div>
             ))}
           </div>

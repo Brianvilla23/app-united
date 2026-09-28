@@ -1,6 +1,7 @@
 // Los proyectos de planificación con sus actividades y subtareas.
 // Tachar es marcar: la completada se ve tachada, como en el papel.
 import { useCallback, useEffect, useState } from 'react'
+import Archivos from './Archivos'
 import { quienSoy } from './identidad'
 import { uuid } from './util'
 import {
@@ -137,6 +138,8 @@ export default function PanelProyectos() {
         placeholder="Dónde va, qué falta, quién responde"
         onBlur={(e) => { if ((t.seguimiento ?? '') !== e.target.value) void cambiar(t, { seguimiento: e.target.value || null }) }}
       />
+      <label className="lab">Archivos</label>
+      <Archivos ambito="proyecto" objetoId={t.id} />
     </li>
   )
 

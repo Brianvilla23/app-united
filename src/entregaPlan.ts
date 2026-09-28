@@ -8,7 +8,6 @@
 // Al guardarla queda una foto de esa semana, porque la minuta sigue viva.
 import { supabase } from './supabase'
 import { martesDe, sumarDias, traerMinuta, type TareaMinuta } from './minuta'
-import { traerObs } from './turnoObs'
 import { traerAmenazas } from './amenazas'
 import { traerProyectos } from './planDatos'
 
@@ -67,9 +66,8 @@ export async function armarDesdeLaMinuta(inicio: string): Promise<{
   pendientes: LineaEntregaPlan[]
   observaciones: LineaEntregaPlan[]
 }> {
-  const [tareas, obs, proyectos, amenazas] = await Promise.all([
+  const [tareas, proyectos, amenazas] = await Promise.all([
     traerMinuta(inicio),
-    traerObs(inicio).catch(() => []),
     traerProyectos().catch(() => []),
     traerAmenazas(inicio).catch(() => []),
   ])
@@ -92,7 +90,10 @@ export async function armarDesdeLaMinuta(inicio: string): Promise<{
     }
   }
 
-  const madres = tareas.filter((t) => !t.padreId)
+  const madres = tareas.filter((t) => !t.padreId && t.tipo !== 'observacion')
+  // las observaciones son tareas de la minuta: salen con su información y sus
+  // subtareas, igual que el resto
+  const obs = tareas.filter((t) => !t.padreId && t.tipo === 'observacion')
 
   // Las amenazas que reportó supervisión y que siguen abiertas se van en
   // seguimiento, con la solución que anotó planificación. Las resueltas pasan
@@ -112,10 +113,7 @@ export async function armarDesdeLaMinuta(inicio: string): Promise<{
     realizadas: [...madres.filter((t) => t.estado === 'lista').map(linea), ...cerradas.map(deAmenaza)],
     seguimiento: [...madres.filter((t) => t.estado === 'en_curso').map(linea), ...abiertas.map(deAmenaza)],
     pendientes: madres.filter((t) => t.estado === 'pendiente').map(linea),
-    observaciones: obs.map((o) => ({
-      titulo: o.texto,
-      detalle: o.cuadro === 'amenaza' ? 'Amenaza' : 'Observación',
-    })),
+    observaciones: obs.map(linea),
   }
 }
 

@@ -29,6 +29,9 @@ export interface TareaMinuta {
   correo: string
   /** Con padre = subtarea de esa tarea. */
   padreId: string | null
+  /** 'observacion' = lo que se deja escrito para nuestra entrega de turno.
+      Es una tarea más: tiene la misma ficha (archivos, subtareas, cierre). */
+  tipo: 'tarea' | 'observacion'
 }
 
 
@@ -82,6 +85,7 @@ function aTarea(r: Record<string, unknown>): TareaMinuta {
     cierre: (r.cierre as string | null) ?? null,
     correo: (r.correo as string | null) ?? '',
     padreId: (r.padre_id as string | null) ?? null,
+    tipo: (r.tipo as 'tarea' | 'observacion' | null) ?? 'tarea',
   }
 }
 
@@ -124,7 +128,7 @@ export async function guardarTarea(t: TareaMinuta, quien: string): Promise<void>
   const { error } = await supabase.from('minuta_tareas').upsert({
     id: t.id, inicio: t.inicio, titulo: t.titulo, estado: t.estado,
     proyecto_id: t.proyectoId, nota: t.nota, orden: t.orden, viene_de: t.vieneDe,
-    cierre: t.cierre, correo: t.correo, padre_id: t.padreId,
+    cierre: t.cierre, correo: t.correo, padre_id: t.padreId, tipo: t.tipo,
     creado_por: quien, actualizado_en: new Date().toISOString(),
   })
   if (error) throw new Error(error.message)
@@ -136,6 +140,31 @@ export async function borrarTarea(id: string): Promise<void> {
 }
 
 /** Trae a esta semana lo que quedó sin cerrar en la anterior. */
+/** Cierra la semana: todo lo que NO quedó listo —con sus subtareas, su
+    información y sus archivos— pasa a la semana siguiente, para el contraturno.
+    Se MUEVE, no se copia: así no se pierden las subtareas ni los archivos, que
+    cuelgan del id de la tarea. Lo que quedó listo se queda en su semana.
+    Devuelve cuántas actividades pasaron. */
+export async function cerrarSemana(inicio: string, quien: string): Promise<number> {
+  const siguiente = sumarDias(inicio, 7)
+  const [estas, esas] = await Promise.all([traerMinuta(inicio), traerMinuta(siguiente)])
+  const abiertas = estas.filter((t) => !t.padreId && t.estado !== 'lista')
+  let orden = esas.filter((t) => !t.padreId).length
+  for (const t of abiertas) {
+    orden += 1
+    const { error } = await supabase.from('minuta_tareas').update({
+      inicio: siguiente, orden, viene_de: inicio,
+      creado_por: quien, actualizado_en: new Date().toISOString(),
+    }).eq('id', t.id)
+    if (error) throw new Error(error.message)
+    // sus subtareas se van con ella, listas o no: son parte de la misma tarea
+    const { error: e2 } = await supabase.from('minuta_tareas')
+      .update({ inicio: siguiente }).eq('padre_id', t.id)
+    if (e2) throw new Error(e2.message)
+  }
+  return abiertas.length
+}
+
 export async function arrastrarPendientes(
   inicio: string, quien: string, nuevoId: () => string,
 ): Promise<number> {

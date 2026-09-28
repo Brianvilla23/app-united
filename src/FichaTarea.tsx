@@ -78,7 +78,7 @@ export default function FichaTarea({
     await guardarTarea({
       id: uuid(), inicio: tarea.inicio, titulo: t, estado: 'pendiente',
       proyectoId: tarea.proyectoId, nota: '', orden: subtareas.length + 1,
-      vieneDe: null, cierre: null, correo: '', padreId: tarea.id,
+      vieneDe: null, cierre: null, correo: '', padreId: tarea.id, tipo: tarea.tipo,
     }, quienSoy())
     setNuevaSub('')
     await onCambio()

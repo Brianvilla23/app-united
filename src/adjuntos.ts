@@ -7,7 +7,7 @@
 // firmado que dura 5 minutos: nadie llega a ellos con la URL suelta.
 import { supabase } from './supabase'
 
-export type AmbitoAdjunto = 'minuta' | 'seccion'
+export type AmbitoAdjunto = 'minuta' | 'seccion' | 'proyecto'
 
 export interface Adjunto {
   id: string
