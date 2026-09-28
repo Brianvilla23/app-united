@@ -186,9 +186,11 @@ export const ACTIVIDADES: Actividad[] = [
     nombre: 'Carguío de membrana',
     tipo: 'simple',
     lados: ['alimentacion'],
-    membranas: true,
-    pasos: ['Escanear de la posición 7 a la 1'],
-    nota: 'Cada vasija lleva 7 membranas: 4 C6 al fondo y 3 C5 hacia el lado mar.',
+    // 28-09-2026: el escaneo de series lo están haciendo con otra aplicación,
+    // así que por ahora acá solo se marca la vasija cargada o no. Para volver
+    // al escáner (7 membranas por vasija, de la 7 a la 1) basta con devolver:
+    //   membranas: true, pasos: ['Escanear de la posición 7 a la 1'],
+    nota: 'Se marca la vasija cuando quedó cargada. Las series se escanean en la otra aplicación.',
   },
   {
     id: 'instalacion_tapas_alim',
