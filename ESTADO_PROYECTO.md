@@ -896,6 +896,33 @@ dos veces desde la pantalla de entrega, que solo guardaba y no movía nada.
 
 ---
 
+## 29. 🔐 Respaldo automático dentro de la base ✅ (06-10-2026)
+
+Primer arreglo de la auditoría de seguridad del 06-10 (las tablas del rack las
+puede borrar cualquiera con el link, y el plan FREE no trae respaldos).
+`sql/25_respaldo_diario.sql`:
+
+- **Dos veces al día** (pg_cron, 03:00 y 15:00 de Chile) `respaldo.tomar()`
+  copia **todas** las tablas de `public` a `respaldo.copias` (una fila por tabla,
+  contenido en jsonb) más la **lista** de archivos del bucket. Guarda **14 días**.
+  Una toma pesa ~0,5 MB. Las tablas nuevas entran solas.
+- El esquema `respaldo` no está en la API: anon y authenticated no lo ven, no
+  lo leen ni lo borran (comprobado con `has_schema_privilege`). Copia también
+  lo que el RLS esconde (minuta, entregas): la función es del dueño.
+- **Recuperar**: `select respaldo.restaurar_faltantes(<id>)` devuelve solo las
+  filas que faltan, sin pisar nada. Instrucciones y orden de las cascadas en la
+  cabecera del SQL.
+- **Probado** en una transacción deshecha: borrar 5 filas de 5 tablas
+  (`minuta_tareas` arrastró 3 subtareas) → volvieron todas idénticas;
+  producción quedó igual.
+
+⚠️ **Lo que esto NO cubre**: si se pierde el proyecto de Supabase, se pierde
+con él; y las **fotos** no se copian (solo su lista). Para eso falta el
+respaldo externo (Action diaria a un repo **privado**; este repo es público,
+nunca respaldar aquí).
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
