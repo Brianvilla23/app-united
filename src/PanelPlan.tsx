@@ -10,7 +10,7 @@
 // necesitaría que TI registre la app en el tenant de United.
 import { useCallback, useEffect, useState } from 'react'
 import { quienSoy } from './identidad'
-import { uuid } from './util'
+import { uuid, hoyISO } from './util'
 import { sumarDias, diasDeLaSemana } from './minuta'
 import {
   borrarLinea, esSemanaPlanDeHoy, guardarLinea, guardarMuchas, hhDe, lineasDe, lunesDe,
@@ -19,7 +19,7 @@ import {
 } from './planSemana'
 import { bajarPlanExcel, leerLibro, type HojaPlan } from './planExcel'
 
-const hoy = () => new Date().toISOString().slice(0, 10)
+const hoy = () => hoyISO()
 const TURNOS: { codigo: TurnoPlan; nombre: string }[] = [
   { codigo: 'dia', nombre: 'Día' },
   { codigo: 'noche', nombre: 'Noche' },

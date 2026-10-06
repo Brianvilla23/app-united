@@ -10,6 +10,7 @@ import { svg2pdf } from 'svg2pdf.js'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { ReactElement } from 'react'
 import { fechaHora } from './fecha'
+import { hoyISO } from './util'
 
 export interface ItemLeyenda {
   color: string
@@ -211,5 +212,5 @@ export function nombreArchivo(...partes: string[]): string {
   const limpio = partes
     .filter(Boolean)
     .map((p) => p.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, ''))
-  return `${limpio.join('_')}_${new Date().toISOString().slice(0, 10)}.pdf`
+  return `${limpio.join('_')}_${hoyISO()}.pdf`
 }

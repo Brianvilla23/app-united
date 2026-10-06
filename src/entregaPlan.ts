@@ -10,6 +10,7 @@ import { supabase } from './supabase'
 import { martesDe, sumarDias, traerMinuta, type TareaMinuta } from './minuta'
 import { traerAmenazas } from './amenazas'
 import { traerProyectos } from './planDatos'
+import { hoyISO } from './util'
 
 export interface LineaEntregaPlan {
   titulo: string
@@ -150,5 +151,5 @@ export function porSemana(entregas: EntregaPlan[]): { inicio: string; entregas: 
     .sort((a, b) => (a.inicio < b.inicio ? 1 : -1))
 }
 
-export const semanaDeHoy = () => martesDe(new Date().toISOString().slice(0, 10))
+export const semanaDeHoy = () => martesDe(hoyISO())
 export const finDeSemana = (inicio: string) => sumarDias(inicio, 6)

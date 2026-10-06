@@ -9,6 +9,7 @@ import {
   type EstadoTapa, type EstadoTapaDef, type LadoRack, type TapaEstado,
 } from './types'
 import { fechaHora } from './fecha'
+import { hoyISO } from './util'
 
 // A3 apaisado: el plano de la app es ancho (1438 × 998), así que esta es la
 // hoja donde entra COMPLETO y con las etiquetas legibles. En A4 vertical las
@@ -205,6 +206,6 @@ export async function generarPDFTapas(d: DatosPdfTapas): Promise<jsPDF> {
 }
 
 export function nombreArchivoTapas(lado: LadoRack, rack: number): string {
-  const f = new Date().toISOString().slice(0, 10)
+  const f = hoyISO()
   return `Tapas_Rack${rack}_${lado === 'descarga' ? 'Descarga' : 'Alimentacion'}_${f}.pdf`
 }

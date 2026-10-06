@@ -4,7 +4,8 @@
 // corrida. Por eso todo se guarda contra el MARTES de inicio: el número de
 // semana se calcula solo para mostrarlo.
 import { supabase } from './supabase'
-import { semanaDe } from './planDatos'
+import { semanaISO } from './planSemana'
+import { hoyISO } from './util'
 
 export type EstadoMinuta = 'pendiente' | 'en_curso' | 'lista'
 
@@ -63,11 +64,11 @@ function diaMes(fecha: string): string {
 }
 
 export function rotuloSemana(inicio: string): string {
-  return `Martes ${diaMes(inicio)} → lunes ${diaMes(sumarDias(inicio, 6))} · ${semanaDe(inicio)}`
+  return `Martes ${diaMes(inicio)} → lunes ${diaMes(sumarDias(inicio, 6))} · W${semanaISO(inicio)}`
 }
 
 export function esSemanaDeHoy(inicio: string): boolean {
-  return inicio === martesDe(new Date().toISOString().slice(0, 10))
+  return inicio === martesDe(hoyISO())
 }
 
 // ------------------------------------------------------------------- base

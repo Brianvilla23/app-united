@@ -13,7 +13,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
 import { quienSoy } from './identidad'
-import { uuid } from './util'
+import { uuid, hoyISO } from './util'
 import {
   AREAS_ENTREGA, PERSONA_VACIA, TURNOS, filaEntrega, nombreTurno, semanaDe,
   type AreaEntrega, type Entrega, type LineaAdicional, type LineaAmenaza, type LineaEquipo,
@@ -24,7 +24,7 @@ import { generarPDFEntrega } from './pdfEntrega'
 import { bajarExcelEntrega } from './xlsxEntrega'
 import type { EntregaLocal } from './types'
 
-const hoy = () => new Date().toISOString().slice(0, 10)
+const hoy = () => hoyISO()
 
 /** El turno que se está entregando: entre las 7 y las 19 es el de día. */
 function turnoProbable(): Turno {

@@ -11,6 +11,7 @@ import { EQUIPOS } from './equiposFormato'
 import { nombreTurno, type Entrega } from './planDatos'
 import { tituloFormato } from './entregaFormato'
 import { logoUnited } from './logoPdf'
+import { hoyISO } from './util'
 
 const ROJO: [number, number, number] = [192, 0, 0]
 const GRIS_SEC: [number, number, number] = [105, 106, 109]
@@ -236,7 +237,7 @@ export function bajarCSVEntregas(entregas: Entrega[]): void {
   const url = URL.createObjectURL(new Blob(['﻿' + texto], { type: 'text/csv;charset=utf-8' }))
   const a = document.createElement('a')
   a.href = url
-  a.download = `Entregas_turno_${new Date().toISOString().slice(0, 10)}.csv`
+  a.download = `Entregas_turno_${hoyISO()}.csv`
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 2000)
 }

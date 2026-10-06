@@ -1,4 +1,8 @@
-export const hoyISO = () => new Date().toISOString().slice(0, 10)
+/** La fecha de HOY en Chile, como "AAAA-MM-DD".
+    🔴 Antes era `toISOString()`, que da la fecha en UTC: en Chile, desde las
+    21:00 (o 22:00 en invierno) ya era "mañana". Un lunes en la noche la app se
+    saltaba a la semana siguiente y la entrega de turno salía vacía. */
+export const hoyISO = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' })
 
 export function uuid(): string {
   const c = (globalThis as { crypto?: Crypto }).crypto

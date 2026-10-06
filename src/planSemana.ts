@@ -9,6 +9,7 @@
 // app en el tenant de United— así que el ida y vuelta es por archivo: se carga
 // el Excel y se vuelve a bajar.
 import { supabase } from './supabase'
+import { hoyISO } from './util'
 
 export type TurnoPlan = 'dia' | 'noche'
 
@@ -68,7 +69,7 @@ export function rotuloSemanaPlan(inicio: string): string {
 }
 
 export function esSemanaPlanDeHoy(inicio: string): boolean {
-  return inicio === lunesDe(new Date().toISOString().slice(0, 10))
+  return inicio === lunesDe(hoyISO())
 }
 
 // ------------------------------------------------------------------- base

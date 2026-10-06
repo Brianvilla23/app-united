@@ -1,3 +1,4 @@
+import { hoyISO as hoyChile } from './util'
 import { useEffect, useState } from 'react'
 import { db, generarFolio } from './db'
 import { generarPDF } from './pdf'
@@ -6,7 +7,7 @@ import { quienSoy } from './identidad'
 import { ZONAS, TIPOS_AVISO, PRIORIDADES, MODOS_FALLA } from './types'
 import type { Aviso, MaterialItem, Prioridad } from './types'
 
-const hoyISO = () => new Date().toISOString().slice(0, 10)
+const hoyISO = () => hoyChile()
 
 function uuid(): string {
   const c = (globalThis as { crypto?: Crypto }).crypto

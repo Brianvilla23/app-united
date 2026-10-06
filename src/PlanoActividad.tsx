@@ -26,6 +26,7 @@ import {
   puestas as membranasPuestas, type DatosMembranas,
 } from './membranas'
 import { fechaCorta } from './fecha'
+import { hoyISO } from './util'
 
 const HECHO = '#22c55e'
 const EMPEZADO = '#d97706'
@@ -249,7 +250,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
     const url = URL.createObjectURL(new Blob(['﻿' + texto], { type: 'text/csv;charset=utf-8' }))
     const a = document.createElement('a')
     a.href = url
-    a.download = `Membranas_Rack${rack}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `Membranas_Rack${rack}_${hoyISO()}.csv`
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 2000)
   }

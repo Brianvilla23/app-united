@@ -8,15 +8,15 @@
 // en Excel o en PDF.
 import { useCallback, useEffect, useState } from 'react'
 import { quienSoy } from './identidad'
-import { uuid } from './util'
-import { esSemanaDeHoy, martesDe, rotuloSemana, sumarDias } from './minuta'
+import { uuid, hoyISO } from './util'
+import { cerrarSemana, esSemanaDeHoy, martesDe, rotuloSemana, sumarDias } from './minuta'
 import {
   BLOQUES, armarDesdeLaMinuta, borrarEntregaPlan, guardarEntregaPlan, porSemana,
   traerEntregasPlan, type EntregaPlan, type LineaEntregaPlan,
 } from './entregaPlan'
 import { excelEntregaPlan, pdfEntregaPlan } from './docEntregaPlan'
 
-const hoy = () => new Date().toISOString().slice(0, 10)
+const hoy = () => hoyISO()
 type Bloques = Pick<EntregaPlan, 'realizadas' | 'seguimiento' | 'pendientes' | 'observaciones'>
 const VACIO: Bloques = { realizadas: [], seguimiento: [], pendientes: [], observaciones: [] }
 
@@ -66,7 +66,11 @@ export default function EntregaPlanificacion() {
         ...bloques,
       }
       await guardarEntregaPlan(e, quienSoy())
-      setAviso('Entrega guardada. Queda abajo, en su semana.')
+      // y lo que no quedó listo pasa a la semana siguiente, para el
+      // contraturno: es lo mismo que "Cerrar la semana" de la minuta. Antes este
+      // botón solo guardaba, y las tareas se quedaban en la semana vieja.
+      const n = await cerrarSemana(inicio, quienSoy())
+      setAviso(`Entrega guardada, y ${n} ${n === 1 ? 'actividad pasó' : 'actividades pasaron'} a la semana siguiente para el contraturno.`)
       setTimeout(() => setAviso(''), 6000)
       await cargarGuardadas()
     } catch (e) {
@@ -203,7 +207,7 @@ export default function EntregaPlanificacion() {
 
       <div className="row" style={{ gap: 8, marginTop: 12 }}>
         <button className="btn primary" disabled={!listo || trabajando} onClick={() => void guardar()}>
-          {trabajando ? 'Guardando…' : 'Guardar la entrega de la semana'}
+          {trabajando ? 'Guardando…' : 'Guardar la entrega y pasar lo pendiente al contraturno'}
         </button>
         <button className="btn ghost" onClick={() => void armar(inicio)}>Rearmar desde la minuta</button>
       </div>

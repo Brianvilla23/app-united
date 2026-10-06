@@ -4,7 +4,7 @@
 // por su martes de inicio ("Martes 22-09 → lunes 28-09 · W39").
 import { useCallback, useEffect, useState } from 'react'
 import { quienSoy } from './identidad'
-import { uuid } from './util'
+import { uuid, hoyISO } from './util'
 import {
   ESTADOS_MINUTA, arrastrarPendientes, borrarTarea, cerrarSemana, esSemanaDeHoy, guardarTarea,
   martesDe, resumir, rotuloSemana, sumarDias, traerMinuta,
@@ -22,7 +22,7 @@ import {
 import FichaTarea from './FichaTarea'
 import { useModal } from './useModal'
 
-const hoy = () => new Date().toISOString().slice(0, 10)
+const hoy = () => hoyISO()
 
 /** El toque cicla el estado: pendiente → en curso → lista → pendiente. */
 function siguienteEstado(e: EstadoMinuta): EstadoMinuta {

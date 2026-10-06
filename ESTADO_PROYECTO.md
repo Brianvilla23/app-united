@@ -873,6 +873,29 @@ su propia base local en el celular; la de Supabase es la misma.
 
 ---
 
+## 28. 🔴 La app vivía en hora UTC: un lunes en la noche saltaba de semana ✅ (05-10-2026)
+
+Juan cerró la semana el lunes 05-10 a las 22:59 y **no pasó nada**. Causa: el
+"hoy" de toda la app salía de `toISOString()`, que da la fecha **en UTC**. En
+Chile, desde las 21:00 (22:00 en invierno) ya era martes 06-10, así que la
+minuta y la entrega abrían en la **semana nueva, vacía**. Juan guardó la entrega
+dos veces desde la pantalla de entrega, que solo guardaba y no movía nada.
+
+- `hoyISO()` (`util.ts`) da la fecha en **America/Santiago**, y la usan todas las
+  pantallas (minuta, entrega, plan, outage, PDF/Excel).
+- El botón de la pantalla de entrega ahora hace lo mismo que "Cerrar la semana":
+  guarda **y pasa lo pendiente al contraturno**.
+- Se hizo a mano el traspaso que querían: 17 actividades (8 pendientes, 8 en
+  curso, 1 observación) y sus 25 subtareas, de la semana 29-09 a la 06-10.
+- **Número de semana**: Brayan, 05-10: *"la semana pasada fue la 40"*. La
+  minuta mostraba W39 (semana ISO menos uno, sacado del formato de supervisión).
+  Ahora `rotuloSemana` usa la **semana ISO del martes**: 29-09 → 05-10 = W40.
+  ⚠️ La entrega de supervisión todavía propone ISO−1 (`semanaDe`): falta que
+  Brayan confirme si también cambia.
+- Quedaron **dos entregas iguales** de esa semana (Juan apretó dos veces).
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

@@ -18,6 +18,7 @@
 // Como no hay conexión con SharePoint (haría falta que TI registre la app en
 // el tenant), el ida y vuelta es por archivo.
 import { DIAS_SEMANA, lunesDe, type LineaPlan, type TurnoPlan } from './planSemana'
+import { hoyISO } from './util'
 
 type Celda = { value: unknown; address?: string; isMerged?: boolean; master?: { address?: string } }
 export type Hoja = {
@@ -218,7 +219,7 @@ export async function leerLibro(archivo: File): Promise<HojaPlan[]> {
   const ExcelJS = (mod as unknown as { default?: typeof import('exceljs') }).default ?? mod
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.load(await archivo.arrayBuffer())
-  const hoy = new Date().toISOString().slice(0, 10)
+  const hoy = hoyISO()
 
   const hojas: HojaPlan[] = []
   for (const ws of wb.worksheets) {
@@ -337,7 +338,7 @@ export async function bajarPlanExcel(lineas: LineaPlan[]): Promise<{ semanas: nu
   }))
   const a = document.createElement('a')
   a.href = url
-  a.download = `Planificacion ${new Date().toISOString().slice(0, 10)}.xlsx`
+  a.download = `Planificacion ${hoyISO()}.xlsx`
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 3000)
   return { semanas, fuera }

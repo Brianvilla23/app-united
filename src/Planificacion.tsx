@@ -20,6 +20,7 @@ import { quienSoy } from './identidad'
 import {
   SECCIONES_BASE, borrarSeccion, guardarSeccion, traerSecciones, type Seccion,
 } from './secciones'
+import { hoyISO } from './util'
 
 /** 'home' o el id de una sección: las cinco de siempre y las que se agreguen. */
 type Area = string
@@ -175,7 +176,7 @@ export default function Planificacion() {
       {area === 'home' && (
         <>
           <p className="hint" style={{ margin: '0 0 12px' }}>
-            Semana en curso: <b>{rotuloSemana(martesDe(new Date().toISOString().slice(0, 10)))}</b>.
+            Semana en curso: <b>{rotuloSemana(martesDe(hoyISO()))}</b>.
             Va de martes a lunes, como la trabajas tú.
           </p>
           <div className="menu-grid">
