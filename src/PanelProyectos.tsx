@@ -8,6 +8,9 @@ import {
   armarArbol, borrarTarea, guardarProyecto, guardarTarea, traerProyectos, traerTareas,
   type ActividadConSubtareas, type Proyecto, type Tarea,
 } from './planDatos'
+import {
+  borrarComentario, comentar, cuandoComentario, traerComentarios, type Comentario,
+} from './comentarios'
 
 export default function PanelProyectos() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([])
@@ -19,12 +22,41 @@ export default function PanelProyectos() {
   const [nuevaSub, setNuevaSub] = useState('')
   const [editandoNombre, setEditandoNombre] = useState(false)
   const [nuevaSeccion, setNuevaSeccion] = useState<string | null>(null)
+  const [comentarios, setComentarios] = useState<Comentario[]>([])
+  const [nuevoComentario, setNuevoComentario] = useState('')
 
   const cargarTareas = useCallback(async (proyecto: string) => {
-    try { setTareas(await traerTareas(proyecto)) } catch (e) {
+    try {
+      const ts = await traerTareas(proyecto)
+      setTareas(ts)
+      setComentarios(await traerComentarios('proyecto', ts.map((t) => t.id)))
+    } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo cargar.')
     }
   }, [])
+
+  const deTarea = (id: string) => comentarios.filter((c) => c.objetoId === id)
+
+  const agregarComentario = async (t: Tarea) => {
+    const texto = nuevoComentario.trim()
+    if (!texto) return
+    try {
+      await comentar('proyecto', t.id, texto, quienSoy(), uuid())
+      setNuevoComentario('')
+      setComentarios(await traerComentarios('proyecto', tareas.map((x) => x.id)))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo guardar el comentario.')
+    }
+  }
+
+  const quitarComentario = async (id: string) => {
+    try {
+      await borrarComentario(id)
+      setComentarios((cs) => cs.filter((c) => c.id !== id))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo borrar el comentario.')
+    }
+  }
 
   useEffect(() => {
     void (async () => {
@@ -102,12 +134,15 @@ export default function PanelProyectos() {
   const tachar = (t: Tarea) =>
     void cambiar(t, { estado: t.estado === 'completada' ? 'pendiente' : 'completada' })
 
-  const fila = (t: Tarea, esSub: boolean) => (
+  const fila = (t: Tarea, esSub: boolean) => {
+    const cs = deTarea(t.id)
+    const ultimo = cs[cs.length - 1]
+    return (
     <li key={t.id} className={'plan-tarea' + (esSub ? ' sub' : '') + (t.estado === 'completada' ? ' tachada' : '')}>
       <button className="plan-check" onClick={() => tachar(t)} title="Completada">
         {t.estado === 'completada' ? '✓' : ''}
       </button>
-      <span className="plan-cuerpo" onClick={() => setAbierta(abierta === t.id ? null : t.id)}>
+      <span className="plan-cuerpo" onClick={() => { setAbierta(abierta === t.id ? null : t.id); setNuevoComentario('') }}>
         <b>{t.titulo}</b>
         {(t.desde || t.hasta || t.seguimiento) && (
           <small>
@@ -115,10 +150,16 @@ export default function PanelProyectos() {
             {t.seguimiento && `${t.desde || t.hasta ? ' · ' : ''}${t.seguimiento}`}
           </small>
         )}
+        {ultimo && (
+          <small className="coment-ultimo">
+            💬 {cs.length > 1 ? `${cs.length} · ` : ''}{ultimo.texto}
+          </small>
+        )}
       </span>
       <button className="memb-x" onClick={() => void quitar(t.id)} title="Borrar">✕</button>
     </li>
-  )
+    )
+  }
 
   const detalle = (t: Tarea) => (
     <li className="plan-detalle">
@@ -138,6 +179,31 @@ export default function PanelProyectos() {
         placeholder="Dónde va, qué falta, quién responde"
         onBlur={(e) => { if ((t.seguimiento ?? '') !== e.target.value) void cambiar(t, { seguimiento: e.target.value || null }) }}
       />
+      <label className="lab">Comentarios</label>
+      {deTarea(t.id).length > 0 && (
+        <ul className="comentarios">
+          {deTarea(t.id).map((c) => (
+            <li key={c.id}>
+              <div>
+                <p>{c.texto}</p>
+                <small>{c.autor}{c.autor && c.creadoEn ? ' · ' : ''}{cuandoComentario(c.creadoEn)}</small>
+              </div>
+              <button className="memb-x" title="Borrar el comentario" onClick={() => void quitarComentario(c.id)}>✕</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="plan-nueva">
+        <input
+          value={nuevoComentario}
+          placeholder="Escribe un comentario: qué pasó, a quién se entregó…"
+          onChange={(e) => setNuevoComentario(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void agregarComentario(t) }}
+        />
+        <button className="btn sm" disabled={!nuevoComentario.trim()} onClick={() => void agregarComentario(t)}>
+          Comentar
+        </button>
+      </div>
       <label className="lab">Archivos</label>
       <Archivos ambito="proyecto" objetoId={t.id} />
     </li>

@@ -1,5 +1,5 @@
 # App United — Estado del proyecto
-_Última actualización: 25-09-2026_
+_Última actualización: 12-10-2026_
 
 > 👉 **Para retomar: leer primero `TRASPASO_OUTAGE_RACK3.md`.** El Rack 12
 > cerró y el outage del **Rack 3** (también de EWS, no de Planta 0) ya está
@@ -920,6 +920,28 @@ puede borrar cualquiera con el link, y el plan FREE no trae respaldos).
 con él; y las **fotos** no se copian (solo su lista). Para eso falta el
 respaldo externo (Action diaria a un repo **privado**; este repo es público,
 nunca respaldar aquí).
+
+---
+
+## 30. Comentarios en cada tarea de Proyectos ✅ (12-10-2026)
+
+Brayan escribía "Entregué la información a Rodrigo" en el campo de **actividad
+nueva**, porque una tarea ya tachada no tenía dónde comentarse. "Seguimiento"
+es **un** texto que se pisa; ahora cada actividad y subtarea tiene una
+**bitácora de comentarios** (`sql/26`, tabla `comentarios`): cada uno queda
+con quién y cuándo (hora de Chile), y se puede borrar.
+
+- Se abre la tarea tocando su título → **Comentarios**, entre Seguimiento y
+  Archivos. Enter o "Comentar" lo guarda.
+- **En la lista, sin abrir nada**, la fila muestra el último: `💬 2 · Rodrigo
+  confirma…`.
+- Genérica como `adjuntos` (`ambito` + `objeto_id`): hoy solo `'proyecto'`,
+  sirve igual para la minuta o las secciones si se pide.
+- Solo editores de planificación (RLS `es_editor_plan()`). Comprobado en una
+  transacción deshecha: el editor ve el comentario; otra cuenta y anon, 0.
+- Seguimiento se quedó: 17 de las 65 tareas lo tienen escrito.
+- Probado con Supabase **simulado** en el navegador (`screenshot_comentarios.mjs`):
+  ninguna petición llega a la base real.
 
 ---
 
