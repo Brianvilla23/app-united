@@ -644,3 +644,11 @@ textarea { resize: vertical; }
 .pgp-sin-imagen { width: 100%; aspect-ratio: 3 / 4; border-radius: 10px; border: 1px dashed var(--border); display: grid; place-items: center; font-size: 11px; color: var(--muted); background: #f8fafc; }
 .pgp-por-subir { position: absolute; left: 4px; bottom: 20px; font-size: 10px; font-weight: 700; color: #fff; background: #d97706; border-radius: 6px; padding: 2px 6px; }
 .pgp-grande .pgp-sin-imagen { width: 60vw; color: #cbd5e1; }
+
+/* la cuenta de supervisión, arriba de la carpeta (sql/28) */
+.sup-cuenta { font-family: inherit; display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; margin: 0 0 12px; padding: 11px 14px; border-radius: 12px; border: 1.5px dashed var(--accent); background: #fff8f8; color: var(--ink); cursor: pointer; font-size: 14px; }
+.sup-cuenta small { font-size: 11.5px; color: var(--muted); }
+.sup-cuenta.dentro { border: 1.5px solid rgba(22,163,74,.45); background: rgba(22,163,74,.07); cursor: default; }
+.sup-cuenta.dentro b { color: #15803d; }
+.sup-cuenta.sin-rol { border-color: rgba(217,119,6,.5); background: rgba(217,119,6,.07); }
+.sup-cuenta.sin-rol b { color: #92400e; }

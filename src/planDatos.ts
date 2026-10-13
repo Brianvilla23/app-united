@@ -147,6 +147,12 @@ export async function soyEditor(): Promise<boolean> {
   return !error && data === true
 }
 
+/** Supervisión: la lista `supervisores` en la base (`sql/28`). */
+export async function soySupervisor(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('es_supervisor')
+  return !error && data === true
+}
+
 // ------------------------------------------------------------- proyectos
 
 export async function traerProyectos(): Promise<Proyecto[]> {

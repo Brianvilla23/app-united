@@ -996,6 +996,30 @@ activó el 13-10.
 
 ---
 
+## 33. Cuentas de supervisión — etapa 2 del despliegue ✅ (13-10-2026)
+
+Primera mejora hecha con la ficha (problema → 5 porqués → referente → anuncio →
+mínimo → métrica → despliegue gradual): la causa de fondo de "cualquiera puede
+borrar el rack" es que **la app no sabe quién es quién**.
+
+- **Rol de supervisión** (`sql/28`): tabla `supervisores` + `es_supervisor()`,
+  igual que `plan_editores`. La cuenta es la misma de Supabase Auth: Brayan está
+  en las dos listas con su misma clave. anon no puede ni llamar la función.
+- **Supervisores (6)**: Brayan, Edgardo Carvajal, Moisés Navarrete, René Uribe,
+  Richard Rojas y Claudio Araya. Las 5 cuentas las creó Brayan en
+  Authentication (confirmadas, con identidad); Claude solo las registró en la
+  lista. ⚠️ Las claves iniciales siguen el patrón Nombre123: cada uno debe
+  cambiarla con **"Cambiar clave"**, que ya está en la carpeta.
+- **En la app**: arriba de la carpeta Supervisores se ve con qué cuenta y rol se
+  entró (verde = supervisión; ámbar = cuenta sin rol), con "Cambiar clave" y
+  "Salir". Sin sesión, un botón opcional para entrar.
+- **Todavía NO se cierra nada** para quien no tiene cuenta (etapa 2 = mostrar).
+  Siguiente (etapa 3, período doble): sin cuenta ya no se puede BORRAR en el
+  rack; después (etapa 4): sin cuenta solo ver + avisos. Faltan cuentas para
+  Neimar Hernández y Francisco Rojas, que hoy marcan avance.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
