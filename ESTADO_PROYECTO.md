@@ -1051,6 +1051,26 @@ que se guarden sus credenciales en su celular"*.
 
 ---
 
+## 35. PGP: cada supervisor ve solo lo suyo ✅ (13-10-2026)
+
+Brayan: *"no debe ver nadie más lo del PGP"*. Confirmado: cada supervisor ve lo
+suyo; **planificación ve todo** para controlar.
+
+- **Base** (`sql/30`): `pgp_imagenes.autor uuid default auth.uid()`, con
+  `with check autor = auth.uid()` → nadie carga a nombre de otro. Leer y borrar
+  (24 h): solo el autor; planificación todo. Las fotos del bucket usan
+  `owner_id`, que llena Storage. Comprobado en transacción deshecha con cuentas
+  reales: Edgardo ve la suya y no puede cargar como Moisés; Moisés no la ve ni
+  la borra; Juan (planificación) sí la ve.
+- **Celular compartido** (`pgp.ts`): cada foto local guarda la cuenta que la
+  cargó (Dexie v2, `correo`). Al entrar otra cuenta se borra lo bajado de la
+  anterior; lo que la anterior dejó **sin subir** queda guardado pero oculto, y
+  **no se sube a nombre de la nueva**: sube cuando la dueña vuelve a entrar.
+- Probado en `screenshot_pgp.mjs`: A deja una foto sin señal → entra Moisés →
+  ve 0 días y la foto no sube → vuelve A → sube a su nombre.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

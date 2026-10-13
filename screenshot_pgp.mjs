@@ -14,7 +14,8 @@ const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, de
 const ahora = Math.floor(Date.now() / 1000)
 await ctx.addInitScript((s) => {
   localStorage.setItem('united_quien_soy', 'B. Villalobos')
-  localStorage.setItem('sb-egxgxejgcohzwuoqhald-auth-token', JSON.stringify(s))
+  // solo la primera vez: después la prueba cambia de cuenta y no hay que pisarla
+  if (!localStorage.getItem('sb-egxgxejgcohzwuoqhald-auth-token')) localStorage.setItem('sb-egxgxejgcohzwuoqhald-auth-token', JSON.stringify(s))
 }, { access_token: 'f', token_type: 'bearer', expires_in: 3600, expires_at: ahora + 3600, refresh_token: 'f',
   user: { id: '00000000-0000-0000-0000-000000000009', email: 'prueba.sup@unitedpipeline-sa.com', aud: 'authenticated', role: 'authenticated' } })
 
@@ -43,7 +44,7 @@ await ctx.route('**://*.supabase.co/**', async (r) => {
   if (p.endsWith('/rpc/es_editor_plan')) return json(false)
   if (p.endsWith('/rest/v1/supervisores')) return json({ nombre: 'B. Villalobos' })
   if (p.endsWith('/rest/v1/pgp_imagenes')) {
-    if (req.method() === 'GET') return json(filas)
+    if (req.method() === 'GET') return json((req.headers().authorization ?? '').includes('moises') ? [] : filas)
     if (req.method() === 'POST') { const f = JSON.parse(req.postData()); filas.push({ ...f, creado_en: new Date().toISOString() }); return r.fulfill({ status: 201, body: '' }) }
     if (req.method() === 'DELETE') {
       const id = u.searchParams.get('id').replace('eq.', '')
@@ -119,5 +120,37 @@ await page.screenshot({ path: 'ver_pgp_charla.png' })
 const [descarga] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /PDF de la semana/ }).click()])
 await descarga.saveAs('prueba_pgp_semana.pdf')
 
-console.log(JSON.stringify({ porSubirOff, porSubirOn, subidasArriba, veOtra, avisoViejo, quedanMiercoles, filasArriba: filas.length, peticionesCortadas: fuera }, null, 1))
+// 6) celular compartido: B. Villalobos deja una foto sin subir y entra Moisés
+await page.goBack(); await page.waitForTimeout(400)   // de la charla a la carpeta
+await page.getByText('PGP', { exact: true }).click(); await page.waitForTimeout(500)
+await page.getByText('Check list de fatiga y somnolencia').click(); await page.waitForTimeout(400)
+await ctx.setOffline(true)
+await page.locator('.pgp-dia').nth(2).click(); await page.waitForTimeout(300)
+await page.locator('input[type=file][multiple]').setInputFiles([await planilla('Fatiga de B. Villalobos', '#334155')])
+await page.waitForTimeout(1000)
+const pendienteDeA = await page.locator('.pgp-por-subir').count()
+// cambia la cuenta en el mismo celular
+await page.evaluate((t) => {
+  const s = JSON.parse(localStorage.getItem('sb-egxgxejgcohzwuoqhald-auth-token'))
+  s.access_token = t; s.user.email = 'moises.prueba@unitedpipeline-sa.com'
+  localStorage.setItem('sb-egxgxejgcohzwuoqhald-auth-token', JSON.stringify(s))
+}, 'moises')
+await ctx.setOffline(false)
+await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(2500)   // ya entra como Moisés, con señal
+await page.getByText('Supervisores', { exact: true }).click(); await page.waitForTimeout(800)
+await page.getByText('PGP', { exact: true }).click(); await page.waitForTimeout(1500)
+const moisesVeDias = await page.locator('.pgp-puntos i.on').count()   // días en verde de los 4 registros
+const fatigaArribaConMoises = filas.some((f) => f.registro === 'fatiga')   // no debe subir a nombre de Moisés
+// vuelve B. Villalobos: su foto pendiente sube a su nombre
+await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('sb-egxgxejgcohzwuoqhald-auth-token'))
+  s.access_token = 'f'; s.user.email = 'prueba.sup@unitedpipeline-sa.com'
+  localStorage.setItem('sb-egxgxejgcohzwuoqhald-auth-token', JSON.stringify(s))
+})
+await page.reload({ waitUntil: 'networkidle' }); await page.waitForTimeout(3000)
+const subioLaDeA = filas.some((f) => f.subido_por === 'B. Villalobos' && f.registro === 'fatiga')
+
+console.log(JSON.stringify({ porSubirOff, porSubirOn, subidasArriba, veOtra, avisoViejo, quedanMiercoles,
+  compartido: { pendienteDeA, moisesVeDias, fatigaArribaConMoises, subioLaDeA },
+  peticionesCortadas: fuera }, null, 1))
 await browser.close()

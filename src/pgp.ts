@@ -9,6 +9,11 @@
 // bucket privado (`pgp/…`) y deja su fila en `pgp_imagenes` (`sql/27`) en
 // cuanto hay señal. Lo que cargaron otros se baja por semana, solo la fila;
 // la imagen se pide con enlace firmado recién cuando se mira o se imprime.
+//
+// Cada supervisor ve SOLO lo suyo (`sql/30`); planificación ve todo. Lo cierra
+// la base. En el celular, además: si entra otra cuenta se borra lo bajado de
+// la anterior, y lo que la anterior dejó sin subir queda guardado pero oculto
+// y no se sube a nombre de la nueva.
 import Dexie, { type Table } from 'dexie'
 import { supabase } from './supabase'
 import { uuid } from './util'
@@ -41,6 +46,8 @@ export interface ImagenPgp {
   ruta: string
   /** 0 = solo en este celular, esperando señal · 1 = ya está en la base */
   subido: 0 | 1
+  /** la cuenta que la cargó en este celular (para no mezclar cuentas) */
+  correo: string
 }
 
 class BasePgp extends Dexie {
@@ -48,11 +55,34 @@ class BasePgp extends Dexie {
   constructor() {
     super('united_pgp')
     this.version(1).stores({ imagenes: 'id, [registro+dia], registro, dia, subido' })
+    this.version(2).stores({ imagenes: 'id, [registro+dia], registro, dia, subido, correo' })
+      .upgrade((tx) => tx.table('imagenes').toCollection().modify((i: ImagenPgp) => { i.correo ??= '' }))
   }
 }
 
 export const dbPgp = new BasePgp()
 const BUCKET = 'adjuntos'
+
+// ------------------------------------------------------------------ cuenta
+
+let correoSesion: string | null = null
+const CLAVE_CORREO = 'united_pgp_correo'
+
+/** Se llama al cambiar la sesión: si es otra cuenta, fuera lo bajado de la
+    anterior. Lo pendiente de la anterior se queda (es suyo y no se pierde). */
+async function alCambiarCuenta(correo: string | null): Promise<void> {
+  correoSesion = correo ? correo.toLowerCase() : null
+  const antes = localStorage.getItem(CLAVE_CORREO)
+  if ((correoSesion ?? '') !== (antes ?? '')) {
+    await dbPgp.imagenes.where('subido').equals(1).delete()
+    if (correoSesion) localStorage.setItem(CLAVE_CORREO, correoSesion)
+    else localStorage.removeItem(CLAVE_CORREO)
+  }
+}
+
+/** Lo que esta cuenta puede ver en el celular: lo bajado (la base ya lo
+    filtró) y lo que ella misma dejó sin subir. */
+const esVisible = (i: ImagenPgp) => i.subido === 1 || (!!correoSesion && i.correo === correoSesion)
 
 /** Reduce la foto a 1600 px por lado: se lee bien una planilla escrita a mano
     y pesa ~250 KB en vez de los 4 MB que saca el teléfono. */
@@ -81,6 +111,7 @@ function aJpeg(archivo: File, max = 1600, calidad = 0.75): Promise<{ url: string
 export async function cargarImagenes(
   registro: RegistroPgp, dia: string, archivos: File[], quien: string,
 ): Promise<number> {
+  if (!correoSesion) throw new Error('Entra con tu cuenta para cargar.')
   let n = 0
   for (const a of archivos) {
     if (!a.type.startsWith('image/')) continue
@@ -88,7 +119,7 @@ export async function cargarImagenes(
     const id = uuid()
     await dbPgp.imagenes.put({
       id, registro, dia, imagen: url, ancho, alto, subidoPor: quien, createdAt: Date.now(),
-      ruta: `pgp/${registro}/${dia}/${id}.jpg`, subido: 0,
+      ruta: `pgp/${registro}/${dia}/${id}.jpg`, subido: 0, correo: correoSesion,
     })
     n++
   }
@@ -103,10 +134,13 @@ let subiendo = false
 /** Sube lo que quedó en el celular. Es idempotente: si la foto o la fila ya
     estaban arriba (un intento anterior se cortó a medias), cuenta como subida. */
 export async function subirPendientes(): Promise<void> {
-  if (subiendo || !navigator.onLine) return
+  if (subiendo || !navigator.onLine || !correoSesion) return
   subiendo = true
   try {
-    const pendientes = await dbPgp.imagenes.where('subido').equals(0).sortBy('createdAt')
+    // solo lo de la cuenta que está dentro: lo de otra se sube cuando ella vuelva
+    const yo = correoSesion
+    const pendientes = (await dbPgp.imagenes.where('subido').equals(0).sortBy('createdAt'))
+      .filter((p) => p.correo === yo)
     for (const p of pendientes) {
       const blob = await (await fetch(p.imagen)).blob()
       const { error: e1 } = await supabase.storage.from(BUCKET)
@@ -131,7 +165,13 @@ export function iniciarPgp(): void {
   if (iniciado) return
   iniciado = true
   void Dexie.delete('united_pgp_prueba').catch(() => {}) // la base de la prueba del 08-10
-  void subirPendientes()
+  void supabase.auth.getSession().then(async ({ data }) => {
+    await alCambiarCuenta(data.session?.user.email ?? null)
+    void subirPendientes()
+  })
+  supabase.auth.onAuthStateChange((_e, sesion) => {
+    void alCambiarCuenta(sesion?.user.email ?? null).then(() => subirPendientes())
+  })
   window.addEventListener('online', () => { void subirPendientes() })
   setInterval(() => { void subirPendientes() }, 60_000)
 }
@@ -157,7 +197,7 @@ export async function bajarSemana(inicio: string): Promise<void> {
         ancho: Number(r.ancho ?? 1200), alto: Number(r.alto ?? 1600),
         subidoPor: (r.subido_por as string | null) ?? '',
         createdAt: Date.parse(String(r.creado_en)) || Date.now(),
-        ruta: String(r.ruta), subido: 1,
+        ruta: String(r.ruta), subido: 1, correo: '',
       })
     }
   })
@@ -200,7 +240,7 @@ export async function conDatos(imgs: ImagenPgp[]): Promise<ImagenPgp[]> {
 export async function imagenesDe(registro: RegistroPgp, dias: string[]): Promise<ImagenPgp[]> {
   const todas = await dbPgp.imagenes.where('registro').equals(registro).toArray()
   return todas
-    .filter((i) => dias.includes(i.dia))
+    .filter((i) => esVisible(i) && dias.includes(i.dia))
     .sort((a, b) => a.dia.localeCompare(b.dia) || a.createdAt - b.createdAt)
 }
 
@@ -208,6 +248,14 @@ export async function imagenesDe(registro: RegistroPgp, dias: string[]): Promise
 
 /** Lo que no ha subido se borra del celular y listo. Lo que ya está en la base
     lo decide la base: sin cuenta, solo dentro de las 24 h de cargado. */
+/** Para los conteos de la pantalla (días en verde). */
+export async function visiblesDe(registro?: RegistroPgp): Promise<ImagenPgp[]> {
+  const filas = registro
+    ? await dbPgp.imagenes.where('registro').equals(registro).toArray()
+    : await dbPgp.imagenes.toArray()
+  return filas.filter(esVisible)
+}
+
 export async function borrarImagen(i: ImagenPgp): Promise<void> {
   if (i.subido === 1) {
     if (!navigator.onLine) throw new Error('Para borrar una foto que ya subió hace falta señal.')

@@ -13,8 +13,8 @@ import { hoyISO } from './util'
 import { diasDeLaSemana, martesDe, rotuloSemana, sumarDias } from './minuta'
 import { useModal } from './useModal'
 import {
-  REGISTROS_PGP, bajarSemana, borrarImagen, cargarImagenes, conDatos, dbPgp, imagenesDe,
-  nombreRegistro, urlImagen, type ImagenPgp, type RegistroPgp,
+  REGISTROS_PGP, bajarSemana, borrarImagen, cargarImagenes, conDatos, imagenesDe,
+  nombreRegistro, urlImagen, visiblesDe, type ImagenPgp, type RegistroPgp,
 } from './pgp'
 import { nombreDia, pdfPgp } from './pdfPgp'
 
@@ -22,12 +22,7 @@ const CORTO = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
 
 /** Cuántas imágenes tiene cada día de la semana, de un registro o de todos. */
 function useConteo(dias: string[], registro?: RegistroPgp): Map<string, number> {
-  const filas = useLiveQuery(
-    () => (registro
-      ? dbPgp.imagenes.where('registro').equals(registro).toArray()
-      : dbPgp.imagenes.toArray()),
-    [registro],
-  ) ?? []
+  const filas = useLiveQuery(() => visiblesDe(registro), [registro]) ?? []
   const m = new Map<string, number>()
   for (const f of filas) if (dias.includes(f.dia)) m.set(f.dia, (m.get(f.dia) ?? 0) + 1)
   return m
