@@ -154,11 +154,11 @@ export const ACTIVIDADES: Actividad[] = [
   },
   {
     id: 'ovalamiento_sideport',
-    nombre: 'Control de ovalamiento de sideport',
+    nombre: 'Inspección interior Sideport',
     tipo: 'oval',
     lados: ['alimentacion', 'descarga'],
     libre: true,
-    racks: [3],
+    racks: [3, 6],
     nota: 'Cada vasija tiene su sideport norte y su sur, en los dos lados. Se anota cómo está cada una, con su foto.',
   },
   {

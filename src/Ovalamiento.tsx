@@ -319,7 +319,7 @@ export default function Ovalamiento() {
       </div>
 
       <div className="plano-titulo" style={{ marginTop: 12 }}>
-        <b>CONTROL DE OVALAMIENTO · SIDEPORT</b>
+        <b>INSPECCIÓN INTERIOR · SIDEPORT</b>
         <span>RACK {rack} · {LADOS.find((l) => l.codigo === lado)?.nombre.toUpperCase()}</span>
       </div>
 

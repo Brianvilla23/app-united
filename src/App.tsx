@@ -42,7 +42,7 @@ const TITULOS: Record<Vista, string> = {
   venteos: 'Cambio de venteos',
   actividad: 'Actividad del outage',
   prueba: 'Prueba de presión',
-  ovalamiento: 'Control de ovalamiento',
+  ovalamiento: 'Inspección interior Sideport',
   entrega: 'Entrega de turno',
   planificacion: 'Planificación',
   guardados: 'Guardados',

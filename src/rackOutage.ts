@@ -31,8 +31,10 @@ export interface RackOutage {
   retiroTapas: TipoRetiroTapas
 }
 
-/** El primero de la lista es el outage en curso. */
+/** El primero de la lista es el outage en curso. El Rack 6 (13-10-2026) es
+    igual al 3, palabra de Brayan: EWS, manifold flexible, tapa sin seguros. */
 export const RACKS_OUTAGE: RackOutage[] = [
+  { numero: 6, planta: 'EWS', manifold: 'flexible', retiroTapas: 'simple' },
   { numero: 3, planta: 'EWS', manifold: 'flexible', retiroTapas: 'simple' },
   { numero: 12, planta: 'EWS', manifold: 'pvc', retiroTapas: 'detallado' },
 ]

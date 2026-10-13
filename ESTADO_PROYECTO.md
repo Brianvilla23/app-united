@@ -975,9 +975,24 @@ activó el 13-10.
   señal → 2 por subir → vuelve la señal → 0 por subir y 2 arriba; la foto de
   otro supervisor se ve y no se deja borrar (con el aviso); la propia sí; el
   PDF de la semana trae las de todos.
-- Decisiones por defecto, a confirmar: **uno por día** (no por turno día/noche) y
-  semana **martes→lunes**. Las fotos NO entran al respaldo de `sql/25` (solo la
+- **Uno por día** (no por turno día/noche, confirmado el 13-10) y semana
+  **martes→lunes**. Las fotos NO entran al respaldo de `sql/25` (solo la
   lista); queda para el respaldo externo.
+
+---
+
+## 32. Outage del Rack 6 e "Inspección interior Sideport" ✅ (13-10-2026)
+
+- **Rack 6** agregado en `rackOutage.ts`, **igual al Rack 3** (palabra de Brayan):
+  EWS, manifold flexible, retiro de tapa simple (sin seguros ni pernos). Va
+  primero en la lista = outage en curso. No necesitó migración: `avance_item`
+  ya separa por rack desde `sql/07`. El Rack 3 sigue abierto (sin registros de
+  terreno desde el 01-10: falta que Brayan diga si se cierra).
+- El control de ovalamiento **se llama "Inspección interior Sideport"** y va
+  también en el Rack 6 (`racks: [3, 6]`). Solo cambió el nombre: el id
+  (`ovalamiento_sideport`) y la tabla (`sideport_ovalamiento`) son los mismos,
+  así que lo registrado en el Rack 3 no se toca.
+- PGP confirmado por Brayan: **uno por día**, no separado por turno.
 
 ---
 
