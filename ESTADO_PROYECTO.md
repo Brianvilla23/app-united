@@ -1,5 +1,5 @@
 # App United — Estado del proyecto
-_Última actualización: 12-10-2026_
+_Última actualización: 13-10-2026_
 
 > 👉 **Para retomar: leer primero `TRASPASO_OUTAGE_RACK3.md`.** El Rack 12
 > cerró y el outage del **Rack 3** (también de EWS, no de Planta 0) ya está
@@ -942,6 +942,42 @@ con quién y cuándo (hora de Chile), y se puede borrar.
 - Seguimiento se quedó: 17 de las 65 tareas lo tienen escrito.
 - Probado con Supabase **simulado** en el navegador (`screenshot_comentarios.mjs`):
   ninguna petición llega a la base real.
+
+---
+
+## 31. PGP de supervisión y carpeta Supervisores ✅ (13-10-2026)
+
+Pedido de Brayan (08-10): una carpeta **Supervisores** con la entrega de turno,
+el diagrama de fugas, el levantamiento de andamio y una pestaña nueva, **PGP**:
+**charla de inicio de turno · check list de fatiga y somnolencia · check list de
+equipo y vehículo · cartilla CIS**. Se mostró como prueba local el 08-10 y se
+activó el 13-10.
+
+- Cada registro tiene **7 días (martes a lunes, la semana de la minuta)**. A cada
+  día se le saca una foto o se le cargan varias; el día con algo queda **verde**
+  con cuántas tiene, y el de hoy con borde rojo. En la portada, cada registro
+  muestra su barrita "3 de 7 días".
+- **PDF de un día** o **de la semana** (todos los días cargados): una imagen por
+  hoja A4 con logo, registro, día y quién la cargó (`pdfPgp.ts`).
+- **Sin señal se carga igual** (`pgp.ts`): la foto se reduce a 1600 px (~250 KB),
+  queda en el celular (base Dexie aparte, `united_pgp`) con "↑ por subir" y
+  sube sola al volver la señal y cada minuto (`subirPendientes`, arrancada
+  desde `App`). Subir es idempotente: si un intento se cortó a medias, no
+  duplica.
+- Lo que cargó el resto se baja por semana (solo la fila); la imagen se pide
+  con **enlace firmado** recién al mirarla o al armar el PDF, y queda guardada.
+- **Base** (`sql/27`): `pgp_imagenes` + fotos en el bucket privado bajo `pgp/`.
+  Sin cuenta se carga y se ve (los supervisores aún no tienen cuenta), todo
+  `to anon, authenticated` (§25). **Borrar, poka-yoke**: sin cuenta solo dentro
+  de las **24 h** de cargada (para corregir el error del día); después, solo
+  planificación. Sin política de update. Comprobado en transacción deshecha.
+- Probado de punta a punta con Supabase **simulado** (`screenshot_pgp.mjs`): sin
+  señal → 2 por subir → vuelve la señal → 0 por subir y 2 arriba; la foto de
+  otro supervisor se ve y no se deja borrar (con el aviso); la propia sí; el
+  PDF de la semana trae las de todos.
+- Decisiones por defecto, a confirmar: **uno por día** (no por turno día/noche) y
+  semana **martes→lunes**. Las fotos NO entran al respaldo de `sql/25` (solo la
+  lista); queda para el respaldo externo.
 
 ---
 

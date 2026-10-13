@@ -616,3 +616,31 @@ textarea { resize: vertical; }
 .comentarios li > div { flex: 1; min-width: 0; }
 .comentarios p { margin: 0; font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .comentarios small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+/* ---- PGP de supervisión (prueba 08-10-2026) ---- */
+.pgp-semana { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; }
+.pgp-semana span { font-size: 13px; font-weight: 700; text-align: center; }
+.pgp-puntos { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+.pgp-puntos i { width: 14px; height: 6px; border-radius: 3px; background: #e2e8f0; display: inline-block; }
+.pgp-puntos i.on { background: #16a34a; }
+.pgp-puntos em { font-style: normal; font-size: 11px; color: var(--muted); font-weight: 600; margin-left: 4px; }
+.pgp-dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.pgp-dia { font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 0 8px; border-radius: 11px; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; color: var(--ink); }
+.pgp-dia small { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .3px; }
+.pgp-dia b { font-size: 18px; font-weight: 800; }
+.pgp-dia span { font-size: 11px; font-weight: 700; color: #94a3b8; }
+.pgp-dia.on { background: #16a34a; border-color: #16a34a; color: #fff; }
+.pgp-dia.on small, .pgp-dia.on span { color: rgba(255,255,255,.9); }
+.pgp-dia.hoy { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pgp-dia.futuro:not(.on) { opacity: .55; }
+.pgp-vacio { text-align: center; color: var(--muted); font-size: 13px; padding: 22px 0; border: 1.5px dashed var(--border); border-radius: 12px; margin: 8px 0 0; }
+.pgp-fotos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+.pgp-foto { position: relative; }
+.pgp-foto img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); display: block; cursor: zoom-in; }
+.pgp-foto .memb-x { position: absolute; top: 4px; right: 4px; }
+.pgp-foto small { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pgp-grande { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.9); display: flex; align-items: center; justify-content: center; padding: 12px; }
+.pgp-grande img { max-width: 100%; max-height: 100%; }
+.pgp-sin-imagen { width: 100%; aspect-ratio: 3 / 4; border-radius: 10px; border: 1px dashed var(--border); display: grid; place-items: center; font-size: 11px; color: var(--muted); background: #f8fafc; }
+.pgp-por-subir { position: absolute; left: 4px; bottom: 20px; font-size: 10px; font-weight: 700; color: #fff; background: #d97706; border-radius: 6px; padding: 2px 6px; }
+.pgp-grande .pgp-sin-imagen { width: 60vw; color: #cbd5e1; }

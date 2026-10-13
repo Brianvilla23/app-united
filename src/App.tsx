@@ -19,11 +19,14 @@ import PlanoActividad from './PlanoActividad'
 import Pruebas from './Pruebas'
 import EntregaTurno from './EntregaTurno'
 import Planificacion from './Planificacion'
+import Supervisores from './Supervisores'
+import PanelPGP from './PanelPGP'
+import { iniciarPgp } from './pgp'
 import { ACTIVIDADES, type Actividad } from './actividades'
 import { fechaCorta, fechaLarga } from './fecha'
 
 type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'ovalamiento'
-  | 'entrega' | 'planificacion' | 'guardados'
+  | 'entrega' | 'planificacion' | 'guardados' | 'supervisores' | 'pgp'
 
 /** Pantallas a las que solo se entra desde una actividad del outage: el rótulo
     del atrás lleva el nombre de la actividad y no el genérico de la pantalla. */
@@ -43,6 +46,8 @@ const TITULOS: Record<Vista, string> = {
   entrega: 'Entrega de turno',
   planificacion: 'Planificación',
   guardados: 'Guardados',
+  supervisores: 'Supervisores',
+  pgp: 'PGP',
 }
 
 function OfflineDot() {
@@ -173,6 +178,11 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
           <span className="mc-txt"><b>Entrega de turno</b><small>Lo hecho, lo pendiente y las novedades</small></span>
           <span className="mc-arrow">›</span>
         </button>
+        <button className="menu-card" onClick={() => go('supervisores')}>
+          <span className="mc-ico rojo">👷</span>
+          <span className="mc-txt"><b>Supervisores</b><small>Entrega de turno, PGP, fugas y andamios</small></span>
+          <span className="mc-arrow">›</span>
+        </button>
         <button className="menu-card" onClick={() => go('planificacion')}>
           <span className="mc-ico slate">🗂️</span>
           <span className="mc-txt"><b>Planificación</b><small>Proyectos y entregas · con cuenta</small></span>
@@ -246,7 +256,7 @@ export default function App() {
   const [yo, setYo] = useState(quienSoy())
   const [modo, setModo] = useState<ModoUso>(modoGuardado())
   const [editandoNombre, setEditandoNombre] = useState(false)
-  useEffect(() => { iniciarSync() }, [])
+  useEffect(() => { iniciarSync(); iniciarPgp() }, [])
 
   const confirmarNombre = (n: string, m: ModoUso) => {
     guardarQuienSoy(n)
@@ -312,6 +322,8 @@ export default function App() {
         {vista === 'entrega' && <EntregaTurno />}
         {vista === 'planificacion' && <Planificacion />}
         {vista === 'guardados' && <Guardados />}
+        {vista === 'supervisores' && <Supervisores go={irA} />}
+        {vista === 'pgp' && <PanelPGP />}
       </main>
       <footer className="app-foot">
         <span>App United v0.2 · uso interno · versión del {sello()}</span>
