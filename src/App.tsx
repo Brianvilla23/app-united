@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { iniciarSync } from './sync'
@@ -144,16 +144,6 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
           <span className="mc-txt"><b>Nuevo aviso</b><small>Informe técnico para la OT</small></span>
           <span className="mc-arrow">›</span>
         </button>
-        <button className="menu-card" onClick={() => go('andamio')}>
-          <span className="mc-ico amber">🏗️</span>
-          <span className="mc-txt"><b>Levantamiento de andamio</b><small>Acta + tarjeta de andamio</small></span>
-          <span className="mc-arrow">›</span>
-        </button>
-        <button className="menu-card" onClick={() => go('fugas')}>
-          <span className="mc-ico blue">💧</span>
-          <span className="mc-txt"><b>Diagrama de fugas</b><small>Marca fugas por vasija · lado alimentación</small></span>
-          <span className="mc-arrow">›</span>
-        </button>
         {/* una tarjeta por rack: el outage en curso primero, los cerrados
             después. Agregar un rack es agregarlo en `rackOutage.ts`. */}
         {RACKS_OUTAGE.map((r) => {
@@ -173,14 +163,11 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
             </button>
           )
         })}
-        <button className="menu-card" onClick={() => go('entrega')}>
-          <span className="mc-ico amber">📝</span>
-          <span className="mc-txt"><b>Entrega de turno</b><small>Lo hecho, lo pendiente y las novedades</small></span>
-          <span className="mc-arrow">›</span>
-        </button>
+        {/* entrega de turno, fugas y andamios viven dentro de Supervisores,
+            que pide cuenta (13-10-2026) */}
         <button className="menu-card" onClick={() => go('supervisores')}>
           <span className="mc-ico rojo">👷</span>
-          <span className="mc-txt"><b>Supervisores</b><small>Entrega de turno, PGP, fugas y andamios</small></span>
+          <span className="mc-txt"><b>Supervisores</b><small>Entrega de turno, PGP, fugas y andamios · con cuenta</small></span>
           <span className="mc-arrow">›</span>
         </button>
         <button className="menu-card" onClick={() => go('planificacion')}>
@@ -256,6 +243,12 @@ export default function App() {
   const [yo, setYo] = useState(quienSoy())
   const [modo, setModo] = useState<ModoUso>(modoGuardado())
   const [editandoNombre, setEditandoNombre] = useState(false)
+  /** Al entrar con cuenta de supervisión se firma con el nombre de la cuenta. */
+  const nombreDeCuenta = useCallback((n: string) => {
+    if (n === quienSoy()) return
+    guardarQuienSoy(n)
+    setYo(quienSoy())
+  }, [])
   useEffect(() => { iniciarSync(); iniciarPgp() }, [])
 
   const confirmarNombre = (n: string, m: ModoUso) => {
@@ -322,7 +315,7 @@ export default function App() {
         {vista === 'entrega' && <EntregaTurno />}
         {vista === 'planificacion' && <Planificacion />}
         {vista === 'guardados' && <Guardados />}
-        {vista === 'supervisores' && <Supervisores go={irA} />}
+        {vista === 'supervisores' && <Supervisores go={irA} onNombre={nombreDeCuenta} />}
         {vista === 'pgp' && <PanelPGP />}
       </main>
       <footer className="app-foot">

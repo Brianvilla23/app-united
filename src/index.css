@@ -652,3 +652,4 @@ textarea { resize: vertical; }
 .sup-cuenta.dentro b { color: #15803d; }
 .sup-cuenta.sin-rol { border-color: rgba(217,119,6,.5); background: rgba(217,119,6,.07); }
 .sup-cuenta.sin-rol b { color: #92400e; }
+.sup-cuenta .sup-nombre { font-size: 17px; font-weight: 800; color: var(--ink); }

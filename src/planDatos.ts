@@ -147,10 +147,25 @@ export async function soyEditor(): Promise<boolean> {
   return !error && data === true
 }
 
-/** Supervisión: la lista `supervisores` en la base (`sql/28`). */
-export async function soySupervisor(): Promise<boolean> {
-  const { data, error } = await supabase.rpc('es_supervisor')
-  return !error && data === true
+export interface RolTerreno { supervisor: boolean; planificacion: boolean; nombre: string | null }
+
+/** Qué rol tiene la cuenta y con qué nombre firma (`sql/28`). Devuelve null si
+    no se pudo preguntar —sin señal—, que NO es lo mismo que "no tiene rol":
+    quien la llama decide si usa lo último que supo. */
+export async function miRol(correo: string): Promise<RolTerreno | null> {
+  const [sup, plan, fila] = await Promise.all([
+    supabase.rpc('es_supervisor'),
+    supabase.rpc('es_editor_plan'),
+    supabase.from('supervisores').select('nombre').eq('correo', correo.toLowerCase()).maybeSingle(),
+  ])
+  if (sup.error || plan.error) return null
+  const editor = plan.data === true
+  let nombre = (fila.data?.nombre as string | undefined) ?? null
+  if (!nombre && editor) {
+    const { data } = await supabase.from('plan_editores').select('nombre').eq('correo', correo.toLowerCase()).maybeSingle()
+    nombre = (data?.nombre as string | undefined) ?? null
+  }
+  return { supervisor: sup.data === true, planificacion: editor, nombre }
 }
 
 // ------------------------------------------------------------- proyectos

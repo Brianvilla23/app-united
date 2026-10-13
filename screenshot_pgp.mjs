@@ -10,7 +10,13 @@ let fuera = 0
 
 const browser = await chromium.launch()
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
-await ctx.addInitScript(() => localStorage.setItem('united_quien_soy', 'B. Villalobos'))
+// la carpeta Supervisores pide cuenta (sql/28-29): sesión falsa de supervisor
+const ahora = Math.floor(Date.now() / 1000)
+await ctx.addInitScript((s) => {
+  localStorage.setItem('united_quien_soy', 'B. Villalobos')
+  localStorage.setItem('sb-egxgxejgcohzwuoqhald-auth-token', JSON.stringify(s))
+}, { access_token: 'f', token_type: 'bearer', expires_in: 3600, expires_at: ahora + 3600, refresh_token: 'f',
+  user: { id: '00000000-0000-0000-0000-000000000009', email: 'prueba.sup@unitedpipeline-sa.com', aud: 'authenticated', role: 'authenticated' } })
 
 const page = await ctx.newPage()
 page.on('pageerror', (e) => console.log('ERROR DE PÁGINA:', e.message))
@@ -33,6 +39,9 @@ const planilla = async (titulo, color) => {
 await ctx.route('**://*.supabase.co/**', async (r) => {
   const req = r.request(); const u = new URL(req.url()); const p = decodeURIComponent(u.pathname)
   const json = (b, status = 200) => r.fulfill({ status, contentType: 'application/json', body: JSON.stringify(b) })
+  if (p.endsWith('/rpc/es_supervisor')) return json(true)
+  if (p.endsWith('/rpc/es_editor_plan')) return json(false)
+  if (p.endsWith('/rest/v1/supervisores')) return json({ nombre: 'B. Villalobos' })
   if (p.endsWith('/rest/v1/pgp_imagenes')) {
     if (req.method() === 'GET') return json(filas)
     if (req.method() === 'POST') { const f = JSON.parse(req.postData()); filas.push({ ...f, creado_en: new Date().toISOString() }); return r.fulfill({ status: 201, body: '' }) }

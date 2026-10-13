@@ -1020,6 +1020,37 @@ borrar el rack" es que **la app no sabe quién es quién**.
 
 ---
 
+## 34. Supervisores pide cuenta, con nombre y sesión guardada ✅ (13-10-2026)
+
+Brayan: *"que ya no sea opcional sino que sea fijo y que aparezca su nombre, y
+que se guarden sus credenciales en su celular"*.
+
+- **La carpeta Supervisores pide cuenta, sin excepción** (`Puerta` en
+  `Supervisores.tsx`): entra supervisión o planificación; una cuenta sin rol ve
+  "pídele a Brayan que la agregue".
+- **Salieron del menú principal** Entrega de turno, Diagrama de fugas y
+  Levantamiento de andamio: viven solo en la carpeta. Sin cuenta quedan Nuevo
+  aviso, los outages, Planificación y Guardados. Al cerrarlo no había uso que
+  cortar: 0 andamios, 0 entregas de supervisión y 1 marca de fuga en la base.
+- **El nombre**: la tarjeta muestra el nombre de la cuenta (de `supervisores` o
+  `plan_editores`) y **la app firma con ese nombre** (reemplaza el escrito a
+  mano en `united_quien_soy`).
+- **Credenciales en el celular**: la sesión de Supabase ya queda guardada (se
+  entra una vez). El ingreso es un `<form>` con `autocomplete` username /
+  current-password, para que el teléfono ofrezca guardar la clave; cambiar
+  clave usa `new-password`. **Sin señal** vale el último rol conocido de esa
+  cuenta (`united_rol_terreno`): `miRol` devuelve null si no pudo preguntar, que
+  no es lo mismo que "sin rol".
+- **La base también lo cierra** (`sql/29`): el PGP solo para
+  `es_supervisor() or es_editor_plan()`; anon y cuentas sin rol no leen ni
+  cargan (comprobado). Supervisión borra solo dentro de 24 h; planificación
+  siempre. Entregas, fugas y andamios siguen abiertos en la base: van en la
+  etapa 3.
+- `screenshot_pgp.mjs` ahora entra con una sesión de supervisor simulada; mismos
+  resultados que antes.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
