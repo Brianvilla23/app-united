@@ -10,48 +10,54 @@
      recortes, escalas, canales y pequeñas rotaciones.
    ============================================================= */
 //
-// Copiado del escáner de membranas de United y ajustado acá (ver NATIVOS y
-// serieValida). ZXing NO viene en esta carpeta: lo carga la app desde el
-// paquete `@zxing/library` y lo deja en `window.ZXing` antes de este archivo.
+// Copiado del escáner de membranas de United. 18-10-2026: se volvió a traer
+// entero desde su versión de terreno, la que la cuadrilla usó en el Rack 3:
+// alterna un lector lineal y uno 2D cuadro a cuadro (buscar los dos en la
+// misma pasada es varias veces más lento) y acepta series con espacios o
+// separadores ("LG-SW440R BE8A68F5406"). ZXing NO viene en esta carpeta: lo
+// carga la app desde el paquete `@zxing/library` y lo deja en `window.ZXing`
+// antes de este archivo.
 (function (global) {
   'use strict';
 
-  // Simbologías de etiqueta industrial: lineales Code 128/39/93 y bidimensionales
-  // QR, Data Matrix, PDF417 y Aztec (agregadas el 23-09-2026 a pedido de Brayan;
-  // el original del escáner solo traía las tres lineales).
-  // Codabar, ITF y EAN/UPC se excluyen a propósito: con fotos borrosas producen
+  // Simbologías de etiquetas industriales, tanto numéricas como alfanuméricas.
+  // Codabar, ITF y EAN/UPC quedan fuera a propósito: con fotos borrosas producen
   // lecturas falsas (p. ej. "BDD" en Codabar a partir del texto impreso).
   const NATIVOS = ['code_128', 'code_39', 'code_93', 'qr_code', 'data_matrix', 'pdf417', 'aztec'];
-  const LARGO_MINIMO = 6;   // un número de serie de membrana tiene bastante más que esto (ej.: BE8A68F5406)
-  const ES_2D = /qr|data_?matrix|pdf_?417|aztec/i;
+  const LARGO_MINIMO = 4;
 
-  // Un código 2D lleva corrección de error: lo que entrega es lo que dice la
-  // etiqueta, así que se acepta tal cual (sin espacios) aunque traiga separadores
-  // que un lineal borroso no podría garantizar.
-  function serieValida(texto, formato) {
+  /**
+   * Acepta cualquier código imprimible con al menos una letra o dígito:
+   * sirve igual para series numéricas (1234567890) que alfanuméricas
+   * (BE8A68F5406) o con separadores (LG-SW440R BE8A68F5406).
+   */
+  function serieValida(texto) {
     if (typeof texto !== 'string') return false;
     const t = texto.trim();
-    if (ES_2D.test(String(formato || ''))) return t.length >= 4 && t.length <= 64 && !/\s/.test(t);
-    return t.length >= LARGO_MINIMO && /^[A-Za-z0-9\-\/\.]+$/.test(t);
+    return t.length >= LARGO_MINIMO && /^[\x20-\x7E]+$/.test(t) && /[A-Za-z0-9]/.test(t);
   }
 
   /* ---------- ZXing --------------------------------------------------- */
 
-  let zx = null;
-  function lectorZX() {
-    if (zx) return zx;
+  // Se usan dos lectores separados —lineal y bidimensional— y se alternan cuadro a
+  // cuadro: buscar 1D y 2D en la misma pasada hace cada intento mucho más lento.
+  const zx = { '1d': null, '2d': null };
+
+  function lectorZX(tipo) {
+    if (zx[tipo]) return zx[tipo];
     const Z = global.ZXing;
     if (!Z) return null;
     const F = Z.BarcodeFormat;
+    const formatos = tipo === '2d'
+      ? [F.QR_CODE, F.DATA_MATRIX, F.PDF_417, F.AZTEC]
+      : [F.CODE_128, F.CODE_39, F.CODE_93];
     const hints = new Map();
     hints.set(Z.DecodeHintType.TRY_HARDER, true);
-    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, [
-      F.CODE_128, F.CODE_39, F.CODE_93,
-      F.QR_CODE, F.DATA_MATRIX, F.PDF_417, F.AZTEC
-    ]);
-    zx = new Z.MultiFormatReader();
-    zx.setHints(hints);
-    return zx;
+    hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, formatos);
+    const r = new Z.MultiFormatReader();
+    r.setHints(hints);
+    zx[tipo] = r;
+    return r;
   }
 
   function nombreFormatoZX(f) {
@@ -71,17 +77,16 @@
     return out;
   }
 
-  function decodificarZX(img, canal, binarizador) {
+  function decodificarZX(img, canal, binarizador, tipo) {
     const Z = global.ZXing;
-    const r = lectorZX();
+    const r = lectorZX(tipo || '1d');
     if (!r) return null;
     try {
       const fuente = new Z.RGBLuminanceSource(aLuminancia(img, canal), img.width, img.height);
       const Bin = binarizador === 'global' ? Z.GlobalHistogramBinarizer : Z.HybridBinarizer;
       const res = r.decodeWithState(new Z.BinaryBitmap(new Bin(fuente)));
       const texto = String(res.getText() || '').trim();
-      const formato = nombreFormatoZX(res.getBarcodeFormat());
-      return serieValida(texto, formato) ? { texto: texto, formato: formato } : null;
+      return serieValida(texto) ? { texto: texto, formato: nombreFormatoZX(res.getBarcodeFormat()) } : null;
     } catch (e) {
       return null;   // NotFound / Checksum / Format: simplemente no hubo lectura en esta variante
     }
@@ -127,11 +132,13 @@
   const FRANJA = { x: 0.04, y: 0.28, w: 0.92, h: 0.44 };   // coincide con la mira en pantalla
   const COMPLETO = { x: 0, y: 0, w: 1, h: 1 };
   const VARIANTES_VIDEO = [
-    { reg: 'mira', ancho: 1280, canal: 'lum', bin: 'hybrid' },
-    { reg: 'mira', ancho: 1280, canal: 'rojo', bin: 'hybrid' },
-    { reg: COMPLETO, ancho: 1024, canal: 'lum', bin: 'hybrid' },
-    { reg: 'mira', ancho: 960, canal: 'lum', bin: 'global' },
-    { reg: 'mira', ancho: 1280, canal: 'rojo', bin: 'global' }
+    { reg: 'mira', ancho: 1280, canal: 'lum', bin: 'hybrid', tipo: '1d' },
+    { reg: COMPLETO, ancho: 1024, canal: 'lum', bin: 'hybrid', tipo: '2d' },
+    { reg: 'mira', ancho: 1280, canal: 'rojo', bin: 'hybrid', tipo: '1d' },
+    { reg: COMPLETO, ancho: 1024, canal: 'lum', bin: 'hybrid', tipo: '1d' },
+    { reg: 'mira', ancho: 960, canal: 'lum', bin: 'global', tipo: '1d' },
+    { reg: 'mira', ancho: 1024, canal: 'lum', bin: 'hybrid', tipo: '2d' },
+    { reg: 'mira', ancho: 1280, canal: 'rojo', bin: 'global', tipo: '1d' }
   ];
 
   /**
@@ -297,7 +304,7 @@
     if (C.detector) {
       try {
         const cods = await C.detector.detect(v);
-        const ok = (cods || []).map((c) => ({ texto: String(c.rawValue || '').trim(), formato: c.format })).filter((c) => serieValida(c.texto, c.formato));
+        const ok = (cods || []).map((c) => ({ texto: String(c.rawValue || '').trim(), formato: c.format })).filter((c) => serieValida(c.texto));
         if (ok.length) hallado = ok[0];
       } catch (e) { /* cuadro descartado */ }
     }
@@ -307,7 +314,7 @@
       const variante = VARIANTES_VIDEO[C.tick % VARIANTES_VIDEO.length];
       const reg = variante.reg === 'mira' ? regionDeMira(v, C.mira) : variante.reg;
       const img = capturar(v, w, h, reg, variante.ancho, 0);
-      hallado = decodificarZX(img, variante.canal, variante.bin);
+      hallado = decodificarZX(img, variante.canal, variante.bin, variante.tipo);
     }
 
     if (hallado && hallado.texto) confirmar(hallado);
@@ -319,7 +326,9 @@
   let candidato = { texto: '', t: 0 };
   function confirmar(h) {
     const ahora = Date.now();
-    const fuerte = /code_?128/i.test(h.formato || '') || ES_2D.test(String(h.formato || ''));
+    // Code 128 y los códigos 2D traen verificación de errores: se aceptan a la primera.
+    // Code 39 / 93 no la traen, así que se exige verlos dos veces.
+    const fuerte = /code_?128|qr|data_?matrix|pdf_?417|aztec/i.test(h.formato || '');
     if (!fuerte && !(candidato.texto === h.texto && ahora - candidato.t < 2500)) {
       candidato = { texto: h.texto, t: ahora };
       C.onEstado('Leyendo… mantenga el código dentro del recuadro');
@@ -395,7 +404,7 @@
     if (det) {
       try {
         const cods = await det.detect(img);
-        const ok = (cods || []).map((c) => ({ texto: String(c.rawValue || '').trim(), formato: c.format })).filter((c) => serieValida(c.texto, c.formato));
+        const ok = (cods || []).map((c) => ({ texto: String(c.rawValue || '').trim(), formato: c.format })).filter((c) => serieValida(c.texto));
         if (ok.length) return ok[0];
       } catch (e) {}
     }
@@ -415,8 +424,11 @@
     for (const p of pruebas) {
       if (Date.now() > limite) break;
       const datos = capturar(img, sw, sh, p.reg, p.ancho, p.ang);
-      const r = decodificarZX(datos, 'lum', 'hybrid') || decodificarZX(datos, 'rojo', 'hybrid') ||
-                decodificarZX(datos, 'lum', 'global');
+      const r = decodificarZX(datos, 'lum', 'hybrid', '1d') ||
+                decodificarZX(datos, 'lum', 'hybrid', '2d') ||
+                decodificarZX(datos, 'rojo', 'hybrid', '1d') ||
+                decodificarZX(datos, 'lum', 'global', '1d') ||
+                decodificarZX(datos, 'rojo', 'hybrid', '2d');
       if (r) return r;
       await pausa();
     }
