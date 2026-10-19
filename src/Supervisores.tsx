@@ -16,11 +16,12 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
 import { cambiarClave, entrar, miRol, salir, type RolTerreno } from './planDatos'
 
-export type DestinoSupervisores = 'entrega' | 'fugas' | 'andamio' | 'pgp'
+export type DestinoSupervisores = 'entrega' | 'fugas' | 'andamio' | 'pgp' | 'documentos'
 
 const TARJETAS: { destino: DestinoSupervisores; icono: string; nombre: string; bajada: string; color: string }[] = [
   { destino: 'entrega', icono: '📝', nombre: 'Entrega de turno', bajada: 'Formato PYC-EG-MEL-6001-01 · Excel y PDF', color: 'amber' },
   { destino: 'pgp', icono: '🦺', nombre: 'PGP', bajada: 'Charla, fatiga, equipos y cartilla CIS · 7 días', color: 'rojo' },
+  { destino: 'documentos', icono: '📋', nombre: 'Check list y documentos', bajada: 'Check list, protocolos y BOS del CC6001 · ver e imprimir', color: 'blue' },
   { destino: 'fugas', icono: '💧', nombre: 'Diagrama de fugas', bajada: 'Marcar y editar fugas por rack', color: 'blue' },
   { destino: 'andamio', icono: '🏗️', nombre: 'Levantamiento de andamio', bajada: 'Acta + tarjeta de andamio', color: 'amber' },
 ]
@@ -177,7 +178,7 @@ export default function Supervisores({
     <div>
       <div className="plano-titulo">
         <b>SUPERVISORES</b>
-        <span>ENTREGA DE TURNO · PGP · FUGAS · ANDAMIOS</span>
+        <span>ENTREGA DE TURNO · PGP · CHECK LIST · FUGAS · ANDAMIOS</span>
       </div>
       <Puerta onNombre={onNombre}>
         {(cuenta, rol) => (

@@ -7,6 +7,7 @@
 // barras borra la lectura normal. Se carga recién al abrir la cámara: son
 // 350 KB que no tienen por qué pesar en cada arranque de la app.
 import { useEffect, useRef, useState } from 'react'
+import { BASE, cargarScript } from './cargarScript'
 
 interface OpcionesLector {
   video: HTMLVideoElement
@@ -38,26 +39,6 @@ declare global {
     /** La librería ZXing, que `lector.js` lee del global. */
     ZXing?: unknown
   }
-}
-
-const BASE = import.meta.env.BASE_URL
-
-function cargarScript(src: string): Promise<void> {
-  return new Promise((listo, falla) => {
-    const ya = document.querySelector(`script[data-src="${src}"]`)
-    if (ya) {
-      if (ya.getAttribute('data-listo')) return listo()
-      ya.addEventListener('load', () => listo())
-      ya.addEventListener('error', () => falla(new Error(src)))
-      return
-    }
-    const s = document.createElement('script')
-    s.src = src
-    s.dataset.src = src
-    s.onload = () => { s.dataset.listo = '1'; listo() }
-    s.onerror = () => falla(new Error(src))
-    document.head.appendChild(s)
-  })
 }
 
 async function cargarLector(): Promise<ApiLector> {

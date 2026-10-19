@@ -21,12 +21,13 @@ import EntregaTurno from './EntregaTurno'
 import Planificacion from './Planificacion'
 import Supervisores from './Supervisores'
 import PanelPGP from './PanelPGP'
+import PanelDocumentos from './PanelDocumentos'
 import { iniciarPgp } from './pgp'
 import { ACTIVIDADES, type Actividad } from './actividades'
 import { fechaCorta, fechaLarga } from './fecha'
 
 type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'ovalamiento'
-  | 'entrega' | 'planificacion' | 'guardados' | 'supervisores' | 'pgp'
+  | 'entrega' | 'planificacion' | 'guardados' | 'supervisores' | 'pgp' | 'documentos'
 
 /** Pantallas a las que solo se entra desde una actividad del outage: el rótulo
     del atrás lleva el nombre de la actividad y no el genérico de la pantalla. */
@@ -48,6 +49,7 @@ const TITULOS: Record<Vista, string> = {
   guardados: 'Guardados',
   supervisores: 'Supervisores',
   pgp: 'PGP',
+  documentos: 'Check list y documentos',
 }
 
 function OfflineDot() {
@@ -167,7 +169,7 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
             que pide cuenta (13-10-2026) */}
         <button className="menu-card" onClick={() => go('supervisores')}>
           <span className="mc-ico rojo">👷</span>
-          <span className="mc-txt"><b>Supervisores</b><small>Entrega de turno, PGP, fugas y andamios · con cuenta</small></span>
+          <span className="mc-txt"><b>Supervisores</b><small>Entrega de turno, PGP, check list, fugas y andamios · con cuenta</small></span>
           <span className="mc-arrow">›</span>
         </button>
         <button className="menu-card" onClick={() => go('planificacion')}>
@@ -317,6 +319,7 @@ export default function App() {
         {vista === 'guardados' && <Guardados />}
         {vista === 'supervisores' && <Supervisores go={irA} onNombre={nombreDeCuenta} />}
         {vista === 'pgp' && <PanelPGP />}
+        {vista === 'documentos' && <PanelDocumentos />}
       </main>
       <footer className="app-foot">
         <span>App United v0.2 · uso interno · versión del {sello()}</span>

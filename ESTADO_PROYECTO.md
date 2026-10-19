@@ -1097,6 +1097,52 @@ Rack 6, con el proyecto del escáner (`escaner-membranas`, zip del 28-09).
 
 ---
 
+## 37. Check list y documentos del CC6001 en la carpeta Supervisores ✅ (18-10-2026)
+
+Brayan, 18-10: *"en la carpeta de supervisores se debe agregar los check list,
+esto que realizó mi colega"*. El colega es **Axel**: su sitio
+`registros-cc6001.pages.dev` (zip `checklist-cc6001`) tiene check list,
+protocolos, BOS y declaraciones en PDF, con buscador, visor e impresión, y un
+panel donde él sube, edita y borra.
+
+- **Axel sigue siendo el dueño.** La función `sincronizar-documentos`
+  (`supabase/functions/`, `verify_jwt` apagado) lee su `documents.json` y su
+  `/api/state` (lo que cambió desde su panel), y copia a la tabla `documentos`
+  y al bucket privado `adjuntos/documentos/` solo lo nuevo o cambiado. Borra
+  lo que él borró. Corre **cada madrugada** (pg_cron 07:30 UTC, `sql/31`) y
+  planificación tiene el botón **"Traer lo nuevo del sitio de Axel"**.
+  - Va por el servidor porque `/api/state` y `/api/file` de su sitio no
+    responden con CORS: el navegador no puede leer los 8 que subió por panel.
+  - El token del cron vive solo en el Vault (`sync_documentos`) y la función
+    lo valida con `token_sync_documentos_valido()`, que solo puede llamar la
+    clave de servicio: no hay secretos copiados en ningún lado.
+  - 1ª corrida: **118 documentos, 37 MB, 0 fallas, 78 s** (51 check list, 18
+    protocolos, 34 BOS, 2 declaraciones, 13 otros). Calza con su sitio en
+    línea: los 8 agregados por panel, sin los 2 que borró y con su edición. 2ª
+    corrida: 0 bajados, 6 s.
+- **Solo supervisión y planificación** leen el catálogo y los PDF (RLS
+  `es_supervisor() or es_editor_plan()`). Comprobado en transacción: anon 0,
+  cuenta sin rol 0, supervisor 118 y no puede borrar. La función responde 403
+  sin token válido ni cuenta de planificación. El repo es público: los PDF no
+  van en él.
+- **Pantalla** (`PanelDocumentos.tsx`, `documentos.ts`): buscador por código o
+  nombre (sin tildes, todas las palabras), pestañas por categoría, visor con
+  **PDF.js** (`public/vendor/pdf*.js`, el mismo de Axel, se carga al abrir)
+  que dibuja **todas** las páginas, e **Imprimir** el documento completo, una
+  hoja por página con su orientación (su misma técnica).
+- **Sin señal**: el catálogo queda guardado en el celular; cada PDF que se
+  abre queda guardado (Cache Storage, por versión) y **"Guardar todos"** baja
+  los 37 MB antes de ir a planta. Sin señal el catálogo espera 8 s y pasa a
+  "Sin señal" (supabase-js reintenta solo y dejaba la pantalla esperando).
+- `cargarScript.ts`: el cargador de scripts del escáner pasó a ser común.
+- Probado con Supabase simulado (`screenshot_documentos.mjs <carpeta de PDF>`):
+  lista, pestañas, búsqueda, visor 2 de 2 páginas, impresión 2 hojas, atrás
+  cierra el visor, sin señal abre lo guardado y avisa en lo no guardado.
+- ⚠️ `App.css` es un resto de la plantilla de Vite y **no se carga**: los
+  estilos van en `index.css`.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
