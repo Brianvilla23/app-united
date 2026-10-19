@@ -1159,7 +1159,10 @@ credenciales:
   del Rack 3 se copiaron al carguío de la app (`avance_item.datos`, sin tocar
   `hecho`) y **el Rack 3 también se ve vasija por vasija** (`escaneoEnRacks:
   [3, 6]`), con su Excel. Solo supervisión/planificación leen `escaner_axel`.
-  - ⚠️ **6 vasijas del Rack 3 sin series**: R15, R16, S9, S10, S11, S12.
+  - **6 vasijas del Rack 3 sin series** (R15, R16, S9, S10, S11, S12): Brayan
+    confirmó que son las **aisladas** (ya tenían tapa aislada en la instalación).
+    Se marcaron `vasija_aislada` por SQL: el carguío del Rack 3 queda 2.023 de
+    2.023 (289 vasijas, 100%).
   - ⚠️ **8 series repetidas** en dos vasijas del Rack 3 (13912681, 13974957,
     13974509, 13912679, 13932051, 13931798, 13932358, 236416).
 - **Check list**: se apagó el cron `sincronizar-documentos` y la función quedó
