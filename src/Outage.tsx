@@ -14,7 +14,7 @@ import { NOMBRE_MANIFOLD, cerrarOutage, rackDe, useCierre, useRack } from './rac
 import { usePuedeEditar } from './permisos'
 import { fechaCorta } from './fecha'
 import {
-  ACTIVIDADES, TIPOS_LISTOS, actividadesDe, estaBloqueada, itemsDe, resumirManifold,
+  TIPOS_LISTOS, actividadesDe, estaBloqueada, itemsDe, resumirManifold,
   type Actividad, type TipoDiagrama,
 } from './actividades'
 
@@ -38,11 +38,13 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
   const ovales = useLiveQuery(() => db.ovalamientos.toArray(), []) ?? []
 
   const delRack = itemsAv.filter((i) => i.rack === rack)
+  const actividades = actividadesDe(rack)
 
   // Avance por actividad. Cada tipo guarda en su propia tabla, así que el
   // avance se lee de donde corresponda.
   const avanceDe = (id: string): number => {
-    const act = ACTIVIDADES.find((a) => a.id === id)
+    // la del rack, no la de la lista general: el carguío escanea o no según el rack
+    const act = actividades.find((a) => a.id === id)
     // Las tapas NO viven en avance_item sino en su propia tabla, y cada
     // actividad lleva su registro por lado. Antes esto solo contemplaba el
     // retiro de alimentación: las otras tres caían al conteo de avance_item,
@@ -86,7 +88,6 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
     return 0
   }
 
-  const actividades = actividadesDe(rack)
   const total = actividades.reduce((n, a) => n + itemsDe(a), 0)
   const hecho = actividades.reduce((n, a) => n + (avanceDe(a.id) / 100) * itemsDe(a), 0)
   const registrado = Math.round((hecho / total) * 1000) / 10

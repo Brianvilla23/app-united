@@ -18,15 +18,14 @@ import PlanoRack from './PlanoRack'
 import PlanoManifolds, { type EstadoManifold } from './PlanoManifolds'
 import DetalleManifold from './DetalleManifold'
 import { agruparPorFila, generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
-import { usePuedeRegistrar, useRack } from './rackOutage'
+import { rackDe, usePuedeRegistrar, useRack } from './rackOutage'
 import { useModal } from './useModal'
 import DetalleMembranas from './DetalleMembranas'
 import {
-  MEMBRANAS_POR_VASIJA, completa as membranasCompleta, filasDe,
+  MEMBRANAS_POR_VASIJA, completa as membranasCompleta,
   puestas as membranasPuestas, type DatosMembranas,
 } from './membranas'
-import { fechaCorta } from './fecha'
-import { hoyISO } from './util'
+import { bajarExcelMembranas } from './xlsxMembranas'
 
 const HECHO = '#22c55e'
 const EMPEZADO = '#d97706'
@@ -235,24 +234,17 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
 
   /** Planilla de trazabilidad: una fila por membrana. Va en CSV con `;` y BOM
       porque es lo que Excel abre de una en los computadores de la planta. */
-  const exportarCSV = () => {
-    const orden = new Map(CELDAS.map((c, i) => [c.id, i]))
-    const filas = delLado
-      .flatMap((i) => filasDe(rack, i.item, i.datos as DatosMembranas, (ts) => (ts ? fechaCorta(ts) : '')))
-      .sort((a, b) => (orden.get(a.vasija) ?? 0) - (orden.get(b.vasija) ?? 0) || b.posicion - a.posicion)
-    const cab = ['RACK', 'VASIJA', 'POSICION', 'TIPO', 'MARCA', 'MODELO', 'SERIE', 'METODO', 'REGISTRO', 'FECHA']
-    const texto = [
-      cab.join(';'),
-      ...filas.map((f) => [
-        f.rack, f.vasija, f.posicion, f.tipo, f.marca, f.modelo, f.serie, f.metodo, f.quien, f.fecha,
-      ].join(';')),
-    ].join('\r\n')
-    const url = URL.createObjectURL(new Blob(['﻿' + texto], { type: 'text/csv;charset=utf-8' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `Membranas_Rack${rack}_${hoyISO()}.csv`
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 2000)
+  const exportarExcel = async () => {
+    setGenerando(true)
+    try {
+      await bajarExcelMembranas(rack, rackDe(rack).planta, delLado.map((i) => ({
+        vasija: i.item, datos: i.datos as DatosMembranas,
+      })))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'No se pudo armar el Excel.')
+    } finally {
+      setGenerando(false)
+    }
   }
 
   const marcarTodo = async (valor: boolean) => {
@@ -305,7 +297,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
             {generando ? 'Generando…' : 'PDF'}
           </button>
           {esMembranas && (
-            <button className="btn sm ghost" onClick={exportarCSV}>Planilla</button>
+            <button className="btn sm ghost" disabled={generando} onClick={() => void exportarExcel()}>Excel</button>
           )}
         </div>
         <div className="avance-bar">

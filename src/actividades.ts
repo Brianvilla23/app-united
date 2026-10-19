@@ -97,8 +97,12 @@ export interface Actividad {
       plomo: verde dice "está puesto", y algo retirado justamente ya no está. */
   retira?: boolean
   /** true = cada vasija lleva sus 7 membranas con la serie escaneada, así que
-      tocarla abre el detalle en vez de marcarla entera. */
+      tocarla abre el detalle en vez de marcarla entera. No se escribe a mano:
+      lo pone `actividadesDe` en los racks de `escaneoEnRacks`. */
   membranas?: boolean
+  /** Racks donde el carguío se hace escaneando las 7 membranas. En el resto se
+      marca la vasija cargada y nada más. */
+  escaneoEnRacks?: number[]
   /** true = no forma parte de la cadena secuencial. */
   libre?: boolean
   /** true = es del rack completo, el lado no aplica (ej. las membranas). */
@@ -112,7 +116,19 @@ export const MANIFOLDS_POR_LADO = 40
 
 /** Las actividades que van en el outage de ese rack. */
 export function actividadesDe(rack: number): Actividad[] {
-  return ACTIVIDADES.filter((a) => !a.racks || a.racks.includes(rack))
+  return ACTIVIDADES
+    .filter((a) => !a.racks || a.racks.includes(rack))
+    .map((a) => (a.escaneoEnRacks?.includes(rack) ? conEscaneo(a) : a))
+}
+
+/** El carguío con escáner: cada vasija abre sus 7 posiciones. */
+function conEscaneo(a: Actividad): Actividad {
+  return {
+    ...a,
+    membranas: true,
+    pasos: ['Escanear de la posición 7 a la 1'],
+    nota: 'Cada vasija lleva 7 membranas: 4 C6 al fondo y 3 C5 hacia el lado mar. Se escanean de la 7 a la 1.',
+  }
 }
 
 export const ACTIVIDADES: Actividad[] = [
@@ -186,11 +202,12 @@ export const ACTIVIDADES: Actividad[] = [
     nombre: 'Carguío de membrana',
     tipo: 'simple',
     lados: ['alimentacion'],
-    // 28-09-2026: el escaneo de series lo están haciendo con otra aplicación,
-    // así que por ahora acá solo se marca la vasija cargada o no. Para volver
-    // al escáner (7 membranas por vasija, de la 7 a la 1) basta con devolver:
-    //   membranas: true, pasos: ['Escanear de la posición 7 a la 1'],
-    nota: 'Se marca la vasija cuando quedó cargada. Las series se escanean en la otra aplicación.',
+    // 28-09-2026: en el Rack 3 las series se escanearon con la otra aplicación
+    // (escaner-membranas.pages.dev), así que ahí solo se marca la vasija
+    // cargada: tiene sus 295 vasijas así y no se tocan. 18-10-2026: en el Rack 6
+    // el escaneo vuelve a la app (pedido de Brayan).
+    escaneoEnRacks: [6],
+    nota: 'Se marca la vasija cuando quedó cargada. Las series se escanearon en la otra aplicación.',
   },
   {
     id: 'instalacion_tapas_alim',

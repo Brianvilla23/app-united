@@ -1071,6 +1071,32 @@ suyo; **planificación ve todo** para controlar.
 
 ---
 
+## 36. Rack 6: el carguío vuelve a escanear las 7 membranas ✅ (18-10-2026)
+
+Brayan, 18-10: agregar el escaneo de membranas al carguío del outage del
+Rack 6, con el proyecto del escáner (`escaner-membranas`, zip del 28-09).
+
+- **Por rack** (`escaneoEnRacks: [6]` en `actividades.ts`; `actividadesDe(rack)`
+  pone `membranas: true` solo ahí). El **Rack 3 sigue igual**: sus 295 vasijas
+  quedaron marcadas "cargada" sin series (las escanearon en la otra app) y no se
+  tocan. En el Rack 6 el carguío no había empezado (0 vasijas al 18-10).
+- `Outage.tsx` ya no busca la actividad en `ACTIVIDADES` sino en la del rack:
+  si no, el avance del Rack 6 se contaba por vasija y no por membrana.
+- **Lector**: `public/vendor/lector.js` se volvió a traer entero desde la
+  versión de terreno del escáner: alterna lector lineal y 2D cuadro a cuadro
+  (más rápido) y acepta series con espacios o separadores
+  (`LG-SW440R BE8A68F5406`); la copia de acá las rechazaba.
+- **Excel en el formato del escáner** (`xlsxMembranas.ts`, botón "Excel" que
+  reemplaza la planilla CSV): hojas CODIFICACION (una fila por vasija con las 7
+  series, marca, mecánico, supervisor, fecha, estado), DETALLE (una fila por
+  membrana) y RESUMEN. "Mecánico" = quien hizo cada lectura.
+- Probado con Supabase simulado (`screenshot_carguio.mjs`): Rack 6 abre las 7
+  posiciones, 7 de 2.065 membranas, Excel con las 3 hojas y la serie con
+  espacio; en el Rack 3 un toque marca la vasija y no abre detalle.
+- ⚠️ La cámara no se probó con una etiqueta real (solo ingreso a mano).
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

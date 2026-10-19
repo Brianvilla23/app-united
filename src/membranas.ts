@@ -113,32 +113,3 @@ export function vasijaConLaSerie(
   }
   return null
 }
-
-/** Línea por membrana para exportar (una fila del CSV). */
-export interface FilaMembrana {
-  rack: number
-  vasija: string
-  posicion: number
-  tipo: TipoMembrana
-  marca: string
-  modelo: string
-  serie: string
-  metodo: string
-  quien: string
-  fecha: string
-}
-
-export function filasDe(
-  rack: number, vasija: string, d: DatosMembranas, fechaDe: (ts?: number) => string,
-): FilaMembrana[] {
-  return POSICIONES.map((p) => {
-    const m = membranaEn(d, p)
-    if (!m?.serie) return null
-    return {
-      rack, vasija, posicion: p, tipo: tipoDePosicion(p),
-      marca: d.marca ?? '', modelo: m.modelo ?? '', serie: m.serie,
-      metodo: m.metodo === 'manual' ? 'MANUAL' : 'CAMARA',
-      quien: m.quien ?? '', fecha: fechaDe(m.ts),
-    }
-  }).filter((f): f is FilaMembrana => f !== null)
-}
