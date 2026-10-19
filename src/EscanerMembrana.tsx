@@ -29,6 +29,7 @@ interface ApiLector {
   detener: () => void
   siguienteCamara: () => Promise<void>
   linterna: (on: boolean) => Promise<void>
+  zoom: (valor: number) => Promise<void>
   olvidarUltimo: () => void
   decodificarImagen: (archivo: File) => Promise<{ texto: string; formato: string } | null>
 }
@@ -78,6 +79,10 @@ export default function EscanerMembrana({
   const [cartel, setCartel] = useState<Respuesta | null>(null)
   const [info, setInfo] = useState<InfoLector | null>(null)
   const [luz, setLuz] = useState(false)
+  // 19-10-2026: la etiqueta es chica y el teléfono no enfoca de muy cerca; sin
+  // zoom el código queda chico o borroso y no se lee. La app de Axel, con la
+  // que se leyó el 95% del Rack 3 por cámara, tenía esta barra; acá faltaba.
+  const [zoom, setZoom] = useState(1)
   // el callback vive en un ref: el lector se inicia una sola vez y no puede
   // quedarse con una versión vieja de la función
   const cb = useRef(onCodigo)
@@ -116,7 +121,7 @@ export default function EscanerMembrana({
           onEstado: (t) => { if (vivo) setEstado(t) },
           onCodigo: (texto, formato) => procesarRef.current(texto, formato),
         })
-        if (vivo) setInfo(i)
+        if (vivo) { setInfo(i); setZoom(i.zoom?.valor ?? 1) }
       } catch (e) {
         if (vivo) setError(e instanceof Error ? e.message : 'No se pudo abrir la cámara.')
       }
@@ -151,6 +156,20 @@ export default function EscanerMembrana({
         <div className="escaner-msj">{error || estado}</div>
       </div>
 
+      {info?.zoom && info.zoom.max > info.zoom.min && (
+        <label className="escaner-zoom">
+          <span>🔍 Zoom ×{zoom.toFixed(1)}</span>
+          <input
+            type="range"
+            min={info.zoom.min}
+            max={Math.min(info.zoom.max, 8)}
+            step={info.zoom.step || 0.1}
+            value={zoom}
+            onChange={(e) => { const v = Number(e.target.value); setZoom(v); void window.LECTOR?.zoom(v) }}
+          />
+        </label>
+      )}
+
       <div className="escaner-acciones">
         {info?.linterna && (
           <button className="btn sm ghost" onClick={() => { setLuz(!luz); void window.LECTOR?.linterna(!luz) }}>
@@ -172,7 +191,7 @@ export default function EscanerMembrana({
       </div>
 
       <p className="hint escaner-pie">
-        Apunta al código de barras de la etiqueta. Si no lee, acércate o enciende la luz.
+        Aleja un poco el teléfono (a un palmo) y usa el zoom hasta que el código llene el recuadro. Si no lee, enciende la luz o usa «Desde una foto».
         {info && <> · {info.resolucion} · {info.motor}</>}
       </p>
     </div>

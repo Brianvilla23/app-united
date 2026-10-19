@@ -1195,6 +1195,32 @@ adelante"*.
 
 ---
 
+## 39. El escáner no leía en terreno: faltaba el zoom ✅ (19-10-2026)
+
+Brayan, 19-10: *"no me logra escanear el código de barra"* (S1 del Rack 6:
+quedó elegida Hydranautics, ninguna serie).
+
+- **El lector no era el problema.** Fotos de Code 128 numérico (como
+  Hydranautics) nítidas, borrosas, chicas y torcidas: el lector de antes del
+  18-10, el actual y el de Axel leen igual. Con una **cámara simulada** (Chromium
+  con `--use-file-for-fake-video-capture`) el escáner de la app lee en 1 s, en
+  local y en las dos direcciones publicadas (`screenshot_camara.mjs`).
+- La app de Axel leyó el Rack 3 **95% por cámara** (1.932 de 2.023; 91 a
+  mano) con el mismo `lector.js`. Lo que la nuestra NO tenía:
+  1. **Barra de zoom** (`LECTOR.zoom`, `info.zoom`): la etiqueta es chica y
+     el teléfono no enfoca de muy cerca → sin zoom el código queda chico o
+     borroso. Ahora aparece si la cámara lo permite (Android; iPhone Safari no
+     da zoom por web).
+  2. **Vista 4:3 con `max-height: 58vh` y mira `inset: 28% 4%`**, como la de
+     Axel; la nuestra ocupaba toda la pantalla vertical.
+- Instrucción nueva al pie: alejar a un palmo, usar zoom hasta llenar el
+  recuadro, luz o «Desde una foto».
+- ⚠️ Sin probar con una etiqueta real: falta que Brayan confirme en terreno.
+  El pie de la cámara muestra la resolución y el motor (`nativo+zxing` en
+  Android, `zxing` en iPhone): sirve para diagnosticar si sigue fallando.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
