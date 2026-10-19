@@ -22,6 +22,7 @@ import PlanoRack from './PlanoRack'
 import { generarPDFDiagrama, nombreArchivo } from './pdfDiagrama'
 import { usePuedeRegistrar, useRack } from './rackOutage'
 import { useModal } from './useModal'
+import { COLOR_AISLADA, useAisladasDe } from './aisladas'
 
 const OK = { color: '#22c55e', texto: '#052e16' }
 const FUGA = { color: MARCA, texto: '#3b2a00' }
@@ -38,6 +39,10 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
   const [sel, abrirVasija, cerrarVasija] = useModal<string>()
   const rack = useRack()
   const puedeEditar = usePuedeRegistrar()
+  // las aisladas en el carguío no se presurizan ni se recorren (`aisladas.ts`)
+  const aisladas = useAisladasDe(actividad.id, rack)
+  const [aviso, setAviso] = useState('')
+  const aRevisar = TOTAL_VASIJAS - aisladas.size
 
   const items = useLiveQuery(
     () => db.items.where('[actividad+rack]').equals([actividad.id, rack]).toArray(),
@@ -49,19 +54,26 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
     ((registro.get(item)?.datos as DatosPrueba | undefined)?.fugas) ?? []
   const revisada = (item: string) => registro.get(item)?.hecho ?? false
 
-  const vasijas = delLado.filter((i) => !i.item.startsWith(ITEM_VENTEO))
+  const vasijas = delLado.filter((i) => !i.item.startsWith(ITEM_VENTEO) && !aisladas.has(i.item))
   const conFuga = vasijas.filter((i) => fugasDe(i.item).length > 0)
   const revisadas = vasijas.filter((i) => i.hecho)
   const venteos = venteosDe(lado)
-  const total = TOTAL_VASIJAS + venteos.length
+  const total = aRevisar + venteos.length
   const hechas = revisadas.length + venteos.filter((v) => revisada(ITEM_VENTEO + v.id)).length
   const pct = Math.round((hechas / total) * 1000) / 10
 
-  const colores = new Map(
-    vasijas
+  const colores = new Map([
+    ...vasijas
       .filter((i) => i.hecho || fugasDe(i.item).length > 0)
-      .map((i) => [i.item, fugasDe(i.item).length > 0 ? FUGA : OK]),
-  )
+      .map((i) => [i.item, fugasDe(i.item).length > 0 ? FUGA : OK] as const),
+    ...[...aisladas].map((v) => [v, COLOR_AISLADA] as const),
+  ])
+
+  const tocarVasija = (id: string) => {
+    if (aisladas.has(id)) { setAviso(`La vasija ${id} está aislada: no se prueba.`); return }
+    setAviso('')
+    abrirVasija(id)
+  }
 
   /** Lee de la base antes de escribir: dos marcas seguidas no se pisan. */
   const guardar = async (item: string, cambio: (fugas: ComponentePrueba[]) => ComponentePrueba[] | null) => {
@@ -118,8 +130,9 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
         leyenda: [
           { color: FUGA.color, nombre: 'Con fuga', desc: 'Filtró en la prueba', n: conFuga.length },
           { color: OK.color, nombre: 'Revisada', desc: 'Sin fuga', n: revisadas.length - conFuga.length },
-          { color: '#ffffff', hueco: true, nombre: 'Sin revisar', desc: 'Todavía no se recorre', n: TOTAL_VASIJAS - revisadas.length },
-          { color: '#ffffff', hueco: true, nombre: 'TOTAL', desc: 'Vasijas del rack', n: TOTAL_VASIJAS },
+          ...(aisladas.size ? [{ color: COLOR_AISLADA.color, nombre: 'Aislada', desc: 'No se prueba', n: aisladas.size }] : []),
+          { color: '#ffffff', hueco: true, nombre: 'Sin revisar', desc: 'Todavía no se recorre', n: aRevisar - revisadas.length },
+          { color: '#ffffff', hueco: true, nombre: 'TOTAL', desc: aisladas.size ? 'Vasijas a probar' : 'Vasijas del rack', n: aRevisar },
         ],
         detalle: [
           {
@@ -160,7 +173,7 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
         {actividad.lados.map((l) => (
           <button key={l} className={lado === l ? 'on' : ''} onClick={() => { setLado(l); setVista(ordenSemiRacks(l === 'descarga')[0]) }}>
             {LADOS.find((x) => x.codigo === l)!.corto}
-            <small>{items.filter((i) => i.lado === l && i.hecho).length} revisadas</small>
+            <small>{items.filter((i) => i.lado === l && i.hecho && !aisladas.has(i.item)).length} revisadas</small>
           </button>
         ))}
       </div>
@@ -197,9 +210,10 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
           tapaRec={new Map()}
           porVasija={new Map()}
           colores={colores}
-          onVasija={abrirVasija}
+          onVasija={tocarVasija}
         />
       </div>
+      {aviso && <p className="hint aviso-aislar">{aviso}</p>}
 
       {/* los venteos son del semi rack, no de una vasija: van en su propia fila */}
       <div className="venteos-prueba">
@@ -234,15 +248,22 @@ export default function Pruebas({ actividad }: { actividad: Actividad }) {
           <em>Sin fuga</em>
           <i>{revisadas.length - conFuga.length}</i>
         </span>
+        {aisladas.size > 0 && (
+          <span className="leg-item">
+            <span className="leg-dot" style={{ background: COLOR_AISLADA.color }} /> Aislada
+            <em>Aislada en el carguío: no se prueba</em>
+            <i>{aisladas.size}</i>
+          </span>
+        )}
         <span className="leg-item">
           <span className="leg-dot vacio" /> Sin revisar
           <em>Todavía no se recorre</em>
-          <i>{TOTAL_VASIJAS - revisadas.length}</i>
+          <i>{aRevisar - revisadas.length}</i>
         </span>
         <span className="leg-item total">
           <span className="leg-dot oculto" /> TOTAL
-          <em>Vasijas del rack</em>
-          <i>{TOTAL_VASIJAS}</i>
+          <em>{aisladas.size ? 'Vasijas a probar' : 'Vasijas del rack'}</em>
+          <i>{aRevisar}</i>
         </span>
       </div>
 

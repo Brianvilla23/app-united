@@ -26,6 +26,7 @@ import {
   puestas as membranasPuestas, type DatosMembranas,
 } from './membranas'
 import { bajarExcelMembranas } from './xlsxMembranas'
+import { COLOR_AISLADA, marcarAislada, useAisladasDe } from './aisladas'
 
 const HECHO = '#22c55e'
 const EMPEZADO = '#d97706'
@@ -43,22 +44,28 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
   const esMembranas = !!actividad.membranas
   const rack = useRack()
   const puedeEditar = usePuedeRegistrar()
+  // del carguío en adelante, las aisladas no se intervienen (`aisladas.ts`)
+  const aisladas = useAisladasDe(actividad.id, rack)
+  const esCarguio = actividad.id === 'carguio_membrana'
+  const [aislando, setAislando] = useState(false)
+  const [aviso, setAviso] = useState('')
   const items = useLiveQuery(
     () => db.items.where('[actividad+rack]').equals([actividad.id, rack]).toArray(),
     [actividad.id, rack],
   ) ?? []
 
   const delLado = items.filter((i) => i.lado === lado)
-  const hechos = new Set(delLado.filter((i) => i.hecho).map((i) => i.item))
+  const hechos = new Set(delLado.filter((i) => i.hecho && !aisladas.has(i.item)).map((i) => i.item))
   const datosDe = (item: string): DatosManifold =>
     (delLado.find((i) => i.item === item)?.datos as DatosManifold | undefined) ?? {}
   // manifolds (o vasijas) empezados pero no terminados: se ven distinto
   const empezados = new Set(
     actividad.partes
-      ? delLado.filter((i) => !i.hecho && resumirManifold(i.item, actividad.partes!, i.datos as DatosManifold).hechas > 0)
+      ? delLado.filter((i) => !i.hecho && resumirManifold(i.item, actividad.partes!, i.datos as DatosManifold, aisladas).hechas > 0)
         .map((i) => i.item)
       : esMembranas
         ? delLado.filter((i) => {
+          if (aisladas.has(i.item)) return false
           const d = i.datos as DatosMembranas
           return !membranasCompleta(d) && membranasPuestas(d) > 0
         }).map((i) => i.item)
@@ -70,21 +77,26 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
     esMembranas ? delLado.map((i) => [i.item, i.datos as DatosMembranas]) : [],
   )
   const membranasPuestasTotal = esMembranas
-    ? delLado.reduce((n, i) => n + membranasPuestas(i.datos as DatosMembranas), 0)
+    ? delLado.filter((i) => !aisladas.has(i.item)).reduce((n, i) => n + membranasPuestas(i.datos as DatosMembranas), 0)
     : 0
-  // la vasija empezada (1 a 6 membranas) se pinta ámbar; la completa, verde
-  const coloresMembranas = esMembranas
-    ? new Map([...empezados].map((v) => [v, { color: '#fcd34d', texto: '#422006' }]))
+  // la vasija empezada (1 a 6 membranas) se pinta ámbar; la completa, verde;
+  // la aislada, azul
+  const coloresMembranas = esMembranas || aisladas.size
+    ? new Map<string, { color: string; texto: string }>([
+      ...(esMembranas ? [...empezados].map((v) => [v, { color: '#fcd34d', texto: '#422006' }] as const) : []),
+      ...[...aisladas].map((v) => [v, COLOR_AISLADA] as const),
+    ])
     : undefined
-  const totalLado = actividad.tipo === 'manifold' ? MANIFOLDS.length : TOTAL_VASIJAS
+  const totalLado = actividad.tipo === 'manifold' ? MANIFOLDS.length : TOTAL_VASIJAS - aisladas.size
+  const piezasPorVasija = (actividad.partes ?? []).filter((p) => p !== 'manifold').length
   const color = actividad.retira ? RETIRADO : HECHO
   const colorBorde = actividad.retira ? RETIRADO_BORDE : '#15803d'
   // con piezas la barra cuenta piezas puestas; si no, ítems terminados
   const avance = actividad.partes
     ? {
-      total: piezasPorLado(actividad.partes),
+      total: piezasPorLado(actividad.partes) - aisladas.size * piezasPorVasija,
       hechas: delLado.reduce(
-        (n, i) => n + resumirManifold(i.item, actividad.partes!, i.datos as DatosManifold).hechas, 0,
+        (n, i) => n + resumirManifold(i.item, actividad.partes!, i.datos as DatosManifold, aisladas).hechas, 0,
       ),
       unidad: 'piezas',
     }
@@ -132,12 +144,18 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
               n: empezados.size,
             }]
             : []),
+          ...(aisladas.size && !esManifold
+            ? [{ color: COLOR_AISLADA.color, nombre: 'Aislada', desc: 'No se interviene', n: aisladas.size }]
+            : []),
           { color: '#ffffff', hueco: true, nombre: 'Pendiente', desc: 'Todavía no se hace', n: totalLado - hechos.size - empezados.size },
-          { color: '#ffffff', hueco: true, nombre: 'TOTAL', desc: esManifold ? 'Manifolds del rack' : 'Vasijas del rack', n: totalLado },
+          { color: '#ffffff', hueco: true, nombre: 'TOTAL', desc: esManifold ? 'Manifolds del rack' : aisladas.size ? 'Vasijas a intervenir' : 'Vasijas del rack', n: totalLado },
         ],
         detalle: esManifold
           ? detallePiezas()
-          : [{ titulo: 'Vasijas pendientes', lineas: agruparPorFila(CELDAS.filter((c) => !hechos.has(c.id)).map((c) => c.id)) }],
+          : [
+            { titulo: 'Vasijas pendientes', lineas: agruparPorFila(CELDAS.filter((c) => !hechos.has(c.id) && !aisladas.has(c.id)).map((c) => c.id)) },
+            ...(aisladas.size ? [{ titulo: 'Vasijas aisladas (no se intervienen)', lineas: agruparPorFila([...aisladas]) }] : []),
+          ],
         generadoPor: quienSoy(),
       })
       doc.save(nombreArchivo(actividad.nombre, `Rack${rack}`, actividad.sinLado ? '' : lado))
@@ -155,12 +173,13 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
     for (const m of MANIFOLDS) {
       if (hechos.has(m.id)) continue
       const datos = datosDe(m.id)
-      const r = resumirManifold(m.id, actividad.partes, datos)
+      const r = resumirManifold(m.id, actividad.partes, datos, aisladas)
       const faltan = actividad.partes
         .filter((p) => p !== 'manifold')
         .map((p) => {
-          const total = vasijasDeManifold(m.id).length
-          const puestas = (datos[p as 'stubend' | 'tubing']?.length) ?? 0
+          const propias = vasijasDeManifold(m.id).map((v) => v.vasija).filter((v) => !aisladas.has(v))
+          const total = propias.length
+          const puestas = propias.filter((v) => datos[p as 'stubend' | 'tubing']?.includes(v)).length
           return total - puestas > 0 ? `${total - puestas} ${NOMBRE_PARTE[p].toLowerCase()}` : ''
         })
         .filter(Boolean)
@@ -199,14 +218,14 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
       const next = cambio(actual)
       await db.items.put({
         id, actividad: actividad.id, lado, rack, item, datos: next,
-        hecho: resumirManifold(item, actividad.partes!, next).completo,
+        hecho: resumirManifold(item, actividad.partes!, next, aisladas).completo,
         creadoPor: yo, createdAt: Date.now(), sincronizado: false,
       })
       return next
     })
     await encolar('item_upsert', {
       actividad: actividad.id, lado, rack, item, datos, creado_por: yo,
-      hecho: resumirManifold(item, actividad.partes!, datos).completo,
+      hecho: resumirManifold(item, actividad.partes!, datos, aisladas).completo,
     })
   }
 
@@ -247,12 +266,33 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
     }
   }
 
+  /** Qué hace tocar una vasija del plano. */
+  const tocarVasija = async (id: string) => {
+    setAviso('')
+    if (aislando) {
+      const ya = aisladas.has(id)
+      const puestas = membranasPuestas((delLado.find((i) => i.item === id)?.datos as DatosMembranas | undefined) ?? {})
+      const pregunta = ya
+        ? `¿La vasija ${id} deja de estar aislada? Vuelve a contar en el carguío y en lo que sigue.`
+        : `¿Aislar la vasija ${id}? No se interviene desde el carguío en adelante.`
+          + (puestas ? `\n\nTiene ${puestas} membrana${puestas === 1 ? '' : 's'} registrada${puestas === 1 ? '' : 's'}: quedan guardadas, pero no cuentan.` : '')
+      if (confirm(pregunta)) await marcarAislada(rack, id, !ya)
+      return
+    }
+    if (aisladas.has(id)) {
+      setAviso(`La vasija ${id} está aislada: no se interviene.${esCarguio && puedeEditar ? ' Para quitarla, usa "Marcar aisladas".' : ''}`)
+      return
+    }
+    if (esMembranas) abrirVasija(id)
+    else if (puedeEditar) await toggle(id)
+  }
+
   const marcarTodo = async (valor: boolean) => {
     if (actividad.tipo !== 'manifold') return
     for (const m of MANIFOLDS) {
       if (hechos.has(m.id) === valor && !empezados.has(m.id)) continue
       if (!actividad.partes) { await toggle(m.id); continue }
-      const vasijas = valor ? vasijasDeManifold(m.id).map((v) => v.vasija) : []
+      const vasijas = valor ? vasijasDeManifold(m.id).map((v) => v.vasija).filter((v) => !aisladas.has(v)) : []
       await marcarPiezas(m.id, () => {
         const datos: DatosManifold = {}
         for (const parte of actividad.partes!) {
@@ -305,6 +345,25 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
         </div>
       </div>
 
+      {esCarguio && puedeEditar && (
+        <div className="seg aislar-seg">
+          <button className={!aislando ? 'on' : ''} onClick={() => { setAislando(false); setAviso('') }}>
+            {esMembranas ? 'Cargar membranas' : 'Marcar cargadas'}
+          </button>
+          <button className={aislando ? 'on aislar' : ''} onClick={() => { setAislando(true); setAviso('') }}>
+            Marcar aisladas{aisladas.size ? ` (${aisladas.size})` : ''}
+          </button>
+        </div>
+      )}
+      {aislando && (
+        <p className="hint aviso-aislar">
+          Toca las vasijas aisladas: quedan en azul y no se intervienen desde el
+          carguío en adelante (tapas, pruebas, limpieza exterior y manifold).
+          Otro toque la vuelve a habilitar.
+        </p>
+      )}
+      {aviso && <p className="hint aviso-aislar">{aviso}</p>}
+
       {actividad.tipo === 'simple' ? (
         <>
           <div className="vista-seg">
@@ -328,9 +387,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
               colores={coloresMembranas}
               // con membranas la vasija se abre siempre: en modo lectura sirve
               // para consultar qué series quedaron puestas
-              onVasija={esMembranas
-                ? (id) => abrirVasija(id)
-                : puedeEditar ? (id) => void toggle(id) : undefined}
+              onVasija={esMembranas || puedeEditar || aisladas.size ? (id) => void tocarVasija(id) : undefined}
             />
           </div>
         </>
@@ -362,6 +419,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
           manifold={abierto}
           partes={actividad.partes}
           datos={datosDe(abierto)}
+          aisladas={aisladas}
           onMarcar={(cambio) => void marcarPiezas(abierto, cambio)}
           onCerrar={cerrarManifold}
         />
@@ -390,6 +448,13 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
             <i>{empezados.size}</i>
           </span>
         )}
+        {(aisladas.size > 0 || esCarguio) && actividad.tipo !== 'manifold' && (
+          <span className="leg-item">
+            <span className="leg-dot" style={{ background: COLOR_AISLADA.color }} /> Aislada
+            <em>No se interviene del carguío en adelante</em>
+            <i>{aisladas.size}</i>
+          </span>
+        )}
         <span className="leg-item">
           <span className="leg-dot vacio" /> Pendiente
           <em>{actividad.nombre} pendiente</em>
@@ -397,7 +462,7 @@ export default function PlanoActividad({ actividad }: { actividad: Actividad }) 
         </span>
         <span className="leg-item total">
           <span className="leg-dot oculto" /> TOTAL
-          <em>{actividad.tipo === 'manifold' ? 'Manifolds del rack' : 'Vasijas del rack'}</em>
+          <em>{actividad.tipo === 'manifold' ? 'Manifolds del rack' : aisladas.size ? 'Vasijas a intervenir' : 'Vasijas del rack'}</em>
           <i>{totalLado}</i>
         </span>
       </div>

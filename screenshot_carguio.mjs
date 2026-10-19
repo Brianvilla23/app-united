@@ -1,7 +1,8 @@
 // Prueba del carguío de membrana con Supabase SIMULADO: ninguna petición llega
 // a la base real (la cuadrilla está trabajando el Rack 6 en vivo).
 // Recorre: Rack 6 → carguío → vasija D5 → 7 series a mano → Excel; y revisa
-// que en el Rack 3 el carguío siga siendo "tocar y queda cargada".
+// que el Rack 3 (series traídas del escáner de Axel, sql/32) también abra el
+// detalle de cada vasija.
 //   node screenshot_carguio.mjs   (con `npm run dev` corriendo en :5173)
 import { chromium } from 'playwright'
 import ExcelJS from 'exceljs'
@@ -67,13 +68,13 @@ console.log('Excel · CODIFICACION fila 5:', wb.getWorksheet('CODIFICACION').get
 console.log('Excel · DETALLE filas:', wb.getWorksheet('DETALLE').rowCount - 1)
 console.log('Excel · RESUMEN:', wb.getWorksheet('RESUMEN').getRow(2).values.slice(1).join(' | '))
 
-// --- Rack 3: sigue simple ---
+// --- Rack 3: también vasija por vasija ---
 await page.goto('http://localhost:5173', { waitUntil: 'networkidle' })
 await abrirCarguio(3)
-console.log('Rack 3 · nota de la otra aplicación:', await page.getByText(/se escanearon en la otra aplicación/i).isVisible().catch(() => false))
+console.log('Rack 3 · cuenta membranas:', /2[.]?065 membranas/i.test(await page.locator('body').innerText()))
 await page.locator('svg text', { hasText: /^D5$/ }).first().click()
 await page.waitForTimeout(300)
-console.log('Rack 3 · NO abre detalle:', !(await page.getByText(/membranas registradas/i).isVisible()))
+console.log('Rack 3 · abre el detalle de 7:', await page.getByText(/membranas registradas/i).isVisible())
 await page.screenshot({ path: 'shot_carguio_rack3.png' })
 
 console.log('Subidas simuladas:', subidas.length)

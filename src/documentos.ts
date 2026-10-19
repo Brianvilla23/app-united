@@ -1,6 +1,8 @@
-// Check list y documentos del contrato CC6001: el catálogo que Axel publica en
-// registros-cc6001.pages.dev, copiado a la base por la función
-// `sincronizar-documentos` (sql/31). Solo lo leen supervisión y planificación.
+// Check list y documentos del contrato CC6001. Nacieron en el sitio de Axel
+// (registros-cc6001.pages.dev) y se copiaron a la base el 18-10-2026 (sql/31).
+// Ese mismo día Axel avisó que iba a borrar su sitio: la copia de la app pasó a
+// ser la oficial y planificación la administra desde acá (sql/32): agrega,
+// edita, reemplaza y borra. Solo lo leen supervisión y planificación.
 //
 // Sin señal:
 //  · el catálogo queda guardado en el celular (localStorage) cada vez que se
@@ -120,22 +122,59 @@ export async function guardarTodos(
   return fallas
 }
 
-/** Planificación: trae ahora lo nuevo del sitio de Axel (sin esperar la
-    corrida diaria de la madrugada). */
-export async function sincronizarAhora(): Promise<string> {
-  const { data, error } = await supabase.functions.invoke('sincronizar-documentos', { body: {} })
-  if (error) {
-    const cuerpo = await (error as { context?: Response }).context?.json?.().catch(() => null)
-    throw new Error(cuerpo?.error ?? error.message)
+// --- planificación administra el catálogo (antes, el panel de Axel) ---
+
+export interface DatosDocumento {
+  categoria: string
+  categoria_nombre: string
+  categoria_orden: number
+  codigo: string
+  nombre: string
+}
+
+const MAX_MB = 25   // el límite del bucket
+
+async function revisarPdf(archivo: File): Promise<void> {
+  if (archivo.size > MAX_MB * 1024 * 1024) throw new Error(`El PDF pesa más de ${MAX_MB} MB.`)
+  const cabeza = new Uint8Array(await archivo.slice(0, 4).arrayBuffer())
+  if (String.fromCharCode(...cabeza) !== '%PDF') throw new Error('El archivo no es un PDF.')
+}
+
+/** Agrega un documento nuevo: sube el PDF y crea su fila. */
+export async function agregarDocumento(archivo: File, d: DatosDocumento): Promise<void> {
+  await revisarPdf(archivo)
+  const id = `app-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+  const ruta = `documentos/${id}.pdf`
+  const { error: e1 } = await supabase.storage.from(BUCKET).upload(ruta, archivo, { contentType: 'application/pdf' })
+  if (e1) throw new Error(`No se pudo subir el PDF: ${e1.message}`)
+  const { error: e2 } = await supabase.from('documentos').insert({
+    id, ...d, ruta, kb: Math.round(archivo.size / 1024), version: String(Date.now()), fuente: 'app',
+  })
+  if (e2) {
+    await supabase.storage.from(BUCKET).remove([ruta])
+    throw new Error(`No se pudo guardar: ${e2.message}`)
   }
-  const r = data as { total: number; nuevos: number; actualizados: number; borrados: number; pendientes: number; fallas: string[] }
-  const partes = [`${r.total} documentos`]
-  if (r.nuevos) partes.push(`${r.nuevos} nuevos`)
-  if (r.actualizados) partes.push(`${r.actualizados} actualizados`)
-  if (r.borrados) partes.push(`${r.borrados} quitados`)
-  if (r.pendientes) partes.push(`${r.pendientes} quedan para la próxima vuelta`)
-  if (r.fallas?.length) partes.push(`${r.fallas.length} con problemas`)
-  return partes.join(' · ')
+}
+
+/** Cambia nombre, código o categoría; con `archivo`, también reemplaza el PDF
+    (cambia la versión, así los celulares bajan el nuevo). */
+export async function editarDocumento(doc: Documento, d: DatosDocumento, archivo?: File | null): Promise<void> {
+  const cambios: Record<string, unknown> = { ...d, actualizado: new Date().toISOString() }
+  if (archivo) {
+    await revisarPdf(archivo)
+    const { error } = await supabase.storage.from(BUCKET).upload(doc.ruta, archivo, { contentType: 'application/pdf', upsert: true })
+    if (error) throw new Error(`No se pudo subir el PDF: ${error.message}`)
+    cambios.kb = Math.round(archivo.size / 1024)
+    cambios.version = String(Date.now())
+  }
+  const { error } = await supabase.from('documentos').update(cambios).eq('id', doc.id)
+  if (error) throw new Error(`No se pudo guardar: ${error.message}`)
+}
+
+export async function borrarDocumento(doc: Documento): Promise<void> {
+  const { error } = await supabase.from('documentos').delete().eq('id', doc.id)
+  if (error) throw new Error(`No se pudo borrar: ${error.message}`)
+  await supabase.storage.from(BUCKET).remove([doc.ruta])
 }
 
 // --- visor: PDF.js, el mismo que usa el sitio de Axel ---

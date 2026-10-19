@@ -19,6 +19,7 @@ import { useComentarioRack } from './ComentarioRack'
 import { usePuedeEditar } from './permisos'
 import { rackDe, useCierre, useRack } from './rackOutage'
 import { useModal } from './useModal'
+import { useAisladasDe } from './aisladas'
 import { fechaHistorial } from './fecha'
 import PlanoRack, { AZUL, VERDE } from './PlanoRack'
 import FugasManifold from './FugasManifold'
@@ -101,7 +102,24 @@ export default function Fugas({
   // tapas del rack Y del lado que se está viendo (son piezas distintas por lado)
   const tapaRec = new Map<string, TapaEstado>()
   for (const t of todasTapas) if (t.rack === rack && t.lado === lado && t.actividad === actividad) tapaRec.set(t.vasija, t)
-  const resumen = resumirTapas([...tapaRec.values()], TOTAL_VASIJAS)
+  // Las aisladas en el carguío no se intervienen (instalación de tapas de
+  // alimentación en adelante, `aisladas.ts`): se ven como tapa aislada, no se
+  // tocan y salen de la base del porcentaje.
+  const aisladasTodas = useAisladasDe(actividad, rackOutage)
+  const aisladas = modo === 'tapas' ? aisladasTodas : new Set<string>()
+  for (const v of aisladas) {
+    const t = tapaRec.get(v)
+    tapaRec.set(v, {
+      ...(t ?? {
+        id: tapaId(actividad, lado, rack, v), actividad, lado, rack, vasija: v,
+        tapaAgripada: false, segurosAgripados: [], pernosRodados: [], pendienteRetiro: false,
+        tapon: false, shimMm: null, creadoPor: '', createdAt: 0, sincronizado: true,
+      }),
+      aislada: true,
+    })
+  }
+  const [avisoAislada, setAvisoAislada] = useState('')
+  const resumen = resumirTapas([...tapaRec.values()], TOTAL_VASIJAS, aisladas.size)
   const tapasPorLado = (l: LadoRack) => todasTapas.filter((t) => t.rack === rackOutage && t.lado === l && t.actividad === actividad).length
 
   const updateTapa = async (vasija: string, patch: Partial<TapaEstado>) => {
@@ -213,6 +231,7 @@ export default function Fugas({
         lado, rack,
         tapas: [...tapaRec.values()],
         totalVasijas: TOTAL_VASIJAS,
+        aisladasFuera: aisladas.size,
         estados: estadosVisibles,
         generadoPor: quienSoy(),
       })
@@ -283,7 +302,7 @@ export default function Fugas({
           <div className="avance">
             <div className="avance-top">
               <b>{resumen.porcentaje}%</b>
-              <span>{resumen.extraidas} de {resumen.total} tapas extraídas</span>
+              <span>{resumen.extraidas} de {resumen.aIntervenir} tapas extraídas</span>
               <button className="btn sm ghost" disabled={generando} onClick={() => void exportarPDF()}>
                 {generando ? 'Generando…' : 'PDF'}
               </button>
@@ -353,10 +372,16 @@ export default function Fugas({
           espejo={espejo}
           tapaRec={tapaRec}
           porVasija={porVasija}
-          onVasija={(id) => (modo === 'fugas' ? abrirVasija(id)
-            : retiroSimple ? void toggleRetirada(id) : abrirTapa(id))}
+          onVasija={(id) => {
+            if (aisladas.has(id)) { setAvisoAislada(`La vasija ${id} quedó aislada en el carguío: no se interviene.`); return }
+            setAvisoAislada('')
+            if (modo === 'fugas') abrirVasija(id)
+            else if (retiroSimple) void toggleRetirada(id)
+            else abrirTapa(id)
+          }}
         />
       </div>
+      {avisoAislada && <p className="hint aviso-aislar">{avisoAislada}</p>}
 
       <div className="leyenda abajo">
         {modo === 'fugas' ? (
@@ -388,7 +413,7 @@ export default function Fugas({
             </span>
             <span className="leg-item total avance-fila">
               <span className="leg-dot oculto" /> AVANCE
-              <em>{resumen.extraidas} extraídas de {resumen.total}</em>
+              <em>{resumen.extraidas} extraídas de {resumen.aIntervenir}{aisladas.size ? ` (sin ${aisladas.size} aislada${aisladas.size === 1 ? '' : 's'})` : ''}</em>
               <i>{resumen.porcentaje}%</i>
             </span>
           </>

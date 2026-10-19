@@ -51,7 +51,7 @@ function zonaTocable(z: ZonaParte): ZonaParte {
 }
 
 export default function DetalleManifold({
-  manifold, partes, datos, onMarcar, onCerrar, modo = 'hecho', encabezado,
+  manifold, partes, datos, onMarcar, onCerrar, modo = 'hecho', encabezado, aisladas = new Set(),
 }: {
   manifold: string
   partes: ParteManifold[]
@@ -64,11 +64,14 @@ export default function DetalleManifold({
   modo?: ModoDetalle
   /** Texto extra del título, por ejemplo el rack en el levantamiento. */
   encabezado?: string
+  /** Vasijas aisladas (del carguío en adelante): no se intervienen, así que
+      sus piezas no se marcan ni cuentan. */
+  aisladas?: ReadonlySet<string>
 }) {
   const puedeEditar = usePuedeEditar()
   const arq = ARQUETIPOS[ARQUETIPO_DE[manifold]]
   const vasijas = vasijasDeManifold(manifold)
-  const resumen = resumirManifold(manifold, partes, datos)
+  const resumen = resumirManifold(manifold, partes, datos, aisladas)
   const porVasija = partes.filter((p): p is Exclude<ParteManifold, 'manifold'> => p !== 'manifold')
   const color = PALETA[modo]
   const esFuga = modo === 'fuga'
@@ -78,7 +81,7 @@ export default function DetalleManifold({
     parte === 'manifold' ? !!datos.manifold : !!datos[parte]?.includes(vasija)
 
   const toggle = (parte: ParteManifold, vasija = '') => {
-    if (!puedeEditar) return
+    if (!puedeEditar || aisladas.has(vasija)) return
     onMarcar((actual) => {
       if (parte === 'manifold') return { ...actual, manifold: !actual.manifold }
       const actuales = actual[parte] ?? []
@@ -93,7 +96,7 @@ export default function DetalleManifold({
 
   const marcarTodo = (valor: boolean) => {
     if (!puedeEditar) return
-    const ids = vasijas.map((v) => v.vasija)
+    const ids = vasijas.map((v) => v.vasija).filter((v) => !aisladas.has(v))
     onMarcar((actual) => {
       const next: DatosManifold = { ...actual }
       for (const parte of partes) {
@@ -109,6 +112,15 @@ export default function DetalleManifold({
       const vasija = vasijaDeParte(manifold, z.brazo, z.fila)
       const on = marcada(parte, vasija)
       const t = zonaTocable(z)
+      if (aisladas.has(vasija)) {
+        return (
+          <rect
+            key={parte + z.fila + z.brazo}
+            x={z.x - 0.6} y={z.y - 0.6} width={z.w + 1.2} height={z.h + 1.2} rx={1.2}
+            fill="rgba(37,99,235,.25)" stroke="#2563eb" strokeWidth={0.8}
+          />
+        )
+      }
       return (
         <g key={parte + z.fila + z.brazo} onClick={() => toggle(parte, vasija)} style={{ cursor: 'pointer' }}>
           {/* el recuadro calza justo con la pieza: marcarla no puede taparla */}
@@ -175,7 +187,9 @@ export default function DetalleManifold({
           {vasijas.map((v) => (
             <div className="pieza-fila" key={v.vasija}>
               <b>{v.vasija}</b>
-              {porVasija.map((parte) => (
+              {aisladas.has(v.vasija) ? (
+                <span className="pieza-aislada">Aislada · no se interviene</span>
+              ) : porVasija.map((parte) => (
                 <button
                   key={parte}
                   className={'pieza-chip' + (marcada(parte, v.vasija) ? CLASE_MARCA[modo] : '')}

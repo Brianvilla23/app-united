@@ -257,11 +257,15 @@ export interface ResumenTapas {
   registradas: number
   porEstado: Record<EstadoTapa, number>
   extraidas: number
+  /** Total menos las aisladas en el carguío. */
+  aIntervenir: number
   porcentaje: number
 }
 
-/** Avance = extraídas sobre el total de vasijas del rack (no sobre las registradas). */
-export function resumirTapas(tapas: FallaTapa[], totalVasijas: number): ResumenTapas {
+/** Avance = extraídas sobre el total de vasijas del rack (no sobre las registradas).
+    `fuera` = vasijas aisladas en el carguío (vienen en `tapas` como aisladas):
+    no se intervienen, así que salen de la base del porcentaje. */
+export function resumirTapas(tapas: FallaTapa[], totalVasijas: number, fuera = 0): ResumenTapas {
   // sale de ESTADOS_TAPA y no de una lista escrita a mano: al agregar un estado
   // nuevo, el que faltara en el objeto quedaba en NaN en la leyenda
   const porEstado = Object.fromEntries(ESTADOS_TAPA.map((e) => [e.codigo, 0])) as Record<EstadoTapa, number>
@@ -273,7 +277,8 @@ export function resumirTapas(tapas: FallaTapa[], totalVasijas: number): ResumenT
     registradas: tapas.length,
     porEstado,
     extraidas,
-    porcentaje: totalVasijas > 0 ? Math.round((extraidas / totalVasijas) * 1000) / 10 : 0,
+    aIntervenir: totalVasijas - fuera,
+    porcentaje: totalVasijas - fuera > 0 ? Math.round((extraidas / (totalVasijas - fuera)) * 1000) / 10 : 0,
   }
 }
 

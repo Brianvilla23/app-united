@@ -202,12 +202,12 @@ export const ACTIVIDADES: Actividad[] = [
     nombre: 'Carguío de membrana',
     tipo: 'simple',
     lados: ['alimentacion'],
-    // 28-09-2026: en el Rack 3 las series se escanearon con la otra aplicación
-    // (escaner-membranas.pages.dev), así que ahí solo se marca la vasija
-    // cargada: tiene sus 295 vasijas así y no se tocan. 18-10-2026: en el Rack 6
-    // el escaneo vuelve a la app (pedido de Brayan).
-    escaneoEnRacks: [6],
-    nota: 'Se marca la vasija cuando quedó cargada. Las series se escanearon en la otra aplicación.',
+    // 28-09-2026: en el Rack 3 las series se escanearon con la app de Axel
+    // (escaner-membranas.pages.dev). 18-10-2026: en el Rack 6 el escaneo vuelve
+    // a la app, y las 2.023 series del Rack 3 se trajeron de la base de Axel
+    // (sql/32), así que el Rack 3 también se ve vasija por vasija.
+    escaneoEnRacks: [3, 6],
+    nota: 'Se marca la vasija cuando quedó cargada.',
   },
   {
     id: 'instalacion_tapas_alim',
@@ -261,22 +261,27 @@ export const ACTIVIDADES: Actividad[] = [
 // membranas y house keeping). Ninguna tenía avance guardado. La prueba de alta
 // cierra la secuencia.
 
-/** Cuántos ítems tiene una actividad (para calcular su avance). */
-export function itemsDe(a: Actividad): number {
+/** Cuántos ítems tiene una actividad (para calcular su avance). Las vasijas
+    aisladas (del carguío en adelante, ver `aisladas.ts`) salen del total. */
+export function itemsDe(a: Actividad, aisladas = 0): number {
+  const vasijas = TOTAL_VASIJAS - aisladas
   // el ovalamiento se mide en sideport: 2 por vasija en cada lado
   if (a.tipo === 'oval') return a.lados.length * TOTAL_VASIJAS * 2
   // el carguío se mide en membranas y no en vasijas: son 7 por vasija y cada
   // una es trabajo que se registra por separado
-  if (a.membranas) return TOTAL_VASIJAS * MEMBRANAS_POR_VASIJA
+  if (a.membranas) return vasijas * MEMBRANAS_POR_VASIJA
   if (a.tipo === 'venteo') return VENTEOS.filter((v) => a.lados.includes(v.lado)).length
   // la prueba revisa las vasijas del lado más los venteos de ese lado
   if (a.tipo === 'fugas') {
-    return a.lados.reduce((n, l) => n + TOTAL_VASIJAS + venteosDe(l).length, 0)
+    return a.lados.reduce((n, l) => n + vasijas + venteosDe(l).length, 0)
   }
   // con piezas, el ítem es la pieza y no el manifold: instalar los 295 stub end
   // es trabajo real y tiene que verse en la barra
-  if (a.partes) return a.lados.length * piezasPorLado(a.partes)
-  const porLado = a.tipo === 'manifold' ? MANIFOLDS_POR_LADO : TOTAL_VASIJAS
+  if (a.partes) {
+    const porVasija = a.partes.filter((p) => p !== 'manifold').length
+    return a.lados.length * (piezasPorLado(a.partes) - aisladas * porVasija)
+  }
+  const porLado = a.tipo === 'manifold' ? MANIFOLDS_POR_LADO : vasijas
   return porLado * a.lados.length
 }
 
@@ -382,8 +387,10 @@ export interface ResumenManifold { total: number; hechas: number; completo: bool
 /** Cuántas piezas lleva el manifold en esta actividad y cuántas van puestas. */
 export function resumirManifold(
   manifold: string, partes: ParteManifold[], datos: DatosManifold,
+  /** Vasijas aisladas: no llevan stub end ni tubing, así que no cuentan. */
+  aisladas: ReadonlySet<string> = new Set(),
 ): ResumenManifold {
-  const vasijas = vasijasDeManifold(manifold).map((v) => v.vasija)
+  const vasijas = vasijasDeManifold(manifold).map((v) => v.vasija).filter((v) => !aisladas.has(v))
   let total = 0, hechas = 0
   for (const parte of partes) {
     if (parte === 'manifold') {

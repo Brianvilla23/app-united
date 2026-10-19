@@ -1105,7 +1105,9 @@ esto que realizó mi colega"*. El colega es **Axel**: su sitio
 protocolos, BOS y declaraciones en PDF, con buscador, visor e impresión, y un
 panel donde él sube, edita y borra.
 
-- **Axel sigue siendo el dueño.** La función `sincronizar-documentos`
+- ⚠️ **Actualización 18-10 (§38): la sincronización con Axel se apagó** y la
+  copia de la app es la oficial. Lo que sigue es cómo se hizo la copia.
+- **Axel era el dueño.** La función `sincronizar-documentos`
   (`supabase/functions/`, `verify_jwt` apagado) lee su `documents.json` y su
   `/api/state` (lo que cambió desde su panel), y copia a la tabla `documentos`
   y al bucket privado `adjuntos/documentos/` solo lo nuevo o cambiado. Borra
@@ -1140,6 +1142,53 @@ panel donde él sube, edita y borra.
   cierra el visor, sin señal abre lo guardado y avisa en lo no guardado.
 - ⚠️ `App.css` es un resto de la plantilla de Vite y **no se carga**: los
   estilos van en `index.css`.
+
+---
+
+## 38. Lo de Axel pasa a la app, y las vasijas aisladas del carguío ✅ (18-10-2026)
+
+**Axel va a borrar todo lo que construyó** (Brayan, 18-10). Quedó con nuestras
+credenciales:
+- **Respaldo en el Escritorio**: `OneDrive\Escritorio\Claude\App_United\Respaldo_Axel_2026-10-18\`
+  (registros completos del escáner en JSON, su config, el catálogo y el estado
+  del panel de check list, los 8 PDF que subió por panel y el código de los dos
+  sitios en zip).
+- **Escáner** (`sql/32`, tabla `escaner_axel`): sus 293 registros (D1) traídos
+  por la propia base con pg_net desde su API pública: 289 del Rack 3 (28-30/09,
+  2.023 membranas, todas Hydranautics) y 4 de prueba del Rack 1. Las series
+  del Rack 3 se copiaron al carguío de la app (`avance_item.datos`, sin tocar
+  `hecho`) y **el Rack 3 también se ve vasija por vasija** (`escaneoEnRacks:
+  [3, 6]`), con su Excel. Solo supervisión/planificación leen `escaner_axel`.
+  - ⚠️ **6 vasijas del Rack 3 sin series**: R15, R16, S9, S10, S11, S12.
+  - ⚠️ **8 series repetidas** en dos vasijas del Rack 3 (13912681, 13974957,
+    13974509, 13912679, 13932051, 13931798, 13932358, 236416).
+- **Check list**: se apagó el cron `sincronizar-documentos` y la función quedó
+  retirada (responde 410): si Axel borra, ya no se borra acá. La copia de la
+  app es la oficial y **planificación la administra** desde la pantalla:
+  "+ Agregar documento", ✎ editar nombre/código/categoría, reemplazar el PDF
+  (cambia la versión: los celulares bajan el nuevo) y borrar. RLS
+  `documentos_editar` y storage `documentos/` solo `es_editor_plan()`.
+  Comprobado en transacción: Edgardo (supervisión) 0 cambios; Juan
+  (planificación) edita y borra. El token del Vault y
+  `token_sync_documentos_valido()` quedaron sin uso.
+
+**Vasijas aisladas** (`aisladas.ts`): Brayan, *"agregar en el carguío un sector
+donde se presionen las vasijas aisladas, y esas no se intervienen de ahí en
+adelante"*.
+- En el carguío, **"Marcar aisladas"** (modo aparte de "Cargar membranas"):
+  tocar la vasija la aísla (pregunta antes; si ya tiene membranas, avisa que
+  quedan guardadas pero no cuentan). Otro toque la habilita.
+- Se guarda en `avance_item` como actividad `vasija_aislada` (una fila por
+  vasija y rack), con la misma cola sin señal. No necesitó migración.
+- **Del carguío en adelante** (`respetaAisladas`: carguío, tapas alim., venteos,
+  prueba de baja, limpieza exterior, manifold, prueba de alta) la vasija se ve
+  **azul**, no se puede marcar (avisa) y **sale del total**: carguío 7 menos
+  por vasija, tapas, pruebas y limpieza exterior 1 menos (por lado), manifold sin
+  su stub end/tubing (`resumirManifold(…, aisladas)`; el manifold se completa
+  sin ellas). Antes del carguío no cambia nada.
+- Probado con Supabase simulado (`screenshot_aisladas.mjs`): R15 aislada →
+  carguío 2.058, tapas 294, prueba de baja 296, limpieza exterior 294, manifold
+  628 piezas; limpieza interior sigue 295.
 
 ---
 

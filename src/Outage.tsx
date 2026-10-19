@@ -13,6 +13,7 @@ import { TOTAL_VASIJAS } from './rackLayout'
 import { NOMBRE_MANIFOLD, cerrarOutage, rackDe, useCierre, useRack } from './rackOutage'
 import { usePuedeEditar } from './permisos'
 import { fechaCorta } from './fecha'
+import { SIN_AISLADAS, respetaAisladas, useAisladas } from './aisladas'
 import {
   TIPOS_LISTOS, actividadesDe, estaBloqueada, itemsDe, resumirManifold,
   type Actividad, type TipoDiagrama,
@@ -39,6 +40,12 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
 
   const delRack = itemsAv.filter((i) => i.rack === rack)
   const actividades = actividadesDe(rack)
+  // del carguío en adelante las vasijas aisladas no se intervienen: salen del
+  // total y lo que tuvieran marcado no suma
+  const aisladas = useAisladas(rack)
+  const aisladasDe = (id: string) => (respetaAisladas(id) ? aisladas : SIN_AISLADAS)
+  const nAisladas = (id: string) => aisladasDe(id).size
+  const fuera = (id: string, vasija: string) => aisladasDe(id).has(vasija)
 
   // Avance por actividad. Cada tipo guarda en su propia tabla, así que el
   // avance se lee de donde corresponda.
@@ -53,9 +60,9 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
     if (act?.tipo === 'tapa') {
       const lado = act.lados[0]
       const hechas = tapas.filter(
-        (t) => t.rack === rack && t.lado === lado && t.actividad === id && estaExtraida(t),
+        (t) => t.rack === rack && t.lado === lado && t.actividad === id && estaExtraida(t) && !fuera(id, t.vasija),
       ).length
-      return Math.round((hechas / TOTAL_VASIJAS) * 1000) / 10
+      return Math.round((hechas / (TOTAL_VASIJAS - nAisladas(id))) * 1000) / 10
     }
     // el ovalamiento avanza por sideport revisada (tiene registro), en los
     // dos lados: 2 por vasija × 295 × 2 = 1.180
@@ -66,30 +73,30 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
     }
     // el carguío cuenta membranas puestas, no vasijas terminadas
     if (act?.membranas) {
-      const puestas = delRack.filter((i) => i.actividad === id)
+      const puestas = delRack.filter((i) => i.actividad === id && !fuera(id, i.item))
         .reduce((n, i) => n + membranasPuestas(i.datos as DatosMembranas), 0)
-      const total = itemsDe(act)
+      const total = itemsDe(act, nAisladas(id))
       return total > 0 ? Math.round((puestas / total) * 1000) / 10 : 0
     }
     if (act?.partes) {
       // acá el avance son las piezas puestas, no los manifolds terminados
       const propios = delRack.filter((i) => i.actividad === id)
       const hechas = propios.reduce(
-        (n, i) => n + resumirManifold(i.item, act.partes!, i.datos as DatosManifold).hechas, 0,
+        (n, i) => n + resumirManifold(i.item, act.partes!, i.datos as DatosManifold, aisladasDe(id)).hechas, 0,
       )
-      const total = itemsDe(act)
+      const total = itemsDe(act, nAisladas(id))
       return total > 0 ? Math.round((hechas / total) * 1000) / 10 : 0
     }
     if (act) {
-      const hechos = delRack.filter((i) => i.actividad === id && i.hecho).length
-      const total = itemsDe(act)
+      const hechos = delRack.filter((i) => i.actividad === id && i.hecho && !fuera(id, i.item)).length
+      const total = itemsDe(act, nAisladas(id))
       if (total > 0 && hechos > 0) return Math.round((hechos / total) * 1000) / 10
     }
     return 0
   }
 
-  const total = actividades.reduce((n, a) => n + itemsDe(a), 0)
-  const hecho = actividades.reduce((n, a) => n + (avanceDe(a.id) / 100) * itemsDe(a), 0)
+  const total = actividades.reduce((n, a) => n + itemsDe(a, nAisladas(a.id)), 0)
+  const hecho = actividades.reduce((n, a) => n + (avanceDe(a.id) / 100) * itemsDe(a, nAisladas(a.id)), 0)
   const registrado = Math.round((hecho / total) * 1000) / 10
   // Un outage cerrado se muestra terminado aunque no todo haya quedado
   // registrado en la app: el trabajo se hizo, lo que faltó fue anotarlo.
@@ -151,7 +158,7 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
                         alcanzó a anotar, no lo que se hizo: el chip lo dice */}
                     {cierre && <em className="cerrada">✓ cerrada</em>}
                     <em>{ETIQUETA_TIPO[a.tipo]}</em>
-                    <em>{itemsDe(a)} ítems</em>
+                    <em>{itemsDe(a, nAisladas(a.id))} ítems</em>
                     {a.libre && <em className="libre">sin orden</em>}
                     {bloqueada && <em className="candado">⚠ falta lo anterior</em>}
                     {!listo && <em className="porhacer">diagrama por construir</em>}

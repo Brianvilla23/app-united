@@ -28,6 +28,8 @@ export interface DatosPdfTapas {
   rack: number
   tapas: TapaEstado[]
   totalVasijas: number
+  /** Aisladas en el carguío: van en `tapas` como aisladas y salen del porcentaje. */
+  aisladasFuera?: number
   /** Estados que se muestran en la leyenda. En un rack cuya tapa no lleva
       seguros ni pernos (el Rack 3) va solo "retirada": listar los otros en
       cero hace leer una hoja que no corresponde. Por defecto, todos. */
@@ -70,7 +72,7 @@ export async function generarPDFTapas(d: DatosPdfTapas): Promise<jsPDF> {
   // comprimido: baja de ~460 KB a ~60 KB, que es lo que se manda por WhatsApp
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3', compress: true })
   const nombreLado = LADOS.find((l) => l.codigo === d.lado)!.nombre
-  const resumen = resumirTapas(d.tapas, d.totalVasijas)
+  const resumen = resumirTapas(d.tapas, d.totalVasijas, d.aisladasFuera ?? 0)
 
   // ------------------------------------------------------------- encabezado
   doc.setTextColor(15, 23, 42)
