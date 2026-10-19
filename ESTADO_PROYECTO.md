@@ -1245,6 +1245,20 @@ escanear un código normal y códigos en letras"*.
 
 ---
 
+## 41. Solo Hydranautics: se sacó LG ✅ (19-10-2026)
+
+Brayan, 19-10: *"son todas Hydranautics, así que elimina la LG"*. En la base no
+había ninguna LG (Rack 3: 289 vasijas Hydranautics; Rack 6: Hydranautics).
+
+- `membranas.ts`: `MarcaMembrana = 'HYDRANAUTICS'`, catálogo SWC6-LD (C6) y
+  SWC5-LD (C5), marca por defecto Hydranautics.
+- La ficha de la vasija ya no muestra el selector de marca: una línea fija
+  "Hydranautics · C6: SWC6-LD · C5: SWC5-LD". Si vuelve otra marca, se agrega
+  en `membranas.ts` y el selector aparece solo (cuando hay más de una).
+- El Excel sale con marca Hydranautics y modelos SWC.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

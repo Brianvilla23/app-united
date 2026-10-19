@@ -130,7 +130,11 @@ export default function DetalleMembranas({
           <span>membranas registradas</span>
         </div>
 
-        <div className="memb-marca">
+        {MARCAS.length === 1 ? (
+          <p className="memb-marca-fija">
+            <b>{MARCAS[0].nombre}</b> · C6: {modelosDe(MARCAS[0].codigo, 'C6')[0]?.codigo} · C5: {modelosDe(MARCAS[0].codigo, 'C5')[0]?.codigo}
+          </p>
+        ) : <div className="memb-marca">
           {MARCAS.map((m) => (
             <button
               key={m.codigo}
@@ -142,7 +146,7 @@ export default function DetalleMembranas({
               <small>{modelosDe(m.codigo, 'C6')[0]?.codigo} · {modelosDe(m.codigo, 'C5')[0]?.codigo}</small>
             </button>
           ))}
-        </div>
+        </div>}
 
         {aviso && <p className="memb-aviso">{aviso}</p>}
 

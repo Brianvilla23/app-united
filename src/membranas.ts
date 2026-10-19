@@ -10,7 +10,12 @@
 // el escaneo avanza de la posición 7 a la 1.
 
 export type TipoMembrana = 'C5' | 'C6'
-export type MarcaMembrana = 'LG' | 'HYDRANAUTICS'
+/** 19-10-2026, Brayan: "son todas Hydranautics, así que elimina la LG". El
+    escáner de Axel traía LG y Hydranautics; en la base no había ninguna LG
+    (Rack 3: 289 vasijas Hydranautics). Si algún día vuelve otra marca, se
+    agrega acá, en MODELOS y en MARCAS, y la pantalla vuelve a mostrar el
+    selector solo (aparece cuando hay más de una). */
+export type MarcaMembrana = 'HYDRANAUTICS'
 
 /** En el orden en que se instalan y se escanean. */
 export const POSICIONES = [7, 6, 5, 4, 3, 2, 1]
@@ -26,17 +31,13 @@ export interface ModeloMembrana {
   tipo: TipoMembrana
 }
 
-/** El mismo catálogo que el escáner (`schema.sql`). */
+/** Los modelos Hydranautics del catálogo del escáner (`schema.sql`). */
 export const MODELOS: ModeloMembrana[] = [
-  { codigo: 'LG SW 440 R', marca: 'LG', tipo: 'C6' },
-  { codigo: 'LG SW 400 SR', marca: 'LG', tipo: 'C5' },
-  { codigo: 'LG SW 400 R G2', marca: 'LG', tipo: 'C5' },
   { codigo: 'SWC6-LD', marca: 'HYDRANAUTICS', tipo: 'C6' },
   { codigo: 'SWC5-LD', marca: 'HYDRANAUTICS', tipo: 'C5' },
 ]
 
 export const MARCAS: { codigo: MarcaMembrana; nombre: string }[] = [
-  { codigo: 'LG', nombre: 'LG' },
   { codigo: 'HYDRANAUTICS', nombre: 'Hydranautics' },
 ]
 
@@ -69,7 +70,7 @@ export type DatosMembranas = {
   membranas?: Record<string, MembranaReg>
 }
 
-export const MARCA_POR_DEFECTO: MarcaMembrana = 'LG'
+export const MARCA_POR_DEFECTO: MarcaMembrana = 'HYDRANAUTICS'
 
 export function membranaEn(d: DatosMembranas, pos: number): MembranaReg | undefined {
   return d.membranas?.[String(pos)]

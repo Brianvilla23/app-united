@@ -38,7 +38,7 @@ console.log('Rack 6 · muestra "de 2065 membranas":', /2[.]?065 membranas/i.test
 await page.locator('svg text', { hasText: /^D5$/ }).first().click()
 await page.waitForTimeout(300)
 console.log('Rack 6 · abrió el detalle de 7:', await page.getByText(/membranas registradas/i).isVisible())
-const series = ['PRUEBA7A1', 'PRUEBA6B2', 'PRUEBA5C3', 'PRUEBA4D4', 'PRUEBA3E5', 'PRUEBA2F6', 'LG-SW440R PRUEBA1']
+const series = ['PRUEBA7A1', 'PRUEBA6B2', 'PRUEBA5C3', 'PRUEBA4D4', 'PRUEBA3E5', 'PRUEBA2F6', 'SWC5-LD PRUEBA1']
 for (const s of series) {
   await page.getByRole('button', { name: 'Escribir' }).first().click()
   await page.locator('.memb-escribir input').fill(s)
