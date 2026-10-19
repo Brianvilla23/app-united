@@ -20,10 +20,17 @@
 (function (global) {
   'use strict';
 
-  // Simbologías de etiquetas industriales, tanto numéricas como alfanuméricas.
-  // Codabar, ITF y EAN/UPC quedan fuera a propósito: con fotos borrosas producen
-  // lecturas falsas (p. ej. "BDD" en Codabar a partir del texto impreso).
-  const NATIVOS = ['code_128', 'code_39', 'code_93', 'qr_code', 'data_matrix', 'pdf417', 'aztec'];
+  // Simbologías: todas las lineales comunes (las de letras y números —Code 128,
+  // 39 y 93— y las "normales" de productos —EAN/UPC—, más ITF y Codabar) y las
+  // bidimensionales QR, Data Matrix, PDF417 y Aztec.
+  // 19-10-2026, Brayan: "no escanea el código de cualquier cosa, debemos tener
+  // para escanear un código normal y códigos en letras". Antes EAN/UPC, ITF y
+  // Codabar quedaban fuera porque con fotos borrosas inventaban lecturas (p. ej.
+  // "BDD" en Codabar a partir del texto impreso): ahora entran, pero en cámara
+  // se exige leerlas DOS veces iguales (ver `confirmar`) y la serie pide 4
+  // caracteres o más.
+  const NATIVOS = ['code_128', 'code_39', 'code_93', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'itf', 'codabar',
+    'qr_code', 'data_matrix', 'pdf417', 'aztec'];
   const LARGO_MINIMO = 4;
 
   /**
@@ -50,7 +57,7 @@
     const F = Z.BarcodeFormat;
     const formatos = tipo === '2d'
       ? [F.QR_CODE, F.DATA_MATRIX, F.PDF_417, F.AZTEC]
-      : [F.CODE_128, F.CODE_39, F.CODE_93];
+      : [F.CODE_128, F.CODE_39, F.CODE_93, F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.ITF, F.CODABAR];
     const hints = new Map();
     hints.set(Z.DecodeHintType.TRY_HARDER, true);
     hints.set(Z.DecodeHintType.POSSIBLE_FORMATS, formatos);
@@ -304,8 +311,13 @@
     if (C.detector) {
       try {
         const cods = await C.detector.detect(v);
-        const ok = (cods || []).map((c) => ({ texto: String(c.rawValue || '').trim(), formato: c.format })).filter((c) => serieValida(c.texto));
+        const todos = (cods || []).map((c) => ({ texto: String(c.rawValue || '').trim(), formato: c.format }));
+        const ok = todos.filter((c) => serieValida(c.texto));
         if (ok.length) hallado = ok[0];
+        else if (todos.length && todos[0].texto) {
+          // se leyó algo, pero no sirve como serie: decirlo en vez de callar
+          C.onEstado('Leí «' + todos[0].texto.slice(0, 24) + '», pero es muy corto para una serie');
+        }
       } catch (e) { /* cuadro descartado */ }
     }
 
@@ -326,8 +338,9 @@
   let candidato = { texto: '', t: 0 };
   function confirmar(h) {
     const ahora = Date.now();
-    // Code 128 y los códigos 2D traen verificación de errores: se aceptan a la primera.
-    // Code 39 / 93 no la traen, así que se exige verlos dos veces.
+    // Code 128 y los códigos 2D traen verificación de errores: se aceptan a la
+    // primera. El resto (Code 39/93, EAN/UPC, ITF, Codabar) se exige verlo dos
+    // veces igual: un dígito verificador solo no basta contra una foto borrosa.
     const fuerte = /code_?128|qr|data_?matrix|pdf_?417|aztec/i.test(h.formato || '');
     if (!fuerte && !(candidato.texto === h.texto && ahora - candidato.t < 2500)) {
       candidato = { texto: h.texto, t: ahora };

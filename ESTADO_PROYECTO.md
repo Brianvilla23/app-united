@@ -1221,6 +1221,29 @@ quedó elegida Hydranautics, ninguna serie).
 
 ---
 
+## 40. El escáner lee cualquier código de barras ✅ (19-10-2026)
+
+Brayan, 19-10: *"aún no escanea el código de cualquier cosa, debemos tener para
+escanear un código normal y códigos en letras"*.
+
+- **Causa**: el lector (de Axel) aceptaba solo Code 128/39/93 y 2D. Un código
+  "normal" de producto (EAN/UPC) o un ITF se ignoraba **sin avisar**.
+  Comprobado con cámara simulada contra la versión publicada: Code 128 (números
+  y letras) leía; EAN-13 e ITF, "no leyó en 12 s".
+- **Ahora** (`public/vendor/lector.js`): Code 128, 39, 93 (con letras), EAN-13,
+  EAN-8, UPC-A, UPC-E, ITF, Codabar, QR, Data Matrix, PDF417 y Aztec, en el
+  detector nativo y en ZXing. Contra lecturas inventadas: en cámara, todo lo
+  que no sea Code 128 o 2D se exige leer **dos veces igual**; la serie pide 4
+  caracteres o más.
+- Si la cámara lee algo que no sirve como serie (muy corto), ahora lo dice en
+  pantalla en vez de callar.
+- `screenshot_camara.mjs` prueba los 4 tipos con cámara simulada: Code 128
+  numérico 0,7 s · Code 128 con letras 0,7 s · EAN-13 1,2 s · ITF 1,3 s.
+- "Códigos en letras" se entendió como códigos de barras con letras (Code
+  128/39). Leer el TEXTO impreso (OCR) no está hecho: preguntar si hace falta.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
