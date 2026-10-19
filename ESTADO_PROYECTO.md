@@ -1215,7 +1215,7 @@ quedó elegida Hydranautics, ninguna serie).
      Axel; la nuestra ocupaba toda la pantalla vertical.
 - Instrucción nueva al pie: alejar a un palmo, usar zoom hasta llenar el
   recuadro, luz o «Desde una foto».
-- ⚠️ Sin probar con una etiqueta real: falta que Brayan confirme en terreno.
+- ✅ Con el arreglo del §40 Brayan confirmó en terreno que lee (19-10).
   El pie de la cámara muestra la resolución y el motor (`nativo+zxing` en
   Android, `zxing` en iPhone): sirve para diagnosticar si sigue fallando.
 
@@ -1237,6 +1237,7 @@ escanear un código normal y códigos en letras"*.
   caracteres o más.
 - Si la cámara lee algo que no sirve como serie (muy corto), ahora lo dice en
   pantalla en vez de callar.
+- ✅ **Confirmado en terreno por Brayan el 19-10: "ahora funciona".**
 - `screenshot_camara.mjs` prueba los 4 tipos con cámara simulada: Code 128
   numérico 0,7 s · Code 128 con letras 0,7 s · EAN-13 1,2 s · ITF 1,3 s.
 - "Códigos en letras" se entendió como códigos de barras con letras (Code
