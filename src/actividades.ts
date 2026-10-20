@@ -203,10 +203,12 @@ export const ACTIVIDADES: Actividad[] = [
     tipo: 'simple',
     lados: ['alimentacion'],
     // 28-09-2026: en el Rack 3 las series se escanearon con la app de Axel
-    // (escaner-membranas.pages.dev). 18-10-2026: en el Rack 6 el escaneo vuelve
-    // a la app, y las 2.023 series del Rack 3 se trajeron de la base de Axel
-    // (sql/32), así que el Rack 3 también se ve vasija por vasija.
-    escaneoEnRacks: [3, 6],
+    // (escaner-membranas.pages.dev); el 18-10 sus 2.023 series se trajeron de la
+    // base de Axel (sql/32), así que el Rack 3 se ve vasija por vasija.
+    // 20-10-2026, Brayan: en el Rack 6 se saca el escaneo; solo se marcan las
+    // vasijas cargadas y las aisladas (el escáner queda en el código: para
+    // volverlo a un rack basta con sumarlo acá).
+    escaneoEnRacks: [3],
     nota: 'Se marca la vasija cuando quedó cargada.',
   },
   {

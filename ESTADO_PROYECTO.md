@@ -1259,6 +1259,21 @@ había ninguna LG (Rack 3: 289 vasijas Hydranautics; Rack 6: Hydranautics).
 
 ---
 
+## 42. Rack 6 sin escaneo: solo cargadas y aisladas ✅ (20-10-2026)
+
+Brayan, 20-10: *"sacar el escaneo de las membranas en el Rack 6, que solo pueda
+marcar las vasijas cargadas y las vasijas aisladas"*.
+
+- `escaneoEnRacks: [3]` (antes `[3, 6]`). En el Rack 6 el carguío vuelve a
+  "un toque = vasija cargada", con el botón **Marcar aisladas** al lado (§38):
+  total 295 menos las aisladas, en vasijas y no en membranas.
+- El Rack 3 sigue vasija por vasija con sus 2.023 series de Axel y su Excel.
+- No se perdió nada: en el Rack 6 solo existía la fila de S1, sin series.
+- El escáner (con zoom y todos los códigos, §39–41) queda en el código: para
+  volverlo a un rack basta con sumarlo a `escaneoEnRacks`.
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
