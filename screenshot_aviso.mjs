@@ -42,7 +42,7 @@ await ctx.route('**://*.supabase.co/**', (r) => {
 const p = await ctx.newPage()
 p.on('pageerror', (e) => console.log('ERROR DE PÁGINA:', e.message))
 p.on('dialog', (d) => d.accept())
-await p.goto('http://localhost:5173', { waitUntil: 'load' })
+await p.goto(process.env.URL_APP ?? 'http://localhost:5173', { waitUntil: 'load' })
 await p.waitForTimeout(1200)
 await p.getByText('Nuevo aviso', { exact: true }).first().click()
 await p.waitForTimeout(500)
