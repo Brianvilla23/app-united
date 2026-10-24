@@ -4,7 +4,8 @@ import sys, io, json, os
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 import openpyxl
 
-XLSX = r"C:\Users\braya\OneDrive\Escritorio\Buscador Repuestos SAP por Modo de Falla.xlsx"
+# 24-10-2026: el Excel vive en la carpeta Planificacion (por eso nunca había corrido)
+XLSX = r"C:\Users\braya\OneDrive\Escritorio\Planificacion\Buscador Repuestos SAP por Modo de Falla.xlsx"
 OUT = os.path.join(os.path.dirname(__file__), "..", "src", "catalogo.ts")
 
 wb = openpyxl.load_workbook(XLSX, data_only=True)

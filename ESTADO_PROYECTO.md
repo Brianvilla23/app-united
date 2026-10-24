@@ -1274,10 +1274,46 @@ marcar las vasijas cargadas y las vasijas aisladas"*.
 
 ---
 
+## 43. El aviso: zonas nuevas, ubicación tipo Uber, catálogo SAP, PDF United y dictado ✅ (24-10-2026)
+
+Brayan, 24-10: zonas que no están en la lista y localización "como Uber o
+inDriver"; mejorar los materiales; PDF en formato United y enviar el PDF, no
+el link; el dictado del aviso se quedaba pegado.
+
+- **Zona**: la lista de siempre + "➕ Otra zona (escribir)". La nueva queda
+  guardada en el celular (`united_zonas_extra`) y aparece en la lista.
+- **Ubicación** (`sql/33`: `avisos.ubicacion jsonb`): "📍 Mi ubicación (GPS)"
+  con precisión en metros, y "🗺️ Elegir en el mapa" (`MapaUbicacion.tsx`,
+  Leaflet cargado al abrir): pin fijo al centro y se mueve el mapa, satélite
+  (Esri) o mapa (OSM). Esri en Coloso tiene imágenes hasta el nivel 17:
+  `maxNativeZoom: 17`. Sin señal el mapa no carga pero el GPS sí.
+- **Materiales**: `scripts/gen_catalogo.py` nunca había corrido (buscaba el
+  Excel fuera de `Planificacion\`). Ahora `src/catalogo.ts`: 14 modos de
+  falla reales, 69 repuestos por modo y planta, 109 materiales SAP. Se elige
+  **planta** (EWS / EWSE / Planta 0, sale de la zona) y **modo de falla** →
+  carga sus repuestos; **buscador** del catálogo por nombre o código; cada
+  material en tarjeta con − / + para la cantidad. Se fueron los 5 modos
+  inventados de `types.ts`.
+- **PDF** (`pdf.ts`): logo y línea roja United, "AVISO DE MANTENCIÓN", tabla
+  de datos y las secciones de los avisos en Word de Brayan (requerimiento,
+  dotación y tiempo estimado, materiales con SAP, HSE, ubicación con enlace a
+  Google Maps, fotos), pie con folio y hoja. **"Enviar PDF"** comparte el
+  ARCHIVO con la hoja de compartir del teléfono (sin `url` ni `text`); en el
+  computador, o si no se puede, lo descarga. En la lista y en Guardados:
+  "Enviar PDF" + "Descargar".
+- **Dictado**: antes, un segundo toque llamaba `start()` otra vez (falla en
+  silencio) y no había fin ni errores → "pegado". Ahora el botón cambia a
+  "⏹ Detener", texto en vivo, se corta solo a los 60 s, y avisa sin señal
+  (el dictado de Chrome funciona por internet), sin permiso de micrófono o
+  sin voz. Se corrigió un "Probá" (voseo).
+- Probado con `screenshot_aviso.mjs` (Supabase y GPS simulados).
+
+---
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).
-- **Materiales por modo de falla**: el generador `scripts/gen_catalogo.py` nunca
+- ✅ (24-10, §43) **Materiales por modo de falla**: el generador `scripts/gen_catalogo.py` nunca
   corrió porque **busca el Excel en la ruta equivocada** — apunta a
   `OneDrive\Escritorio\` y el archivo está en `OneDrive\Escritorio\Planificacion\`.
   Por eso `src/catalogo.ts` no existe y la app sigue usando 5 modos de falla

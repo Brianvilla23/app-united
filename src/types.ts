@@ -7,6 +7,16 @@ export interface MaterialItem {
   cantidad: number
 }
 
+/** Dónde está el trabajo: el GPS del teléfono o un punto marcado en el mapa
+    (24-10-2026, sql/33). */
+export interface Ubicacion {
+  lat: number
+  lng: number
+  /** Metros, solo con GPS. */
+  precision?: number
+  fuente: 'gps' | 'mapa'
+}
+
 export interface Aviso {
   id: string
   folio: string
@@ -25,6 +35,7 @@ export interface Aviso {
   hse: string
   fotos: string[]
   correoRespaldo: string
+  ubicacion?: Ubicacion
   estado: EstadoAviso
   creadoPor: string
   createdAt: number
@@ -41,31 +52,9 @@ export const ZONAS: string[] = [
 export const TIPOS_AVISO: string[] = ['Correctivo', 'Preventivo', 'Inspección', 'Emergencia']
 export const PRIORIDADES: Prioridad[] = ['Alta', 'Media', 'Baja']
 
-export interface ModoFalla {
-  codigo: string
-  nombre: string
-  materiales: MaterialItem[]
-}
-
-// NOTA: datos de ejemplo. El catálogo real MF1-14 + repuestos se carga
-// luego desde el Excel "Buscador Repuestos SAP por Modo de Falla".
-export const MODOS_FALLA: ModoFalla[] = [
-  { codigo: 'MF1', nombre: 'Fuga por o-ring de tapa', materiales: [
-    { nombre: 'O-ring tapa', codigoSap: '11432371', cantidad: 1 },
-  ] },
-  { codigo: 'MF2', nombre: 'Daño en membrana', materiales: [
-    { nombre: 'Membrana RO', codigoSap: '11427300', cantidad: 1 },
-  ] },
-  { codigo: 'MF3', nombre: 'Incrustación / scale', materiales: [
-    { nombre: 'Membrana RO', codigoSap: '11427300', cantidad: 2 },
-    { nombre: 'O-ring tapa', codigoSap: '11432371', cantidad: 1 },
-    { nombre: 'Kit segmentos de retención', codigoSap: '—', cantidad: 1 },
-  ] },
-  { codigo: 'MF4', nombre: 'Falla en segmentos de retención', materiales: [
-    { nombre: 'Kit segmentos de retención', codigoSap: '—', cantidad: 1 },
-  ] },
-  { codigo: 'MF5', nombre: 'Otro (cargar desde catálogo real)', materiales: [] },
-]
+// Los modos de falla y repuestos SAP reales están en `catalogo.ts`, generado
+// desde "Planificacion\Buscador Repuestos SAP por Modo de Falla.xlsx" con
+// scripts/gen_catalogo.py (24-10-2026). Antes había 5 modos inventados acá.
 
 export type TablaOutbox =
   | 'avisos' | 'andamios' | 'marcas_upsert' | 'marcas_delete'

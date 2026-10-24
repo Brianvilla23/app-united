@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
-import { generarPDF } from './pdf'
+import { compartirPDFAviso, descargarPDFAviso } from './pdf'
 
 export default function AvisoList() {
   const avisos = useLiveQuery(() => db.avisos.orderBy('createdAt').reverse().toArray(), [])
@@ -20,7 +20,8 @@ export default function AvisoList() {
           <div className="card-title">{a.titulo}</div>
           <div className="card-sub">{a.zona} · {a.fechaTrabajo}{a.detencion ? ' · con detención' : ''}</div>
           <div className="card-actions">
-            <button className="btn sm" onClick={() => generarPDF(a)}>Descargar PDF</button>
+            <button className="btn sm" onClick={() => void compartirPDFAviso(a)}>Enviar PDF</button>
+            <button className="btn sm ghost" onClick={() => void descargarPDFAviso(a)}>Descargar</button>
             <button className="btn sm ghost" onClick={() => db.avisos.delete(a.id)}>Borrar</button>
           </div>
         </div>

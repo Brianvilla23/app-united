@@ -41,6 +41,7 @@ export function avisoARow(a: Aviso): Record<string, unknown> {
     fecha_trabajo: a.fechaTrabajo, hse: a.hse, correo_respaldo: a.correoRespaldo,
     fotos_count: a.fotos.length, creado_por: a.creadoPor,
     created_at: new Date(a.createdAt).toISOString(),
+    ubicacion: a.ubicacion ?? null,
   }
 }
 

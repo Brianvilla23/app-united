@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
-import { generarPDF } from './pdf'
+import { compartirPDFAviso, descargarPDFAviso } from './pdf'
 import { generarPDFAndamio } from './pdfAndamio'
 import type { Aviso, Andamio } from './types'
 
@@ -29,7 +29,8 @@ export default function Guardados() {
   if (items.length === 0)
     return <div className="empty">Aún no hay registros guardados.<br />Crea el primero desde el menú.</div>
 
-  const pdf = (it: Item) => { if (it.kind === 'aviso' && it.aviso) generarPDF(it.aviso); if (it.kind === 'andamio' && it.andamio) generarPDFAndamio(it.andamio) }
+  // el aviso se envía como ARCHIVO PDF (hoja de compartir del teléfono), no como link
+  const pdf = (it: Item) => { if (it.kind === 'aviso' && it.aviso) void compartirPDFAviso(it.aviso); if (it.kind === 'andamio' && it.andamio) generarPDFAndamio(it.andamio) }
   const borrar = (it: Item) => { if (it.kind === 'aviso') db.avisos.delete(it.id); else db.andamios.delete(it.id) }
 
   return (
@@ -43,7 +44,10 @@ export default function Guardados() {
           <div className="card-title">{it.titulo || '(sin título)'}</div>
           <div className="card-sub">{it.sub}</div>
           <div className="card-actions">
-            <button className="btn sm" onClick={() => pdf(it)}>Descargar PDF</button>
+            <button className="btn sm" onClick={() => pdf(it)}>{it.kind === 'aviso' ? 'Enviar PDF' : 'Descargar PDF'}</button>
+            {it.kind === 'aviso' && it.aviso && (
+              <button className="btn sm ghost" onClick={() => void descargarPDFAviso(it.aviso!)}>Descargar</button>
+            )}
             <button className="btn sm ghost" onClick={() => borrar(it)}>Borrar</button>
           </div>
         </div>
