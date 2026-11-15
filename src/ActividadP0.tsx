@@ -19,7 +19,7 @@ import { COLOR_AISLADA, SIN_AISLADAS, marcarAislada, useAisladas } from './aisla
 import { MALLAS_P0, componentesFugaP0, piezaDe, respetaAisladasP0 } from './actividadesP0'
 import {
   ALTO_P, ALTO_V, ANCHO_P, ANCHO_V, TOTAL_P0, VASIJAS_P0,
-  iconoPieza, ordenSemiP0, planoPiezas, planoVasijas,
+  iconoPieza, ordenSemiP0, planoMallas, planoPiezas, planoVasijas,
   type ColorVasija, type EstadoPieza, type EstadoPiezaFn, type VistaP0,
 } from './planoP0'
 import { agruparPorFila, generarPDFDiagrama, nombreArchivo, type ItemLeyenda } from './pdfDiagrama'
@@ -99,18 +99,19 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
   // ---- tocar
   const tocar = async (id: string) => {
     setAviso('')
-    if (aislando) {
+    if (aislando && !esMalla) {
       const ya = todasAisladas.has(id)
       if (confirm(ya
         ? `¿La vasija ${id} deja de estar aislada? Vuelve a contar desde el carguío.`
         : `¿Aislar la vasija ${id}? No se interviene desde el carguío en adelante.`)) await marcarAislada(rack, id, !ya)
       return
     }
-    if (aisladas.has(id)) {
+    if (!esMalla && aisladas.has(id)) {
       setAviso(`La vasija ${id} está aislada: no se interviene.${esCarguio && puedeEditar ? ' Para quitarla, usa "Marcar aisladas".' : ''}`)
       return
     }
     if (esPrueba) { setFugaAbierta(id); return }
+    if (esMalla) { if (puedeEditar) await guardar(id, !hecho(id)); return }
     if (puedeEditar) await guardar(id, !hecho(id))
   }
   const alTocarPlano = (e: MouseEvent<HTMLDivElement>) => {
@@ -262,21 +263,15 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
       {esMalla ? (
         <>
           <p className="hint" style={{ margin: '0 0 8px' }}>
-            En el orden en que se ven desde {nombreLado.toLowerCase()}. Cada malla tapa las filas G y H de su bloque.
+            Vista desde {nombreLado.toLowerCase()}. Toca la malla para marcarla {retiro ? 'retirada' : 'instalada'}: amarilla = puesta · verde punteada = retirada.
           </p>
-          <div className="mallas-grid">
-            {(lado === 'alimentacion' ? [...MALLAS_P0].reverse() : MALLAS_P0).map((m) => {
-              const ok = hecho(m.id)
-              const c1 = m.cols[0], c2 = m.cols[1]
-              return (
-                <button key={m.id} className={'malla-btn' + (ok ? (retiro ? ' retirada' : ' instalada') : '')}
-                  disabled={!puedeEditar} onClick={() => void guardar(m.id, !ok)}>
-                  <b>Malla {m.nombre}</b>
-                  <small>Columnas {lado === 'alimentacion' ? `${c2}–${c1}` : `${c1}–${c2}`} · filas G y H</small>
-                  <small className="estado">{ok ? (retiro ? '✓ Retirada' : '✓ Instalada') : 'Pendiente'}</small>
-                </button>
-              )
-            })}
+          <div className="fugas-scroll" onClick={alTocarPlano}>
+            <div dangerouslySetInnerHTML={{ __html: planoMallas(
+              lado,
+              // puesta: en el retiro, mientras no se marque; en la instalación, cuando se marca
+              (m) => (retiro ? !hecho(m) : hecho(m)),
+              (m) => hecho(m),
+            ) }} />
           </div>
         </>
       ) : (
@@ -316,8 +311,13 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
           <span className="leg-item"><span className="leg-dot" style={{ background: '#f0b400' }} /> Con fuga<em /><i>{conFuga}</i></span>
           <span className="leg-item"><span className="leg-dot vacio" /> Sin revisar<em /><i>{total - hechos}</i></span>
         </> : <>
-          <span className="leg-item"><span className="leg-dot" style={{ background: colorAvance }} /> {esMalla ? (retiro ? 'Retirada' : 'Instalada') : retiro ? 'Retirado' : 'Hecho'}<em /><i>{hechos}</i></span>
-          <span className="leg-item"><span className="leg-dot vacio" /> Pendiente<em /><i>{total - hechos}</i></span>
+          {esMalla ? <>
+            <span className="leg-item"><span className="leg-dot" style={{ background: '#f2c200', border: '1.5px solid #a37800' }} /> Malla puesta<em /><i>{retiro ? total - hechos : hechos}</i></span>
+            <span className="leg-item"><span className="leg-dot" style={{ background: 'rgba(34,197,94,.15)', border: '1.5px dashed #16a34a' }} /> Malla retirada<em /><i>{retiro ? hechos : total - hechos}</i></span>
+          </> : <>
+            <span className="leg-item"><span className="leg-dot" style={{ background: colorAvance }} /> {retiro ? 'Retirado' : 'Hecho'}<em /><i>{hechos}</i></span>
+            <span className="leg-item"><span className="leg-dot vacio" /> Pendiente<em /><i>{total - hechos}</i></span>
+          </>}
         </>}
         {(aisladas.size > 0 || esCarguio) && !esMalla && (
           <span className="leg-item"><span className="leg-dot" style={{ background: COLOR_AISLADA.color }} /> Aislada<em /><i>{aisladas.size}</i></span>
