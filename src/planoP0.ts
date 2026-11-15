@@ -48,12 +48,12 @@ const BLOQUES: [number, number][] = [[1, 5], [6, 10], [11, 15], [16, 20]]
 function encabezado(lado: LadoRack, rg: [number, number], xc: (p: number) => number, ySemi: number, yBloque: number, fs: number): string {
   const izq = semiIzquierda(lado), der = izq === 'A' ? 'B' : 'A'
   let s = ''
-  if (rg[0] <= 10) s += `<text x="${(xc(1) + xc(10)) / 2}" y="${ySemi}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#0f172a">SEMI RACK ${izq}</text>`
-  if (rg[1] >= 11) s += `<text x="${(xc(11) + xc(20)) / 2}" y="${ySemi}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#0f172a">SEMI RACK ${der}</text>`
+  if (rg[0] <= 10) s += `<text x="${(xc(1) + xc(10)) / 2}" y="${ySemi}" text-anchor="middle" font-size="${fs}" font-weight="bold" fill="#0f172a">SEMI RACK ${izq}</text>`
+  if (rg[1] >= 11) s += `<text x="${(xc(11) + xc(20)) / 2}" y="${ySemi}" text-anchor="middle" font-size="${fs}" font-weight="bold" fill="#0f172a">SEMI RACK ${der}</text>`
   for (const [a, b] of BLOQUES) {
     if (b < rg[0] || a > rg[1]) continue
     const c1 = columnaEn(a, lado), c2 = columnaEn(b, lado)
-    s += `<text x="${(xc(a) + xc(b)) / 2}" y="${yBloque}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#1f2937">${rotuloBloque(c1, c2)} · ${c1}–${c2}</text>`
+    s += `<text x="${(xc(a) + xc(b)) / 2}" y="${yBloque}" text-anchor="middle" font-size="${fs}" font-weight="bold" fill="#1f2937">${rotuloBloque(c1, c2)} · ${c1}–${c2}</text>`
   }
   return s
 }
@@ -72,7 +72,7 @@ export function planoVasijas(
 ): string {
   const rg = rango(v, lado)
   const x0 = v === 'todo' ? 0 : cxV(rg[0]) - R - 30, x1 = v === 'todo' ? ANCHO_V : cxV(rg[1]) + R + 16
-  let s = `<svg viewBox="${x0} 0 ${x1 - x0} ${ALTO_V}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto">`
+  let s = `<svg viewBox="${x0} 0 ${x1 - x0} ${ALTO_V}" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" style="display:block;width:100%;height:auto">`
   s += encabezado(lado, rg, cxV, 30, 46, 13)
   for (const p of [5, 15]) {
     if (p + 1 < rg[0] || p > rg[1]) continue
@@ -81,12 +81,12 @@ export function planoVasijas(
   }
   s += `<rect x="${cxV(rg[0]) - R - 14}" y="${MY + FILAS_P0.length * CELL + 8}" width="${cxV(rg[1]) - cxV(rg[0]) + 2 * R + 28}" height="15" rx="7.5" fill="${GRIS}" stroke="${GRIS_B}" stroke-width="0.8"/>`
   FILAS_P0.forEach((f, i) => {
-    s += `<text x="${x0 + (v === 'todo' ? 9 : 4)}" y="${cyV(i) + 5}" font-size="14" font-weight="800" fill="#334155">${f}</text>`
+    s += `<text x="${x0 + (v === 'todo' ? 9 : 4)}" y="${cyV(i) + 5}" font-size="14" font-weight="bold" fill="#334155">${f}</text>`
     for (let p = rg[0]; p <= rg[1]; p++) {
       const id = f + columnaEn(p, lado), tc = color(id), x = cxV(p), y = cyV(i)
       s += `<g data-v="${id}"${paraPdf ? '' : ' style="cursor:pointer"'}><circle cx="${x}" cy="${y}" r="${R}" fill="${tc ? tc.c : '#fff'}" stroke="${VERDE}" stroke-width="4.2"/>`
       if (tc?.anillo) s += `<circle cx="${x}" cy="${y}" r="9.5" fill="#f0b400" stroke="#8a6d03"/>`
-      s += `<text x="${x}" y="${y + 4.5}" text-anchor="middle" font-size="${paraPdf ? 14 : 13}" font-weight="800" fill="${tc ? tc.t : '#0f172a'}">${id}</text></g>`
+      s += `<text x="${x}" y="${y + 4.5}" text-anchor="middle" font-size="${paraPdf ? 14 : 13}" font-weight="bold" fill="${tc ? tc.t : '#0f172a'}">${id}</text></g>`
     }
   })
   return s + '</svg>'
@@ -114,7 +114,7 @@ function acople(x: number, y: number, c: ColInox): string {
 
 /** Codo inox visto de frente: baja de su salida en el cabezal (piedmont superior)
     y en la tapa dobla hacia adentro sobre el puerto feed/conc. (piedmont inferior). */
-export function codoSVG(x: number, y: number, st: EstadoPieza, tenue: boolean, conVisto: boolean): string {
+export function codoSVG(x: number, y: number, st: EstadoPieza, tenue: boolean, conVisto: boolean, mostrarVisto = true): string {
   if (st === 'ais') return ''
   const top = y - 44, yb = y - 8
   if (st === 'fuera' && !conVisto) {
@@ -133,7 +133,7 @@ export function codoSVG(x: number, y: number, st: EstadoPieza, tenue: boolean, c
     + `<circle cx="${x}" cy="${yb}" r="7.5" fill="${c.tubo}" stroke="${c.borde}" stroke-width="2"/>`
     + `<circle cx="${x}" cy="${yb}" r="7.5" fill="none" stroke="${c.ac}" stroke-width="2.6" stroke-dasharray="9 3"/>`
     + `<circle cx="${x - 2}" cy="${yb - 2}" r="1.8" fill="${c.luz}"/>`
-    + ((st === 'nuevo' || st === 'fuera') && !tenue ? visto(x + 14, top + 16, '#16a34a') : '') + '</g>'
+    + ((st === 'nuevo' || st === 'fuera') && !tenue && mostrarVisto ? visto(x + 14, top + 16, '#16a34a') : '') + '</g>'
 }
 
 interface ColPpr { tubo: string; borde: string; luz: string; fit: string }
@@ -213,7 +213,7 @@ export function planoPiezas(
 ): string {
   const rg = rango(v, lado)
   const x0 = v === 'todo' ? 0 : px2(rg[0]) - 52, x1 = v === 'todo' ? ANCHO_P : px2(rg[1]) + 56
-  let s = `<svg viewBox="${x0} 0 ${x1 - x0} ${ALTO_P}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto">`
+  let s = `<svg viewBox="${x0} 0 ${x1 - x0} ${ALTO_P}" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" style="display:block;width:100%;height:auto">`
   s += encabezado(lado, rg, px2, 24, 44, 14)
   const conPPR = lado === 'descarga'
   // cada bloque tiene su cabezal por fila; los dos bloques del semi rack llegan
@@ -223,7 +223,7 @@ export function planoPiezas(
   const yTop = py2(0) - 52 * K - 14, yBot = py2(FILAS_P0.length - 1) + 20
   FILAS_P0.forEach((f, i) => {
     const y = py2(i), hy = y - 52 * K, py = y - 40 * K
-    s += `<text x="${x0 + (v === 'todo' ? 9 : 4)}" y="${y + 6}" font-size="17" font-weight="800" fill="#334155">${f}</text>`
+    s += `<text x="${x0 + (v === 'todo' ? 9 : 4)}" y="${y + 6}" font-size="17" font-weight="bold" fill="#334155">${f}</text>`
     for (const [a, b, lado2] of segs) {
       if (b < rg[0] || a > rg[1]) continue
       const xi = lado2 === 'izq' ? px2(a) - 34 : vx(a - 1), xf = lado2 === 'izq' ? vx(b) : px2(b) + 34
@@ -250,14 +250,17 @@ export function planoPiezas(
       s += `<g data-v="${id}"${paraPdf ? '' : ' style="cursor:pointer"'}>`
       if (!paraPdf) s += `<rect x="${x - CX2 / 2 + 2}" y="${hy - 10}" width="${CX2 - 4}" height="${CY2 - 8}" fill="#ffffff" fill-opacity="0"/>`
       s += `<g transform="translate(${x} ${y}) scale(${escala}) translate(${-x} ${-y})">`
-      if (pieza === 'tapa') s += tapaSVG(x, y, lado, st, retirada)
+      if (pieza === 'tapa') {
+        if (!ais) s += `</g><g transform="translate(${x} ${y}) scale(${K}) translate(${-x} ${-y})">${codoSVG(x, y, 'fuera', false, estado.retiro, false)}</g><g transform="translate(${x} ${y}) scale(${escala}) translate(${-x} ${-y})">`
+        s += tapaSVG(x, y, lado, st, retirada)
+      }
       else {
         s += tapaSimple(x, y, lado, ais)
         if (pieza === 'codo') { if (conPPR) s += pprSVG(x, y, 'orig', true, false); s += codoSVG(x, y, st, false, retirada) }
         else { s += codoSVG(x, y, 'orig', true, false); s += pprSVG(x, y, st, false, retirada) }
       }
       const colorTxt = ais ? '#0369a1' : hecho ? '#15803d' : '#0f172a'
-      s += `</g><text x="${x}" y="${y + (pieza === 'tapa' ? 50 : 42)}" text-anchor="middle" font-size="${paraPdf ? 17 : 16}" font-weight="800" fill="${colorTxt}"${retirada ? ' text-decoration="line-through"' : ''}>${id}</text></g>`
+      s += `</g><text x="${x}" y="${y + (pieza === 'tapa' ? 50 : 42)}" text-anchor="middle" font-size="${paraPdf ? 17 : 16}" font-weight="bold" fill="${colorTxt}"${retirada ? ' text-decoration="line-through"' : ''}>${id}</text></g>`
     }
   })
   // manifold común vertical de cada semi rack: ahí llegan soldados los cabezales de sus dos bloques
@@ -285,7 +288,7 @@ export function iconoPieza(pieza: PiezaP0, st: EstadoPieza, conVisto: boolean, l
     planchas amarillas perforadas que tapan las filas G y H de cada bloque.
     Puesta = amarilla · retirada = verde suave punteada (con visto si se marcó). */
 export function planoMallas(lado: LadoRack, puesta: (malla: string) => boolean, conVisto: (malla: string) => boolean): string {
-  let s = `<svg viewBox="0 0 ${ANCHO_V} ${ALTO_V + 10}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto">`
+  let s = `<svg viewBox="0 0 ${ANCHO_V} ${ALTO_V + 10}" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" style="display:block;width:100%;height:auto">`
   s += '<defs><pattern id="perforado-p0" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="3.5" cy="3.5" r="1.7" fill="#b38600" fill-opacity="0.55"/></pattern></defs>'
   s += encabezado(lado, [1, 20], cxV, 30, 46, 13)
   for (const p of [5, 15]) {
@@ -293,11 +296,11 @@ export function planoMallas(lado: LadoRack, puesta: (malla: string) => boolean, 
     s += `<rect x="${px}" y="${MY - 6}" width="16" height="${FILAS_P0.length * CELL + 14}" fill="${GRIS}" stroke="${GRIS_B}" stroke-width="0.8"/>`
   }
   FILAS_P0.forEach((f, i) => {
-    s += `<text x="9" y="${cyV(i) + 5}" font-size="14" font-weight="800" fill="#334155">${f}</text>`
+    s += `<text x="9" y="${cyV(i) + 5}" font-size="14" font-weight="bold" fill="#334155">${f}</text>`
     for (let p = 1; p <= 20; p++) {
       const x = cxV(p), y = cyV(i)
       s += `<circle cx="${x}" cy="${y}" r="15" fill="#efe6cf" stroke="#111827" stroke-width="2.2"/><circle cx="${x}" cy="${y}" r="11.5" fill="#6b7684"/>`
-        + `<text x="${x}" y="${y + 3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="#f8fafc">${f}${columnaEn(p, lado)}</text>`
+        + `<text x="${x}" y="${y + 3.5}" text-anchor="middle" font-size="10" font-weight="bold" fill="#f8fafc">${f}${columnaEn(p, lado)}</text>`
     }
   })
   const yG = cyV(5) - CELL / 2 + 3, alto = 2 * CELL - 4
@@ -311,11 +314,11 @@ export function planoMallas(lado: LadoRack, puesta: (malla: string) => boolean, 
         + `<rect x="${x0}" y="${yG}" width="${w}" height="${alto}" rx="4" fill="url(#perforado-p0)"/>`
         + `<rect x="${x0}" y="${yG}" width="${w}" height="${alto}" rx="4" fill="none" stroke="#a37800" stroke-width="4"/>`
         + `<rect x="${xc - 48}" y="${yc - 12}" width="96" height="24" rx="6" fill="#ffffff" stroke="#a37800" stroke-width="1.2"/>`
-        + `<text x="${xc}" y="${yc + 4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="#3b2f00">MALLA ${rot}</text>`
+        + `<text x="${xc}" y="${yc + 4.5}" text-anchor="middle" font-size="12" font-weight="bold" fill="#3b2f00">MALLA ${rot}</text>`
     } else {
       s += `<rect x="${x0}" y="${yG}" width="${w}" height="${alto}" rx="4" fill="#22c55e" fill-opacity="0.12" stroke="#16a34a" stroke-width="2.6" stroke-dasharray="7 5"/>`
         + `<rect x="${xc - 62}" y="${yc - 12}" width="124" height="24" rx="6" fill="#ffffff" stroke="#16a34a" stroke-width="1.2" stroke-dasharray="4 3"/>`
-        + `<text x="${xc}" y="${yc + 4.5}" text-anchor="middle" font-size="12" font-weight="800" fill="#15803d">${rot} · RETIRADA</text>`
+        + `<text x="${xc}" y="${yc + 4.5}" text-anchor="middle" font-size="12" font-weight="bold" fill="#15803d">${rot} · RETIRADA</text>`
     }
     if (conVisto(id)) s += visto(x0 + w - 12, yG + 12, '#16a34a')
     s += '</g>'

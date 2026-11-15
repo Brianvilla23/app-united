@@ -7,7 +7,7 @@
 //  · simple → la vasija como círculo (membranas, limpieza, carguío, tapones).
 //  · fugas  → pruebas de baja y alta: sin fuga, o dónde filtra.
 // Todo se guarda en `avance_item`, con la misma cola sin señal que el resto.
-import { createElement, useState, type MouseEvent } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { encolar } from './sync'
@@ -22,10 +22,10 @@ import {
   iconoPieza, ordenSemiP0, planoMallas, planoPiezas, planoVasijas,
   type ColorVasija, type EstadoPieza, type EstadoPiezaFn, type VistaP0,
 } from './planoP0'
-import { agruparPorFila, generarPDFDiagrama, nombreArchivo, type ItemLeyenda } from './pdfDiagrama'
+import { nombreArchivo } from './pdfDiagrama'
+import { generarPDFP0, type LeyendaP0 } from './pdfP0'
 
 const VERDE = { c: '#22c55e', t: '#052e16' }
-const PLOMO = { c: '#8e99a8', t: '#0f172a' }
 // en el Rack 4 P0 la aislada va en celeste (Brayan, 14-11-2026)
 const CELESTE = '#7dd3fc'
 const AISLADA = { c: CELESTE, t: '#0c4a6e' }
@@ -67,7 +67,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
     : VASIJAS_P0.filter((v) => !aisladas.has(v) && hecho(v)).length
   const conFuga = esPrueba ? VASIJAS_P0.filter((v) => !aisladas.has(v) && hecho(v) && fugasDe(v).length > 0).length : 0
   const pct = total ? Math.round((hechos / total) * 1000) / 10 : 0
-  const colorAvance = retiro ? PLOMO.c : VERDE.c
+  const colorAvance = VERDE.c
   const nombreLado = LADOS.find((l) => l.codigo === lado)!.nombre
 
   const guardar = async (item: string, valor: boolean, datos: Record<string, unknown> = {}) => {
@@ -86,7 +86,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
       if (!hecho(id)) return null
       return fugasDe(id).length ? { c: '#fff7d6', t: '#0f172a', anillo: true } : VERDE
     }
-    return hecho(id) ? (retiro ? PLOMO : VERDE) : null
+    return hecho(id) ? VERDE : null
   }
   const estado = Object.assign(
     (id: string): EstadoPieza => {
@@ -132,39 +132,29 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
     }
   }
 
-  // ---- PDF (mismo formato que el resto de las actividades)
+  // ---- PDF en formato United, una sola hoja (plano, avance y leyenda; sin detalle)
   const exportarPDF = async () => {
     setGenerando(true)
     try {
-      const pendientes = VASIJAS_P0.filter((v) => !aisladas.has(v) && !hecho(v))
-      const leyenda: ItemLeyenda[] = esPrueba
+      const leyenda: LeyendaP0[] = esPrueba
         ? [
-          { color: VERDE.c, nombre: 'Sin fuga', desc: 'Revisada sin fuga', n: hechos - conFuga },
-          { color: '#f0b400', nombre: 'Con fuga', desc: 'Revisada con fuga', n: conFuga },
-          { color: '#ffffff', hueco: true, nombre: 'Sin revisar', desc: 'Todavía no se revisa', n: total - hechos },
+          { color: VERDE.c, borde: '#15803d', nombre: 'Sin fuga', n: hechos - conFuga },
+          { color: '#f0b400', borde: '#8a6d03', nombre: 'Con fuga', n: conFuga },
+          { color: '#ffffff', nombre: 'Sin revisar', n: total - hechos },
         ]
         : [
-          { color: retiro ? PLOMO.c : VERDE.c, nombre: retiro ? 'Retirado' : 'Hecho', desc: retiro ? 'Ya salió' : 'Ya ejecutado', n: hechos },
-          { color: '#ffffff', hueco: true, nombre: 'Pendiente', desc: 'Todavía no se hace', n: total - hechos },
+          { color: VERDE.c, borde: '#15803d', nombre: retiro ? 'Retirado' : 'Hecho', n: hechos },
+          { color: pieza ? '#8a95a3' : '#ffffff', nombre: pieza && retiro ? 'Todavía puesto' : 'Pendiente', n: total - hechos },
         ]
-      if (aisladas.size) leyenda.push({ color: CELESTE, nombre: 'Aislada', desc: 'No se interviene', n: aisladas.size })
-      leyenda.push({ color: '#ffffff', hueco: true, nombre: 'TOTAL', desc: aisladas.size ? 'Vasijas a intervenir' : 'Vasijas del rack', n: total })
-      const doc = await generarPDFDiagrama({
+      if (aisladas.size) leyenda.push({ color: CELESTE, borde: '#0369a1', nombre: 'Aislada', n: aisladas.size })
+      const doc = await generarPDFP0({
         titulo: a.nombre,
         subtitulo: a.sinLado ? nombreRack(rack) : `${nombreRack(rack)} · ${nombreLado}`,
-        hoja: 'ancha',
+        svg: svg('todo', true),
         vb: pieza ? { ancho: ANCHO_P, alto: ALTO_P } : { ancho: ANCHO_V, alto: ALTO_V },
-        diagrama: createElement('div', { dangerouslySetInnerHTML: { __html: svg('todo', true) } }),
-        avance: { pct, detalle: `${hechos} de ${total}`, color: colorAvance },
+        avance: { pct, detalle: `${hechos} de ${total} ${retiro ? 'retirados' : 'hechos'}`, color: '#15803d' },
         leyenda,
-        detalle: [
-          { titulo: esPrueba ? 'Vasijas sin revisar' : 'Vasijas pendientes', lineas: agruparPorFila(pendientes) },
-          ...(esPrueba && conFuga ? [{
-            titulo: 'Dónde filtra', color: '#f0b400',
-            lineas: VASIJAS_P0.filter((v) => fugasDe(v).length).map((v) => `${v}  ·  ${fugasDe(v).join(', ')}`),
-          }] : []),
-          ...(aisladas.size ? [{ titulo: 'Vasijas aisladas (no se intervienen)', lineas: agruparPorFila([...aisladas]) }] : []),
-        ],
+        total: { nombre: aisladas.size ? 'Vasijas a intervenir' : 'Vasijas del rack', n: total },
         generadoPor: quienSoy(),
       })
       doc.save(nombreArchivo(a.nombre, 'Rack4P0', a.sinLado ? '' : lado))
