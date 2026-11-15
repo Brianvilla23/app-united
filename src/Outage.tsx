@@ -10,7 +10,9 @@ import { db } from './db'
 import { estaExtraida, type DatosManifold } from './types'
 import { puestas as membranasPuestas, type DatosMembranas } from './membranas'
 import { TOTAL_VASIJAS } from './rackLayout'
-import { NOMBRE_MANIFOLD, cerrarOutage, rackDe, useCierre, useRack } from './rackOutage'
+import { NOMBRE_MANIFOLD, cerrarOutage, esP0, nombreRack, rackDe, useCierre, useRack } from './rackOutage'
+import { respetaAisladasP0 } from './actividadesP0'
+import { TOTAL_P0 } from './planoP0'
 import { usePuedeEditar } from './permisos'
 import { fechaCorta } from './fecha'
 import { SIN_AISLADAS, respetaAisladas, useAisladas } from './aisladas'
@@ -26,6 +28,7 @@ const ETIQUETA_TIPO: Record<TipoDiagrama, string> = {
   fugas: 'Plano de fugas',
   venteo: 'Venteos (6)',
   oval: 'Sideport (2 por vasija)',
+  malla: 'Mallas (8)',
 }
 
 export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void }) {
@@ -43,7 +46,10 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
   // del carguío en adelante las vasijas aisladas no se intervienen: salen del
   // total y lo que tuvieran marcado no suma
   const aisladas = useAisladas(rack)
-  const aisladasDe = (id: string) => (respetaAisladas(id) ? aisladas : SIN_AISLADAS)
+  // el Rack 4 P0 tiene otro plano (140 vasijas) y su propio catálogo
+  const p0 = esP0(rack)
+  const totalV = p0 ? TOTAL_P0 : TOTAL_VASIJAS
+  const aisladasDe = (id: string) => ((p0 ? respetaAisladasP0(id) : respetaAisladas(id)) ? aisladas : SIN_AISLADAS)
   const nAisladas = (id: string) => aisladasDe(id).size
   const fuera = (id: string, vasija: string) => aisladasDe(id).has(vasija)
 
@@ -52,6 +58,14 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
   const avanceDe = (id: string): number => {
     // la del rack, no la de la lista general: el carguío escanea o no según el rack
     const act = actividades.find((a) => a.id === id)
+    // Rack 4 P0: todo (también tapas y mallas) vive en avance_item, una fila por pieza y lado
+    if (p0 && act) {
+      const hechos = delRack.filter(
+        (i) => i.actividad === id && i.hecho && !fuera(id, i.item) && (!act.sinLado || i.lado === act.lados[0]),
+      ).length
+      const total = itemsDe(act, nAisladas(id), totalV)
+      return total > 0 ? Math.round((Math.min(hechos, total) / total) * 1000) / 10 : 0
+    }
     // Las tapas NO viven en avance_item sino en su propia tabla, y cada
     // actividad lleva su registro por lado. Antes esto solo contemplaba el
     // retiro de alimentación: las otras tres caían al conteo de avance_item,
@@ -95,8 +109,8 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
     return 0
   }
 
-  const total = actividades.reduce((n, a) => n + itemsDe(a, nAisladas(a.id)), 0)
-  const hecho = actividades.reduce((n, a) => n + (avanceDe(a.id) / 100) * itemsDe(a, nAisladas(a.id)), 0)
+  const total = actividades.reduce((n, a) => n + itemsDe(a, nAisladas(a.id), totalV), 0)
+  const hecho = actividades.reduce((n, a) => n + (avanceDe(a.id) / 100) * itemsDe(a, nAisladas(a.id), totalV), 0)
   const registrado = Math.round((hecho / total) * 1000) / 10
   // Un outage cerrado se muestra terminado aunque no todo haya quedado
   // registrado en la app: el trabajo se hizo, lo que faltó fue anotarlo.
@@ -110,7 +124,7 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
   return (
     <div>
       <div className="plano-titulo">
-        <b>OUTAGE · RACK {rack}</b>
+        <b>OUTAGE · {nombreRack(rack).toUpperCase()}</b>
         <span>{info.planta} · {NOMBRE_MANIFOLD[info.manifold].toUpperCase()}</span>
       </div>
 
@@ -138,7 +152,7 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
       <ol className="actividades">
         {actividades.map((a, i) => {
           const pct = avanceDe(a.id)
-          const bloqueada = !cierre && estaBloqueada(i, avanceDe)
+          const bloqueada = !cierre && estaBloqueada(i, avanceDe, actividades)
           // El candado AVISA el orden, no lo impone: en terreno las cuadrillas
           // se traslapan y la app no puede impedir registrar lo que ya se hizo.
           const listo = TIPOS_LISTOS.includes(a.tipo)
@@ -158,7 +172,7 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
                         alcanzó a anotar, no lo que se hizo: el chip lo dice */}
                     {cierre && <em className="cerrada">✓ cerrada</em>}
                     <em>{ETIQUETA_TIPO[a.tipo]}</em>
-                    <em>{itemsDe(a, nAisladas(a.id))} ítems</em>
+                    <em>{itemsDe(a, nAisladas(a.id), totalV)} ítems</em>
                     {a.libre && <em className="libre">sin orden</em>}
                     {bloqueada && <em className="candado">⚠ falta lo anterior</em>}
                     {!listo && <em className="porhacer">diagrama por construir</em>}
@@ -180,8 +194,8 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
             <>
               <span>
                 {cierre
-                  ? `¿Reabrir el outage del Rack ${rack}? Vuelve a quedar editable.`
-                  : `¿Cerrar el outage del Rack ${rack}? Queda como terminado y de solo lectura.`}
+                  ? `¿Reabrir el outage del ${nombreRack(rack)}? Vuelve a quedar editable.`
+                  : `¿Cerrar el outage del ${nombreRack(rack)}? Queda como terminado y de solo lectura.`}
               </span>
               <div className="row" style={{ gap: 8 }}>
                 <button className="btn sm" onClick={() => void cerrar(!cierre)}>Sí</button>

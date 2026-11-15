@@ -10,6 +10,8 @@ import { TOTAL_VASIJAS, ordenSemiRacks } from './rackLayout'
 import { MEMBRANAS_POR_VASIJA } from './membranas'
 import type { DatosManifold, LadoRack } from './types'
 import { ARQUETIPOS, ARQUETIPO_DE, type FilaTubing } from './manifoldDetalle'
+import { ACTIVIDADES_P0 } from './actividadesP0'
+import { esP0 } from './rackOutage'
 
 export type TipoDiagrama =
   | 'oval'       // control de ovalamiento de sideport (2 por vasija)
@@ -18,6 +20,7 @@ export type TipoDiagrama =
   | 'simple'     // plano de 295, se marca hecho / no hecho
   | 'fugas'      // plano de 295 marcando el componente que filtra
   | 'venteo'     // los 6 venteos del rack
+  | 'malla'      // Rack 4 P0: las 4 mallas de protección de cada lado
 
 // --- pruebas de presión: dónde puede aparecer una fuga ---
 export type ComponentePrueba =
@@ -116,6 +119,8 @@ export const MANIFOLDS_POR_LADO = 40
 
 /** Las actividades que van en el outage de ese rack. */
 export function actividadesDe(rack: number): Actividad[] {
+  // el Rack 4 de Planta 0 tiene su propio catálogo (`actividadesP0.ts`)
+  if (esP0(rack)) return ACTIVIDADES_P0
   return ACTIVIDADES
     .filter((a) => !a.racks || a.racks.includes(rack))
     .map((a) => (a.escaneoEnRacks?.includes(rack) ? conEscaneo(a) : a))
@@ -265,17 +270,20 @@ export const ACTIVIDADES: Actividad[] = [
 
 /** Cuántos ítems tiene una actividad (para calcular su avance). Las vasijas
     aisladas (del carguío en adelante, ver `aisladas.ts`) salen del total. */
-export function itemsDe(a: Actividad, aisladas = 0): number {
-  const vasijas = TOTAL_VASIJAS - aisladas
+export function itemsDe(a: Actividad, aisladas = 0, totalVasijas = TOTAL_VASIJAS): number {
+  // las mallas del Rack 4 P0: 4 por lado
+  if (a.tipo === 'malla') return 4 * a.lados.length
+  const vasijas = totalVasijas - aisladas
   // el ovalamiento se mide en sideport: 2 por vasija en cada lado
-  if (a.tipo === 'oval') return a.lados.length * TOTAL_VASIJAS * 2
+  if (a.tipo === 'oval') return a.lados.length * totalVasijas * 2
   // el carguío se mide en membranas y no en vasijas: son 7 por vasija y cada
   // una es trabajo que se registra por separado
   if (a.membranas) return vasijas * MEMBRANAS_POR_VASIJA
   if (a.tipo === 'venteo') return VENTEOS.filter((v) => a.lados.includes(v.lado)).length
   // la prueba revisa las vasijas del lado más los venteos de ese lado
   if (a.tipo === 'fugas') {
-    return a.lados.reduce((n, l) => n + vasijas + venteosDe(l).length, 0)
+    // el Rack 4 P0 no tiene venteos
+    return a.lados.reduce((n, l) => n + vasijas + (a.id.startsWith('p0_') ? 0 : venteosDe(l).length), 0)
   }
   // con piezas, el ítem es la pieza y no el manifold: instalar los 295 stub end
   // es trabajo real y tiene que verse en la barra
@@ -295,7 +303,7 @@ export function piezasPorLado(partes: ParteManifold[]): number {
 /** Diagramas ya construidos. El resto se muestra pero todavía no se puede abrir. */
 // 'fugas' NO se enlaza al módulo de fugas existente: ese es del rack completo
 // y marca otros componentes. Las pruebas de baja y alta llevan diagrama propio.
-export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo', 'simple', 'manifold', 'fugas', 'oval']
+export const TIPOS_LISTOS: TipoDiagrama[] = ['tapa', 'venteo', 'simple', 'manifold', 'fugas', 'oval', 'malla']
 
 // --- los 6 venteos del rack ---
 // 2 en alimentación (uno por semi rack, al medio), 2 en descarga, y 2 más
@@ -317,10 +325,10 @@ export const VENTEOS: Venteo[] = [
 ]
 
 /** Actividad bloqueada: falta terminar alguna secuencial anterior. */
-export function estaBloqueada(i: number, avance: (id: string) => number): boolean {
-  const a = ACTIVIDADES[i]
-  if (a.libre) return false
-  return ACTIVIDADES.slice(0, i).some((prev) => !prev.libre && avance(prev.id) < 100)
+export function estaBloqueada(i: number, avance: (id: string) => number, lista: Actividad[] = ACTIVIDADES): boolean {
+  const a = lista[i]
+  if (!a || a.libre) return false
+  return lista.slice(0, i).some((prev) => !prev.libre && avance(prev.id) < 100)
 }
 
 // --- layout de los 40 manifolds ---

@@ -6,7 +6,7 @@ import { quienSoy, guardarQuienSoy } from './identidad'
 import {
   ModoContexto, NOMBRE_MODO, guardarModo, modoGuardado, type ModoUso,
 } from './permisos'
-import { RACKS_OUTAGE, RACK_INICIAL, RackContexto, useCierres } from './rackOutage'
+import { RACKS_OUTAGE, RACK_INICIAL, RackContexto, esP0, nombreRack, useCierres } from './rackOutage'
 import { cerrarCapaDeArriba, empujarCapa, volver } from './navegacion'
 import AvisoForm from './AvisoForm'
 import AndamioForm from './AndamioForm'
@@ -16,6 +16,7 @@ import Outage from './Outage'
 import Venteos from './Venteos'
 import Ovalamiento from './Ovalamiento'
 import PlanoActividad from './PlanoActividad'
+import ActividadP0 from './ActividadP0'
 import Pruebas from './Pruebas'
 import EntregaTurno from './EntregaTurno'
 import Planificacion from './Planificacion'
@@ -23,7 +24,7 @@ import Supervisores from './Supervisores'
 import PanelPGP from './PanelPGP'
 import PanelDocumentos from './PanelDocumentos'
 import { iniciarPgp } from './pgp'
-import { ACTIVIDADES, type Actividad } from './actividades'
+import { actividadesDe, type Actividad } from './actividades'
 import { fechaCorta, fechaLarga } from './fecha'
 
 type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'ovalamiento'
@@ -154,11 +155,11 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
             <button key={r.numero} className="menu-card" onClick={() => abrirOutage(r.numero)}>
               <span className="mc-ico rojo">🗓️</span>
               <span className="mc-txt">
-                <b>Outage Rack {r.numero}{cerrado ? ' · cerrado' : ''}</b>
+                <b>Outage {nombreRack(r.numero)}{cerrado ? ' · cerrado' : ''}</b>
                 <small>
                   {cerrado
                     ? `Terminado${cerrado.fecha ? ` el ${fechaCorta(cerrado.fecha)}` : ''} · solo lectura`
-                    : `Secuencia completa · ${ACTIVIDADES.length} actividades`}
+                    : `Secuencia completa · ${actividadesDe(r.numero).length} actividades`}
                 </small>
               </span>
               <span className="mc-arrow">›</span>
@@ -284,7 +285,7 @@ export default function App() {
         ) : (
           <button className="back" onClick={volver}>
             ‹ {actAbierta && VISTAS_DE_ACTIVIDAD.includes(vista) ? actAbierta.nombre
-              : vista === 'outage' ? `Outage Rack ${rack}` : TITULOS[vista]}
+              : vista === 'outage' ? `Outage ${nombreRack(rack)}` : TITULOS[vista]}
           </button>
         )}
         <OfflineDot />
@@ -304,6 +305,8 @@ export default function App() {
           ladoFijo={actAbierta?.tipo === 'tapa' ? actAbierta.lados[0] : undefined} />}
         {vista === 'outage' && <Outage onAbrir={(a: Actividad) => {
           setActAbierta(a)
+          // el Rack 4 P0 abre todas sus actividades en su propia pantalla
+          if (esP0(rack)) { irA('actividad'); return }
           irA(a.tipo === 'tapa' ? 'tapas'
             : a.tipo === 'venteo' ? 'venteos'
             : a.tipo === 'fugas' ? 'prueba'
@@ -312,7 +315,9 @@ export default function App() {
         }} />}
         {vista === 'venteos' && <Venteos actividad="cambio_venteo" />}
         {vista === 'ovalamiento' && <Ovalamiento />}
-        {vista === 'actividad' && actAbierta && <PlanoActividad actividad={actAbierta} />}
+        {vista === 'actividad' && actAbierta && (esP0(rack)
+          ? <ActividadP0 key={actAbierta.id} actividad={actAbierta} />
+          : <PlanoActividad actividad={actAbierta} />)}
         {vista === 'prueba' && actAbierta && <Pruebas actividad={actAbierta} />}
         {vista === 'entrega' && <EntregaTurno />}
         {vista === 'planificacion' && <Planificacion />}

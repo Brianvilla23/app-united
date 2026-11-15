@@ -14,7 +14,7 @@ import { usePuedeEditar } from './permisos'
 
 /** El manifold de descarga: barra de PVC o manifold flexible. Las piezas que
     se marcan son las mismas (stub end, brazo, tubing); cambia el material. */
-export type TipoManifold = 'pvc' | 'flexible'
+export type TipoManifold = 'pvc' | 'flexible' | 'ppr'
 
 /** Qué tiene la tapa por fuera. En el Rack 12 hay que sacar seguros triples y
     pernos parker antes de la tapa, y cada uno se registra; en el Rack 3 la tapa
@@ -29,11 +29,18 @@ export interface RackOutage {
   planta: string
   manifold: TipoManifold
   retiroTapas: TipoRetiroTapas
+  /** Plano de vasijas: 'ews' (295, filas A-S) o 'p0' (Rack 4 de Planta 0: 140, filas B-H × 1-20). */
+  layout?: 'ews' | 'p0'
+  /** Nombre que se muestra cuando el número interno no basta. */
+  etiqueta?: string
 }
 
 /** El primero de la lista es el outage en curso. El Rack 6 (13-10-2026) es
     igual al 3, palabra de Brayan: EWS, manifold flexible, tapa sin seguros. */
 export const RACKS_OUTAGE: RackOutage[] = [
+  // Rack 4 de Planta 0 (14-11-2026): Codeline 80E, 140 vasijas, manifold PPR solo en
+  // descarga. Va con número interno 104 para no chocar con un Rack 4 de EWS.
+  { numero: 104, planta: 'Planta 0', manifold: 'ppr', retiroTapas: 'simple', layout: 'p0', etiqueta: 'Rack 4 · Planta 0' },
   { numero: 6, planta: 'EWS', manifold: 'flexible', retiroTapas: 'simple' },
   { numero: 3, planta: 'EWS', manifold: 'flexible', retiroTapas: 'simple' },
   { numero: 12, planta: 'EWS', manifold: 'pvc', retiroTapas: 'detallado' },
@@ -42,9 +49,20 @@ export const RACKS_OUTAGE: RackOutage[] = [
 export const NOMBRE_MANIFOLD: Record<TipoManifold, string> = {
   pvc: 'manifold PVC',
   flexible: 'manifold flexible',
+  ppr: 'manifold PPR',
 }
 
 export const RACK_INICIAL = RACKS_OUTAGE[0].numero
+
+/** ¿Es el Rack 4 de Planta 0? Tiene plano, actividades y pantalla propios. */
+export function esP0(numero: number): boolean {
+  return RACKS_OUTAGE.find((r) => r.numero === numero)?.layout === 'p0'
+}
+
+/** "Rack 4 · Planta 0" o "Rack 6". */
+export function nombreRack(numero: number): string {
+  return RACKS_OUTAGE.find((r) => r.numero === numero)?.etiqueta ?? `Rack ${numero}`
+}
 
 export function rackDe(numero: number): RackOutage {
   return RACKS_OUTAGE.find((r) => r.numero === numero)
