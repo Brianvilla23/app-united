@@ -25,6 +25,7 @@ import {
 import { agruparPorFila, generarPDFDiagrama, nombreArchivo, type ItemLeyenda } from './pdfDiagrama'
 
 const VERDE = { c: '#22c55e', t: '#052e16' }
+const PLOMO = { c: '#8e99a8', t: '#0f172a' }
 const AISLADA = { c: COLOR_AISLADA.color, t: COLOR_AISLADA.texto }
 
 type DatosFuga = { fugas?: string[] }
@@ -62,7 +63,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
     : VASIJAS_P0.filter((v) => !aisladas.has(v) && hecho(v)).length
   const conFuga = esPrueba ? VASIJAS_P0.filter((v) => !aisladas.has(v) && hecho(v) && fugasDe(v).length > 0).length : 0
   const pct = total ? Math.round((hechos / total) * 1000) / 10 : 0
-  const colorAvance = VERDE.c
+  const colorAvance = retiro ? PLOMO.c : VERDE.c
   const nombreLado = LADOS.find((l) => l.codigo === lado)!.nombre
 
   const guardar = async (item: string, valor: boolean, datos: Record<string, unknown> = {}) => {
@@ -81,7 +82,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
       if (!hecho(id)) return null
       return fugasDe(id).length ? { c: '#fff7d6', t: '#0f172a', anillo: true } : VERDE
     }
-    return hecho(id) ? VERDE : null
+    return hecho(id) ? (retiro ? PLOMO : VERDE) : null
   }
   const estado = Object.assign(
     (id: string): EstadoPieza => {
@@ -139,7 +140,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
           { color: '#ffffff', hueco: true, nombre: 'Sin revisar', desc: 'Todavía no se revisa', n: total - hechos },
         ]
         : [
-          { color: VERDE.c, nombre: retiro ? 'Retirado' : 'Hecho', desc: retiro ? 'Ya salió' : 'Ya ejecutado', n: hechos },
+          { color: retiro ? PLOMO.c : VERDE.c, nombre: retiro ? 'Retirado' : 'Hecho', desc: retiro ? 'Ya salió' : 'Ya ejecutado', n: hechos },
           { color: '#ffffff', hueco: true, nombre: 'Pendiente', desc: 'Todavía no se hace', n: total - hechos },
         ]
       if (aisladas.size) leyenda.push({ color: COLOR_AISLADA.color, nombre: 'Aislada', desc: 'No se interviene', n: aisladas.size })
@@ -264,8 +265,8 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
           <p className="hint" style={{ margin: '0 0 8px' }}>
             Vista desde {nombreLado.toLowerCase()}. Toca la malla para marcarla {retiro ? 'retirada' : 'instalada'}: amarilla = puesta · verde punteada = retirada.
           </p>
-          <div className="fugas-scroll scrollx" onClick={alTocarPlano}>
-            <div style={{ minWidth: 980 }} dangerouslySetInnerHTML={{ __html: planoMallas(
+          <div className="fugas-scroll" onClick={alTocarPlano}>
+            <div dangerouslySetInnerHTML={{ __html: planoMallas(
               lado,
               // puesta: en el retiro, mientras no se marque; en la instalación, cuando se marca
               (m) => (retiro ? !hecho(m) : hecho(m)),
@@ -289,8 +290,8 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
             </p>
           )}
           {esPrueba && <p className="hint" style={{ margin: '0 0 8px' }}>Toca una vasija: márcala sin fuga o elige dónde filtra.</p>}
-          <div className="fugas-scroll scrollx" onClick={alTocarPlano}>
-            <div style={{ minWidth: pieza ? (vista === 'todo' ? 1250 : 680) : (vista === 'todo' ? 1000 : 560) }} dangerouslySetInnerHTML={{ __html: svg(vista) }} />
+          <div className={'fugas-scroll' + (pieza ? ' scrollx' : '')} onClick={alTocarPlano}>
+            <div style={pieza ? { minWidth: vista === 'todo' ? 1100 : 620 } : undefined} dangerouslySetInnerHTML={{ __html: svg(vista) }} />
           </div>
         </>
       )}
