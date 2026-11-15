@@ -11,7 +11,7 @@ import { estaExtraida, type DatosManifold } from './types'
 import { puestas as membranasPuestas, type DatosMembranas } from './membranas'
 import { TOTAL_VASIJAS } from './rackLayout'
 import { NOMBRE_MANIFOLD, cerrarOutage, esP0, nombreRack, rackDe, useCierre, useRack } from './rackOutage'
-import { respetaAisladasP0 } from './actividadesP0'
+import { piezaDe, respetaAisladasP0 } from './actividadesP0'
 import { TOTAL_P0 } from './planoP0'
 import { usePuedeEditar } from './permisos'
 import { fechaCorta } from './fecha'
@@ -171,7 +171,7 @@ export default function Outage({ onAbrir }: { onAbrir: (act: Actividad) => void 
                     {/* con el outage cerrado el % que queda es lo que se
                         alcanzó a anotar, no lo que se hizo: el chip lo dice */}
                     {cierre && <em className="cerrada">✓ cerrada</em>}
-                    <em>{ETIQUETA_TIPO[a.tipo]}</em>
+                    <em>{p0 && piezaDe(a) ? { codo: 'Plano de codos', ppr: 'Plano de PPR', tapa: 'Plano de tapas' }[piezaDe(a)!] : ETIQUETA_TIPO[a.tipo]}</em>
                     <em>{itemsDe(a, nAisladas(a.id), totalV)} ítems</em>
                     {a.libre && <em className="libre">sin orden</em>}
                     {bloqueada && <em className="candado">⚠ falta lo anterior</em>}

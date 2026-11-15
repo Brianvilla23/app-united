@@ -28,7 +28,9 @@ export const ACTIVIDADES_P0: Actividad[] = [
   { id: 'p0_instalacion_tapas_desc', nombre: 'Instalación de tapas · descarga', tipo: 'tapa', lados: ['descarga'] },
   { id: 'p0_carguio', nombre: 'Carguío de membrana', tipo: 'simple', lados: ['alimentacion'], sinLado: true,
     nota: 'Se marca la vasija cuando quedó cargada. También se pueden marcar aisladas.' },
-  { id: 'p0_instalacion_codos', nombre: 'Instalación de codos inox', tipo: 'simple', lados: AMBOS },
+  // la instalación de codos va por lado, una actividad para cada cara (Brayan, 15-11-2026)
+  { id: 'p0_instalacion_codos_alim', nombre: 'Instalación de codos inox · alimentación', tipo: 'simple', lados: ['alimentacion'] },
+  { id: 'p0_instalacion_codos_desc', nombre: 'Instalación de codos inox · descarga', tipo: 'simple', lados: ['descarga'] },
   { id: 'p0_instalacion_tapas_alim', nombre: 'Instalación de tapas · alimentación', tipo: 'tapa', lados: ['alimentacion'] },
   { id: 'p0_instalacion_tapones', nombre: 'Instalación de tapones', tipo: 'simple', lados: ['alimentacion'], nota: 'Solo alimentación.' },
   { id: 'p0_prueba_baja', nombre: 'Prueba de baja', tipo: 'fugas', lados: AMBOS,

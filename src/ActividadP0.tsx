@@ -15,7 +15,7 @@ import { quienSoy } from './identidad'
 import { itemId, LADOS, type LadoRack } from './types'
 import type { Actividad } from './actividades'
 import { nombreRack, usePuedeRegistrar, useRack } from './rackOutage'
-import { COLOR_AISLADA, SIN_AISLADAS, marcarAislada, useAisladas } from './aisladas'
+import { SIN_AISLADAS, marcarAislada, useAisladas } from './aisladas'
 import { MALLAS_P0, componentesFugaP0, piezaDe, respetaAisladasP0 } from './actividadesP0'
 import {
   ALTO_P, ALTO_V, ANCHO_P, ANCHO_V, TOTAL_P0, VASIJAS_P0,
@@ -26,7 +26,9 @@ import { agruparPorFila, generarPDFDiagrama, nombreArchivo, type ItemLeyenda } f
 
 const VERDE = { c: '#22c55e', t: '#052e16' }
 const PLOMO = { c: '#8e99a8', t: '#0f172a' }
-const AISLADA = { c: COLOR_AISLADA.color, t: COLOR_AISLADA.texto }
+// en el Rack 4 P0 la aislada va en celeste (Brayan, 14-11-2026)
+const CELESTE = '#7dd3fc'
+const AISLADA = { c: CELESTE, t: '#0c4a6e' }
 
 type DatosFuga = { fugas?: string[] }
 
@@ -145,7 +147,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
           { color: retiro ? PLOMO.c : VERDE.c, nombre: retiro ? 'Retirado' : 'Hecho', desc: retiro ? 'Ya salió' : 'Ya ejecutado', n: hechos },
           { color: '#ffffff', hueco: true, nombre: 'Pendiente', desc: 'Todavía no se hace', n: total - hechos },
         ]
-      if (aisladas.size) leyenda.push({ color: COLOR_AISLADA.color, nombre: 'Aislada', desc: 'No se interviene', n: aisladas.size })
+      if (aisladas.size) leyenda.push({ color: CELESTE, nombre: 'Aislada', desc: 'No se interviene', n: aisladas.size })
       leyenda.push({ color: '#ffffff', hueco: true, nombre: 'TOTAL', desc: aisladas.size ? 'Vasijas a intervenir' : 'Vasijas del rack', n: total })
       const doc = await generarPDFDiagrama({
         titulo: a.nombre,
@@ -257,7 +259,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
       )}
       {aislando && (
         <p className="hint aviso-aislar">
-          Toca las vasijas aisladas: quedan en azul, no se abren y salen del total desde el retiro de tapas en adelante. Otro toque la vuelve a habilitar.
+          Toca las vasijas aisladas: quedan en celeste, no se abren y salen del total desde el retiro de tapas en adelante. Otro toque la vuelve a habilitar.
         </p>
       )}
       {aviso && <p className="hint aviso-aislar">{aviso}</p>}
@@ -322,7 +324,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
           </>}
         </>}
         {(aisladas.size > 0 || marcaAisladas) && !esMalla && (
-          <span className="leg-item"><span className="leg-dot" style={{ background: COLOR_AISLADA.color }} /> Aislada<em /><i>{aisladas.size}</i></span>
+          <span className="leg-item"><span className="leg-dot" style={{ background: CELESTE, border: '1.5px solid #0369a1' }} /> Aislada<em /><i>{aisladas.size}</i></span>
         )}
         <span className="leg-item total">
           <span className="leg-dot oculto" /> TOTAL
