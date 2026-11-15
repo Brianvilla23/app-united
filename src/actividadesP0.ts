@@ -19,13 +19,15 @@ export const ACTIVIDADES_P0: Actividad[] = [
     nota: 'Codo inox con su piedmont en cada extremo.' },
   { id: 'p0_retiro_ppr', nombre: 'Retiro de manifold PPR', tipo: 'simple', lados: ['descarga'], retira: true,
     nota: 'Una bajada PPR por vasija, solo en descarga.' },
-  { id: 'p0_retiro_tapas_alim', nombre: 'Retiro de tapas · alimentación', tipo: 'tapa', lados: ['alimentacion'], retira: true },
-  { id: 'p0_retiro_tapas_desc', nombre: 'Retiro de tapas · descarga', tipo: 'tapa', lados: ['descarga'], retira: true },
+  { id: 'p0_retiro_tapas_alim', nombre: 'Retiro de tapas · alimentación', tipo: 'tapa', lados: ['alimentacion'], retira: true,
+    nota: 'Aquí se pueden marcar las vasijas aisladas: no se abren.' },
+  { id: 'p0_retiro_tapas_desc', nombre: 'Retiro de tapas · descarga', tipo: 'tapa', lados: ['descarga'], retira: true,
+    nota: 'Aquí se pueden marcar las vasijas aisladas: no se abren.' },
   { id: 'p0_retiro_membrana', nombre: 'Retiro de membrana', tipo: 'simple', lados: ['alimentacion'], sinLado: true, retira: true },
   { id: 'p0_limpieza', nombre: 'Limpieza de vasijas', tipo: 'simple', lados: ['alimentacion'], sinLado: true },
   { id: 'p0_instalacion_tapas_desc', nombre: 'Instalación de tapas · descarga', tipo: 'tapa', lados: ['descarga'] },
   { id: 'p0_carguio', nombre: 'Carguío de membrana', tipo: 'simple', lados: ['alimentacion'], sinLado: true,
-    nota: 'Se marca la vasija cuando quedó cargada. Aquí se marcan las aisladas.' },
+    nota: 'Se marca la vasija cuando quedó cargada. También se pueden marcar aisladas.' },
   { id: 'p0_instalacion_codos', nombre: 'Instalación de codos inox', tipo: 'simple', lados: AMBOS },
   { id: 'p0_instalacion_tapas_alim', nombre: 'Instalación de tapas · alimentación', tipo: 'tapa', lados: ['alimentacion'] },
   { id: 'p0_instalacion_tapones', nombre: 'Instalación de tapones', tipo: 'simple', lados: ['alimentacion'], nota: 'Solo alimentación.' },
@@ -36,9 +38,11 @@ export const ACTIVIDADES_P0: Actividad[] = [
   { id: 'p0_instalacion_mallas', nombre: 'Instalación de mallas de seguridad', tipo: 'malla', lados: AMBOS },
 ]
 
-const DESDE = ACTIVIDADES_P0.findIndex((a) => a.id === 'p0_carguio')
+// Las aisladas se pueden marcar desde el retiro de tapas (Brayan, 14-11-2026): una
+// vasija aislada no se abre, así que desde ahí no se interviene y sale del total.
+const DESDE = ACTIVIDADES_P0.findIndex((a) => a.id === 'p0_retiro_tapas_alim')
 
-/** Del carguío en adelante las vasijas aisladas no se intervienen y salen del total. */
+/** Desde el retiro de tapas en adelante las vasijas aisladas no se intervienen y salen del total. */
 export function respetaAisladasP0(id: string): boolean {
   return ACTIVIDADES_P0.findIndex((a) => a.id === id) >= DESDE
 }

@@ -57,6 +57,8 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
   const esMalla = a.tipo === 'malla'
   const esPrueba = a.tipo === 'fugas'
   const esCarguio = a.id === 'p0_carguio'
+  // las aisladas se marcan en el retiro de tapas y en el carguío
+  const marcaAisladas = esCarguio || a.id.startsWith('p0_retiro_tapas')
   const total = esMalla ? MALLAS_P0.length : TOTAL_P0 - aisladas.size
   const hechos = esMalla
     ? MALLAS_P0.filter((m) => hecho(m.id)).length
@@ -107,7 +109,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
       return
     }
     if (!esMalla && aisladas.has(id)) {
-      setAviso(`La vasija ${id} está aislada: no se interviene.${esCarguio && puedeEditar ? ' Para quitarla, usa "Marcar aisladas".' : ''}`)
+      setAviso(`La vasija ${id} está aislada: no se interviene.${marcaAisladas && puedeEditar ? ' Para quitarla, usa "Marcar aisladas".' : ''}`)
       return
     }
     if (esPrueba) { setFugaAbierta(id); return }
@@ -245,9 +247,9 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
         </div>
       )}
 
-      {esCarguio && puedeEditar && (
+      {marcaAisladas && puedeEditar && (
         <div className="seg aislar-seg">
-          <button className={!aislando ? 'on' : ''} onClick={() => { setAislando(false); setAviso('') }}>Marcar cargadas</button>
+          <button className={!aislando ? 'on' : ''} onClick={() => { setAislando(false); setAviso('') }}>{esCarguio ? 'Marcar cargadas' : 'Marcar retiradas'}</button>
           <button className={aislando ? 'on aislar' : ''} onClick={() => { setAislando(true); setAviso('') }}>
             Marcar aisladas{todasAisladas.size ? ` (${todasAisladas.size})` : ''}
           </button>
@@ -255,7 +257,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
       )}
       {aislando && (
         <p className="hint aviso-aislar">
-          Toca las vasijas aisladas: quedan en azul y no se intervienen desde el carguío en adelante. Otro toque la vuelve a habilitar.
+          Toca las vasijas aisladas: quedan en azul, no se abren y salen del total desde el retiro de tapas en adelante. Otro toque la vuelve a habilitar.
         </p>
       )}
       {aviso && <p className="hint aviso-aislar">{aviso}</p>}
@@ -319,7 +321,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
             <span className="leg-item"><span className="leg-dot vacio" /> Pendiente<em /><i>{total - hechos}</i></span>
           </>}
         </>}
-        {(aisladas.size > 0 || esCarguio) && !esMalla && (
+        {(aisladas.size > 0 || marcaAisladas) && !esMalla && (
           <span className="leg-item"><span className="leg-dot" style={{ background: COLOR_AISLADA.color }} /> Aislada<em /><i>{aisladas.size}</i></span>
         )}
         <span className="leg-item total">

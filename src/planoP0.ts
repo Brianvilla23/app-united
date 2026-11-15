@@ -104,7 +104,9 @@ function visto(x: number, y: number, color: string): string {
   return `<g><circle cx="${x}" cy="${y}" r="6.5" fill="${color}" stroke="#fff" stroke-width="1.5"/><path d="M${x - 3} ${y} l2 2.4 l4 -4.6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>`
 }
 interface ColInox { tubo: string; borde: string; luz: string; ac: string; acL: string }
-const INOX: ColInox = { tubo: '#2f3640', borde: '#05070a', luz: '#7b8794', ac: '#0b0f14', acL: '#4b5563' }
+const INOX: ColInox = { tubo: '#8a95a3', borde: '#2f3640', luz: '#d3d9e0', ac: '#3b4450', acL: '#9aa4b0' }
+// retirado: el mismo codo, en verde suave, para que se lea como pieza y no quede "en el aire"
+const INOX_R: ColInox = { tubo: '#86efac', borde: '#15803d', luz: '#dcfce7', ac: '#16a34a', acL: '#bbf7d0' }
 const INOX_N: ColInox = { tubo: '#4ade80', borde: '#166534', luz: '#bbf7d0', ac: '#14532d', acL: '#86efac' }
 function acople(x: number, y: number, c: ColInox): string {
   return `<g><rect x="${x - 9}" y="${y - 3.5}" width="18" height="7" rx="2" fill="${c.ac}"/><line x1="${x - 9}" y1="${y}" x2="${x + 9}" y2="${y}" stroke="${c.acL}" stroke-width="0.8"/><rect x="${x - 13}" y="${y - 2}" width="4" height="4" rx="1" fill="${c.ac}"/><rect x="${x + 9}" y="${y - 2}" width="4" height="4" rx="1" fill="${c.ac}"/></g>`
@@ -115,15 +117,14 @@ function acople(x: number, y: number, c: ColInox): string {
 export function codoSVG(x: number, y: number, st: EstadoPieza, tenue: boolean, conVisto: boolean): string {
   if (st === 'ais') return ''
   const top = y - 44, yb = y - 8
-  if (st === 'fuera') {
-    // retirado = verde suave punteado con visto; sin visto (falta instalar) = gris punteado
-    const f = conVisto ? '#86efac' : '#eef1f5', b = conVisto ? '#15803d' : '#64748b'
+  if (st === 'fuera' && !conVisto) {
+    // falta instalar: contorno gris punteado
+    const f = '#eef1f5', b = '#64748b'
     return `<g opacity="${tenue ? 0.12 : 1}"><rect x="${x - 4.5}" y="${top}" width="9" height="${yb - top}" rx="4.5" fill="${f}" stroke="${b}" stroke-width="1.5" stroke-dasharray="3.5 2.5"/>`
       + `<circle cx="${x}" cy="${yb}" r="6.5" fill="${f}" stroke="${b}" stroke-width="1.5" stroke-dasharray="3 2"/>`
-      + `<rect x="${x - 9}" y="${top + 5}" width="18" height="6" rx="2" fill="none" stroke="${b}" stroke-width="1.1" stroke-dasharray="2.5 2"/>`
-      + (conVisto && !tenue ? visto(x + 14, top + 16, '#16a34a') : '') + '</g>'
+      + `<rect x="${x - 9}" y="${top + 5}" width="18" height="6" rx="2" fill="none" stroke="${b}" stroke-width="1.1" stroke-dasharray="2.5 2"/></g>`
   }
-  const c = st === 'nuevo' ? INOX_N : INOX
+  const c = st === 'nuevo' ? INOX_N : st === 'fuera' ? INOX_R : INOX
   return `<g opacity="${tenue ? 0.14 : 1}">`
     + `<path d="M${x} ${top} V${yb}" stroke="${c.borde}" stroke-width="10" stroke-linecap="round"/>`
     + `<path d="M${x} ${top} V${yb}" stroke="${c.tubo}" stroke-width="7" stroke-linecap="round"/>`
@@ -132,11 +133,12 @@ export function codoSVG(x: number, y: number, st: EstadoPieza, tenue: boolean, c
     + `<circle cx="${x}" cy="${yb}" r="7.5" fill="${c.tubo}" stroke="${c.borde}" stroke-width="2"/>`
     + `<circle cx="${x}" cy="${yb}" r="7.5" fill="none" stroke="${c.ac}" stroke-width="2.6" stroke-dasharray="9 3"/>`
     + `<circle cx="${x - 2}" cy="${yb - 2}" r="1.8" fill="${c.luz}"/>`
-    + (st === 'nuevo' && !tenue ? visto(x + 14, top + 16, '#16a34a') : '') + '</g>'
+    + ((st === 'nuevo' || st === 'fuera') && !tenue ? visto(x + 14, top + 16, '#16a34a') : '') + '</g>'
 }
 
 interface ColPpr { tubo: string; borde: string; luz: string; fit: string }
-const PPR: ColPpr = { tubo: '#453f33', borde: '#0f0d09', luz: '#9a9080', fit: '#5e5646' }
+const PPR: ColPpr = { tubo: '#9c968a', borde: '#3a362e', luz: '#ddd8ce', fit: '#7a7468' }
+const PPR_R: ColPpr = { tubo: '#86efac', borde: '#15803d', luz: '#dcfce7', fit: '#4ade80' }
 const PPR_N: ColPpr = { tubo: '#4ade80', borde: '#166534', luz: '#bbf7d0', fit: '#22c55e' }
 function hexagono(cx0: number, cy0: number, r: number, giro = Math.PI / 6): string {
   return [0, 1, 2, 3, 4, 5].map((i) => {
@@ -150,13 +152,12 @@ export function pprSVG(x: number, y: number, st: EstadoPieza, tenue: boolean, co
   if (st === 'ais') return ''
   const ex = x + 17, ey = y - 15, my = y - 34
   const d = `M${x} ${y} L${ex} ${ey} L${ex} ${my}`
-  if (st === 'fuera') {
-    const f = conVisto ? '#86efac' : '#f3f1ec', b = conVisto ? '#15803d' : '#7c7566'
+  if (st === 'fuera' && !conVisto) {
+    const f = '#f3f1ec', b = '#7c7566'
     return `<g opacity="${tenue ? 0.12 : 1}"><path d="${d}" stroke="${f}" stroke-width="10" fill="none" stroke-linejoin="round" stroke-linecap="round"/><path d="${d}" stroke="${b}" stroke-width="1.6" stroke-dasharray="3.5 2.5" fill="none"/>`
-      + `<circle cx="${ex}" cy="${ey}" r="6" fill="none" stroke="${b}" stroke-width="1.2" stroke-dasharray="2.5 2"/>`
-      + (conVisto && !tenue ? visto(ex + 12, ey - 6, '#16a34a') : '') + '</g>'
+      + `<circle cx="${ex}" cy="${ey}" r="6" fill="none" stroke="${b}" stroke-width="1.2" stroke-dasharray="2.5 2"/></g>`
   }
-  const c = st === 'nuevo' ? PPR_N : PPR
+  const c = st === 'nuevo' ? PPR_N : st === 'fuera' ? PPR_R : PPR
   return `<g opacity="${tenue ? 0.14 : 1}">`
     + `<path d="${d}" stroke="${c.borde}" stroke-width="12" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`
     + `<path d="${d}" stroke="${c.tubo}" stroke-width="8.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`
@@ -165,13 +166,13 @@ export function pprSVG(x: number, y: number, st: EstadoPieza, tenue: boolean, co
     + `<line x1="${ex - 7}" y1="${ey}" x2="${ex + 7}" y2="${ey}" stroke="${c.borde}" stroke-width="0.8"/>`
     + `<polygon points="${hexagono(x, y, 6.5)}" fill="${c.fit}" stroke="${c.borde}" stroke-width="1.2"/>`
     + `<rect x="${ex - 8}" y="${my - 1}" width="16" height="7" rx="2" fill="${c.fit}" stroke="${c.borde}" stroke-width="1"/>`
-    + (st === 'nuevo' && !tenue ? visto(ex + 12, ey - 6, '#16a34a') : '') + '</g>'
+    + ((st === 'nuevo' || st === 'fuera') && !tenue ? visto(ex + 12, ey - 6, '#16a34a') : '') + '</g>'
 }
 
 /** Tapa vista de frente, simple: aro de fibra, cabezal negro, puerto feed/conc. y al centro tapón (alim.) o puerto de permeado (desc.). */
 function tapaSimple(x: number, y: number, lado: LadoRack, ais: boolean): string {
   return `<circle cx="${x}" cy="${y}" r="16" fill="#efe6cf" stroke="#111827" stroke-width="2.6"/>`
-    + `<circle cx="${x}" cy="${y}" r="12.8" fill="${ais ? '#2563eb' : '#2b3038'}" stroke="#05070a" stroke-width="1.2"/><circle cx="${x}" cy="${y}" r="11" fill="none" stroke="${ais ? '#93c5fd' : '#535a63'}" stroke-width="1"/>`
+    + `<circle cx="${x}" cy="${y}" r="12.8" fill="${ais ? '#2563eb' : '#6b7684'}" stroke="#2f3640" stroke-width="1.2"/><circle cx="${x}" cy="${y}" r="11" fill="none" stroke="${ais ? '#93c5fd' : '#535a63'}" stroke-width="1"/>`
     + (lado === 'alimentacion'
       ? `<polygon points="${hexagono(x, y, 3.6, 0)}" fill="#d5dbe2"/>`
       : `<circle cx="${x}" cy="${y}" r="3.4" fill="#d6dade" stroke="#9aa2ab" stroke-width="0.8"/>`)
@@ -194,7 +195,7 @@ export function tapaSVG(x: number, y: number, lado: LadoRack, st: EstadoPieza, c
   const r = 11.3, a1 = (90 + 14) * Math.PI / 180, a2 = (90 - 14) * Math.PI / 180
   const p1 = `${(x + r * Math.cos(a1)).toFixed(1)} ${(y + r * Math.sin(a1)).toFixed(1)}`
   const p2 = `${(x + r * Math.cos(a2)).toFixed(1)} ${(y + r * Math.sin(a2)).toFixed(1)}`
-  s += `<circle cx="${x}" cy="${y}" r="12.8" fill="#2b3038" stroke="#05070a" stroke-width="1.2"/>`
+  s += `<circle cx="${x}" cy="${y}" r="12.8" fill="#6b7684" stroke="#2f3640" stroke-width="1.2"/>`
     + `<path d="M${p1} A${r} ${r} 0 1 1 ${p2}" fill="none" stroke="#b9c1ca" stroke-width="1.6"/>`
     + `<rect x="${x - 4.6}" y="${y + 9.2}" width="2.2" height="3" rx="0.6" fill="#b9c1ca"/><rect x="${x + 2.4}" y="${y + 9.2}" width="2.2" height="3" rx="0.6" fill="#b9c1ca"/>`
     + `<circle cx="${x}" cy="${y - 7.5}" r="3" fill="#a9b2bc" stroke="#6b7480" stroke-width="0.8"/>`
@@ -287,7 +288,7 @@ export function planoMallas(lado: LadoRack, puesta: (malla: string) => boolean, 
     s += `<text x="9" y="${cyV(i) + 4}" font-size="11" font-weight="700" fill="#64748b">${f}</text>`
     for (let p = 1; p <= 20; p++) {
       const x = cxV(p), y = cyV(i)
-      s += `<circle cx="${x}" cy="${y}" r="15" fill="#efe6cf" stroke="#111827" stroke-width="2.2"/><circle cx="${x}" cy="${y}" r="11.5" fill="#2b3038"/>`
+      s += `<circle cx="${x}" cy="${y}" r="15" fill="#efe6cf" stroke="#111827" stroke-width="2.2"/><circle cx="${x}" cy="${y}" r="11.5" fill="#6b7684"/>`
         + `<text x="${x}" y="${y + 3.5}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#e2e8f0">${f}${columnaEn(p, lado)}</text>`
     }
   })
