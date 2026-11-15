@@ -22,7 +22,6 @@ import {
   iconoPieza, ordenSemiP0, planoMallas, planoPiezas, planoVasijas,
   type ColorVasija, type EstadoPieza, type EstadoPiezaFn, type VistaP0,
 } from './planoP0'
-import { nombreArchivo } from './pdfDiagrama'
 import { generarPDFP0, type LeyendaP0 } from './pdfP0'
 
 const VERDE = { c: '#22c55e', t: '#052e16' }
@@ -31,6 +30,16 @@ const CELESTE = '#7dd3fc'
 const AISLADA = { c: CELESTE, t: '#0c4a6e' }
 
 type DatosFuga = { fugas?: string[] }
+
+/** Nombre del PDF como lo pidió Brayan (15-11-2026): con espacios y sin tildes,
+    "Retiro tapas alimentacion.pdf". Si la actividad va por los dos lados, el lado
+    se agrega al final. */
+function nombrePdf(a: Actividad, lado: LadoRack): string {
+  let n = a.nombre.replace(/\s*·\s*/g, ' ').replace(/\b(de|del)\b/gi, ' ')
+  if (!a.sinLado && a.lados.length > 1) n += lado === 'alimentacion' ? ' alimentacion' : ' descarga'
+  n = n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
+  return `${n}.pdf`
+}
 
 export default function ActividadP0({ actividad: a }: { actividad: Actividad }) {
   const rack = useRack()
@@ -157,7 +166,7 @@ export default function ActividadP0({ actividad: a }: { actividad: Actividad }) 
         total: { nombre: aisladas.size ? 'Vasijas a intervenir' : 'Vasijas del rack', n: total },
         generadoPor: quienSoy(),
       })
-      doc.save(nombreArchivo(a.nombre, 'Rack4P0', a.sinLado ? '' : lado))
+      doc.save(nombrePdf(a, lado))
     } finally {
       setGenerando(false)
     }
