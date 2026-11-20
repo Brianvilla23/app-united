@@ -1310,6 +1310,17 @@ el link; el dictado del aviso se quedaba pegado.
 
 ---
 
+## 44. Levantamiento Hidrolatina: link para el personal ✅ (20-11-2026)
+
+Link: `https://app-united.pages.dev/#hidrolatina` (también desde la tarjeta del menú). Lo abre cualquiera, sin cuenta; firma con el nombre de «¿Quién eres?».
+
+- **Racks 1 al 12.** Arriba solo los números de rack: el resumen NO va en esta pantalla (lo saca Planificación en el Excel).
+- **Descarga · manifolds:** «pincel» Blanco · Hidrolatina / Gris · Comando / Borrar sobre el plano de 40 manifolds (`PlanoManifolds`, ahora con `rotulo` al medio y `data-mf`).
+- **Alimentación · vasijas:** «pincel» Vasija aislada (azul) / Tapón interno a cambiar (anillo amarillo del canastillo) sobre el plano de 295 (`PlanoRack` modo fugas). Tocar de nuevo desmarca. El plano va a 560 px y se desliza, para tocar con guantes.
+- **Datos:** `avance_item` con 3 actividades propias (`hidrolatina_manifold`, `hidrolatina_aislada`, `hidrolatina_tapon`) → sin SQL nuevo, funciona sin señal con la misma cola. ⚠️ NO usa `vasija_aislada`: Brayan pidió que esto no pase a los outage. Desmarcar guarda `hecho=false` con quién y cuándo.
+- **Excel en Planificación** (home, «Descargar Excel»): hojas STATUS (por rack, con la lista de manifolds sin revisar), MANIFOLDS (480 filas) y VASIJAS (solo las marcadas).
+- Código: `src/Hidrolatina.tsx`, `src/levantamientoHidro.ts` (no `hidrolatina.ts`: Windows no distingue mayúsculas). Prueba con Supabase simulado: `node screenshot_hidrolatina.mjs` (levanta su propio Vite en :5199).
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

@@ -23,12 +23,14 @@ import Planificacion from './Planificacion'
 import Supervisores from './Supervisores'
 import PanelPGP from './PanelPGP'
 import PanelDocumentos from './PanelDocumentos'
+import Hidrolatina from './Hidrolatina'
+import { HASH_HIDROLATINA } from './levantamientoHidro'
 import { iniciarPgp } from './pgp'
 import { actividadesDe, type Actividad } from './actividades'
 import { fechaCorta, fechaLarga } from './fecha'
 
 type Vista = 'menu' | 'aviso' | 'andamio' | 'fugas' | 'tapas' | 'outage' | 'venteos' | 'actividad' | 'prueba' | 'ovalamiento'
-  | 'entrega' | 'planificacion' | 'guardados' | 'supervisores' | 'pgp' | 'documentos'
+  | 'entrega' | 'planificacion' | 'guardados' | 'supervisores' | 'pgp' | 'documentos' | 'hidrolatina'
 
 /** Pantallas a las que solo se entra desde una actividad del outage: el rótulo
     del atrás lleva el nombre de la actividad y no el genérico de la pantalla. */
@@ -51,6 +53,7 @@ const TITULOS: Record<Vista, string> = {
   supervisores: 'Supervisores',
   pgp: 'PGP',
   documentos: 'Check list y documentos',
+  hidrolatina: 'Levantamiento Hidrolatina',
 }
 
 function OfflineDot() {
@@ -173,6 +176,11 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
           <span className="mc-txt"><b>Supervisores</b><small>Entrega de turno, PGP, check list, fugas y andamios · con cuenta</small></span>
           <span className="mc-arrow">›</span>
         </button>
+        <button className="menu-card" onClick={() => go('hidrolatina')}>
+          <span className="mc-ico rojo">🔎</span>
+          <span className="mc-txt"><b>Levantamiento Hidrolatina</b><small>Racks 1 al 12 · manifolds, vasijas aisladas y tapones</small></span>
+          <span className="mc-arrow">›</span>
+        </button>
         <button className="menu-card" onClick={() => go('planificacion')}>
           <span className="mc-ico slate">🗂️</span>
           <span className="mc-txt"><b>Planificación</b><small>Proyectos y entregas · con cuenta</small></span>
@@ -219,7 +227,8 @@ function sello(): string {
 }
 
 export default function App() {
-  const [vista, setVista] = useState<Vista>('menu')
+  // El link del levantamiento (…/#hidrolatina) abre directo esa pantalla.
+  const [vista, setVista] = useState<Vista>(() => location.hash === HASH_HIDROLATINA ? 'hidrolatina' : 'menu')
   const [actAbierta, setActAbierta] = useState<Actividad | null>(null)
   // el rack que se está viendo: lo elige la tarjeta del menú
   const [rack, setRack] = useState(RACK_INICIAL)
@@ -237,6 +246,13 @@ export default function App() {
     setVista(v)
     empujarCapa(() => setVista(anterior))
   }
+
+  // Entrando por el link, el atrás lleva al menú en vez de salir de la app.
+  useEffect(() => {
+    if (location.hash === HASH_HIDROLATINA) {
+      empujarCapa(() => { setVista('menu'); history.replaceState(null, '', location.pathname + location.search) })
+    }
+  }, [])
 
   useEffect(() => {
     const alVolver = () => { cerrarCapaDeArriba() }
@@ -325,6 +341,7 @@ export default function App() {
         {vista === 'supervisores' && <Supervisores go={irA} onNombre={nombreDeCuenta} />}
         {vista === 'pgp' && <PanelPGP />}
         {vista === 'documentos' && <PanelDocumentos />}
+        {vista === 'hidrolatina' && <Hidrolatina />}
       </main>
       <footer className="app-foot">
         <span>App United v0.2 · uso interno · versión del {sello()}</span>

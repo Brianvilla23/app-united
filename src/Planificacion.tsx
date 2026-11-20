@@ -21,6 +21,7 @@ import {
   SECCIONES_BASE, borrarSeccion, guardarSeccion, traerSecciones, type Seccion,
 } from './secciones'
 import { hoyISO } from './util'
+import { bajarExcelHidrolatina } from './levantamientoHidro'
 
 /** 'home' o el id de una sección: las cinco de siempre y las que se agreguen. */
 type Area = string
@@ -215,6 +216,16 @@ export default function Planificacion() {
               <span className="mc-txt"><b>Agregar una sección</b><small>Te pregunto qué necesitas y te la muestro antes de crearla</small></span>
               <span className="mc-arrow">›</span>
             </button>
+          </div>
+
+          {/* lo que el personal marca en el link del levantamiento: se baja
+              acá y se pasa a la planilla (Brayan, 20-11) */}
+          <div className="hidro-excel">
+            <div>
+              <b>Levantamiento Hidrolatina</b>
+              <small>Status de los 12 racks: manifolds blanco/gris, vasijas aisladas y tapones a cambiar</small>
+            </div>
+            <button className="btn sm" onClick={() => void bajarExcelHidrolatina()}>Descargar Excel</button>
           </div>
 
           <div className="row" style={{ gap: 8, marginTop: 10 }}>

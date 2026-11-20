@@ -15,6 +15,9 @@ export interface EstadoManifold {
   visto?: boolean
   /** Número al costado: cuántas piezas (por ejemplo, cuántas filtran). */
   numero?: number
+  /** Texto al medio de la zona (el levantamiento Hidrolatina escribe el tipo). */
+  rotulo?: string
+  rotuloColor?: string
 }
 
 export default function PlanoManifolds({
@@ -39,6 +42,7 @@ export default function PlanoManifolds({
         return (
           <g
             key={z.id}
+            data-mf={z.id}
             onClick={onTocar ? () => onTocar(z.id) : undefined}
             style={paraPdf ? undefined : { cursor: 'pointer' }}
           >
@@ -56,6 +60,12 @@ export default function PlanoManifolds({
                 fill="none" stroke={e.borde ?? '#15803d'} strokeWidth={4.5}
                 strokeLinecap="round" strokeLinejoin="round"
               />
+            )}
+            {e?.rotulo && (
+              <text
+                x={z.x + z.w / 2} y={z.y + z.h / 2 + 5} textAnchor="middle"
+                fontSize={13.5} fontWeight={800} fill={e.rotuloColor ?? '#0f172a'}
+              >{e.rotulo}</text>
             )}
             {e?.numero !== undefined && e.numero > 0 && (
               <text
