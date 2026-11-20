@@ -24,7 +24,7 @@ import Supervisores from './Supervisores'
 import PanelPGP from './PanelPGP'
 import PanelDocumentos from './PanelDocumentos'
 import Hidrolatina from './Hidrolatina'
-import { HASH_HIDROLATINA } from './levantamientoHidro'
+import { esLinkLevantamiento } from './levantamientoHidro'
 import { iniciarPgp } from './pgp'
 import { actividadesDe, type Actividad } from './actividades'
 import { fechaCorta, fechaLarga } from './fecha'
@@ -53,7 +53,7 @@ const TITULOS: Record<Vista, string> = {
   supervisores: 'Supervisores',
   pgp: 'PGP',
   documentos: 'Check list y documentos',
-  hidrolatina: 'Levantamiento Hidrolatina',
+  hidrolatina: 'Levantamiento racks',
 }
 
 function OfflineDot() {
@@ -94,7 +94,8 @@ function QuienEres({
   onListo: (n: string, m: ModoUso) => void
 }) {
   const [nombre, setNombre] = useState(inicial)
-  const [modo, setModo] = useState<ModoUso>(modoInicial)
+  // 20-11: ya no se elige entre mirar y registrar: se entra directo a registrar
+  const modo: ModoUso = modoInicial
   const valido = nombre.trim().length >= 3
 
   return (
@@ -111,18 +112,6 @@ function QuienEres({
         onChange={(e) => setNombre(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && valido) onListo(nombre, modo) }}
       />
-
-      <div className="modo-elige">
-        <b>¿Qué vas a hacer?</b>
-        <button className={modo === 'ver' ? 'on' : ''} onClick={() => setModo('ver')}>
-          <span>Solo mirar</span>
-          <small>Ves el avance y descargas los PDF, pero no puedes cambiar nada</small>
-        </button>
-        <button className={modo === 'editar' ? 'on' : ''} onClick={() => setModo('editar')}>
-          <span>Registrar avance</span>
-          <small>Marcas tapas, manifolds, fugas y venteos</small>
-        </button>
-      </div>
 
       <button className="btn primary" disabled={!valido} onClick={() => onListo(nombre, modo)}>
         Continuar
@@ -178,7 +167,7 @@ function Menu({ go, abrirOutage }: { go: (v: Vista) => void; abrirOutage: (rack:
         </button>
         <button className="menu-card" onClick={() => go('hidrolatina')}>
           <span className="mc-ico rojo">🔎</span>
-          <span className="mc-txt"><b>Levantamiento Hidrolatina</b><small>Racks 1 al 12 · manifolds, vasijas aisladas y tapones</small></span>
+          <span className="mc-txt"><b>Levantamiento racks</b><small>Racks 1 al 12 · manifolds Hidrolatina, vasijas aisladas y tapones</small></span>
           <span className="mc-arrow">›</span>
         </button>
         <button className="menu-card" onClick={() => go('planificacion')}>
@@ -227,8 +216,8 @@ function sello(): string {
 }
 
 export default function App() {
-  // El link del levantamiento (…/#hidrolatina) abre directo esa pantalla.
-  const [vista, setVista] = useState<Vista>(() => location.hash === HASH_HIDROLATINA ? 'hidrolatina' : 'menu')
+  // El link del levantamiento (…/#levantamiento) abre directo esa pantalla.
+  const [vista, setVista] = useState<Vista>(() => esLinkLevantamiento(location.hash) ? 'hidrolatina' : 'menu')
   const [actAbierta, setActAbierta] = useState<Actividad | null>(null)
   // el rack que se está viendo: lo elige la tarjeta del menú
   const [rack, setRack] = useState(RACK_INICIAL)
@@ -249,7 +238,7 @@ export default function App() {
 
   // Entrando por el link, el atrás lleva al menú en vez de salir de la app.
   useEffect(() => {
-    if (location.hash === HASH_HIDROLATINA) {
+    if (esLinkLevantamiento(location.hash)) {
       empujarCapa(() => { setVista('menu'); history.replaceState(null, '', location.pathname + location.search) })
     }
   }, [])

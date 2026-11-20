@@ -1310,13 +1310,16 @@ el link; el dictado del aviso se quedaba pegado.
 
 ---
 
-## 44. Levantamiento Hidrolatina: link para el personal ✅ (20-11-2026)
+## 44. Levantamiento racks: link para el personal ✅ (20-11-2026)
 
-Link: `https://app-united.pages.dev/#hidrolatina` (también desde la tarjeta del menú). Lo abre cualquiera, sin cuenta; firma con el nombre de «¿Quién eres?».
+Link: `https://app-united.pages.dev/#levantamiento` (el primero, `#hidrolatina`, sigue abriendo; también desde la tarjeta del menú). Se llamó «Levantamiento Hidrolatina» hasta que Brayan lo renombró el mismo día.
+
+**Sin «Solo mirar» (20-11):** «¿Quién eres?» pide solo el nombre y toda la app entra a registrar; `modoGuardado()` devuelve siempre `editar`, así que los celulares que tenían «Solo mirar» también pasan a registrar. Lo abre cualquiera, sin cuenta; firma con el nombre de «¿Quién eres?».
 
 - **Racks 1 al 12.** Arriba solo los números de rack: el resumen NO va en esta pantalla (lo saca Planificación en el Excel).
 - **Descarga · manifolds:** «pincel» Blanco · Hidrolatina / Gris · Comando / Borrar sobre el plano de 40 manifolds (`PlanoManifolds`, ahora con `rotulo` al medio y `data-mf`).
 - **Alimentación · vasijas:** «pincel» Vasija aislada (azul) / Tapón interno a cambiar (anillo amarillo del canastillo) sobre el plano de 295 (`PlanoRack` modo fugas). Tocar de nuevo desmarca. El plano va a 560 px y se desliza, para tocar con guantes.
+- **Corregir fácil y zoom (20-11):** tocar de nuevo una pieza marcada la desmarca (ya no hay botón «Borrar»); «↶ Deshacer» revierte lo último tocado, de a un paso (hasta 50, mientras la pantalla esté abierta). Zoom DENTRO del plano (−/+, «Ajustar» y pellizco con dos dedos, hasta 400 %), porque la app bloquea el zoom de página (`user-scalable=no`).
 - **Datos:** `avance_item` con 3 actividades propias (`hidrolatina_manifold`, `hidrolatina_aislada`, `hidrolatina_tapon`) → sin SQL nuevo, funciona sin señal con la misma cola. ⚠️ NO usa `vasija_aislada`: Brayan pidió que esto no pase a los outage. Desmarcar guarda `hecho=false` con quién y cuándo.
 - **Excel en Planificación** (home, «Descargar Excel»): hojas STATUS (por rack, con la lista de manifolds sin revisar), MANIFOLDS (480 filas) y VASIJAS (solo las marcadas).
 - Código: `src/Hidrolatina.tsx`, `src/levantamientoHidro.ts` (no `hidrolatina.ts`: Windows no distingue mayúsculas). Prueba con Supabase simulado: `node screenshot_hidrolatina.mjs` (levanta su propio Vite en :5199).

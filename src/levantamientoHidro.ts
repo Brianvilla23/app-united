@@ -26,8 +26,10 @@ export const ACT_AISLADA = 'hidrolatina_aislada'
 export const ACT_TAPON = 'hidrolatina_tapon'
 export const ACTIVIDADES_HIDROLATINA = [ACT_MANIFOLD, ACT_AISLADA, ACT_TAPON]
 
-/** El fragmento del link: app-united.pages.dev/#hidrolatina */
-export const HASH_HIDROLATINA = '#hidrolatina'
+/** El fragmento del link: app-united.pages.dev/#levantamiento. El primero que
+    se repartió fue #hidrolatina (20-11), así que ese también abre la pantalla. */
+export const HASH_HIDROLATINA = '#levantamiento'
+export const esLinkLevantamiento = (hash: string) => hash === HASH_HIDROLATINA || hash === '#hidrolatina'
 
 export type ColorManifold = 'blanco' | 'gris'
 export const TIPOS_MANIFOLD: { color: ColorManifold; nombre: string; tipo: string; relleno: string; texto: string }[] = [
@@ -190,7 +192,7 @@ export async function bajarExcelHidrolatina(): Promise<void> {
   const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
-  a.download = `Levantamiento Hidrolatina ${hoyISO()}.xlsx`
+  a.download = `Levantamiento racks ${hoyISO()}.xlsx`
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 4000)
 }

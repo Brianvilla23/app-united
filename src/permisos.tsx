@@ -12,16 +12,18 @@ export type ModoUso = 'ver' | 'editar'
 
 const CLAVE = 'united_modo'
 
+/** 20-11-2026 (Brayan): se sacó «Solo mirar». Todos entran a registrar,
+    también los celulares que lo habían elegido antes. El modo 'ver' queda en
+    el tipo por si vuelve, pero hoy ya no se ofrece. */
 export function modoGuardado(): ModoUso {
-  return localStorage.getItem(CLAVE) === 'editar' ? 'editar' : 'ver'
+  return 'editar'
 }
 
 export function guardarModo(m: ModoUso): void {
   localStorage.setItem(CLAVE, m)
 }
 
-/** Por defecto se entra a mirar: para registrar hay que elegirlo. */
-export const ModoContexto = createContext<ModoUso>('ver')
+export const ModoContexto = createContext<ModoUso>('editar')
 
 export function usePuedeEditar(): boolean {
   return useContext(ModoContexto) === 'editar'
