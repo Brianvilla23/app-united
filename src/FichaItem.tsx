@@ -11,6 +11,7 @@ import {
   borrarItem, cambiarItem, guardarItem, tituloItem,
   type Campo, type ItemSeccion, type Seccion,
 } from './secciones'
+import TextoEditable from './TextoEditable'
 
 export default function FichaItem({
   seccion, item, subtareas, onCambio, onCerrar,
@@ -180,7 +181,12 @@ export default function FichaItem({
               >
                 {s.estado === 'lista' ? '✓' : ''}
               </button>
-              <span className="plan-cuerpo"><b>{tituloItem(s, seccion.campos)}</b></span>
+              <span className="plan-cuerpo">
+                <TextoEditable
+                  texto={tituloItem(s, seccion.campos)}
+                  onGuardar={async (t) => { await guardarItem({ ...s, datos: { ...s.datos, nota: t } }, quienSoy()); await onCambio() }}
+                />
+              </span>
               <button className="memb-x" onClick={() => void borrarItem(s.id).then(onCambio)}>✕</button>
             </li>
           ))}

@@ -15,6 +15,7 @@ import {
   borrarAdjunto, enlaceAdjunto, pesoLegible, subirAdjunto, traerAdjuntos, type Adjunto,
 } from './adjuntos'
 import type { Proyecto } from './planDatos'
+import TextoEditable from './TextoEditable'
 
 function siguienteEstado(e: EstadoMinuta): EstadoMinuta {
   return e === 'pendiente' ? 'en_curso' : e === 'en_curso' ? 'lista' : 'pendiente'
@@ -171,7 +172,12 @@ export default function FichaTarea({
               >
                 {ESTADOS_MINUTA.find((e) => e.codigo === s.estado)?.corto}
               </button>
-              <span className="plan-cuerpo"><b>{s.titulo}</b></span>
+              <span className="plan-cuerpo">
+                <TextoEditable
+                  texto={s.titulo}
+                  onGuardar={async (t) => { await cambiarCampos(s.id, { titulo: t }, quienSoy()); await onCambio() }}
+                />
+              </span>
               <button
                 className="memb-x"
                 onClick={() => void borrarTarea(s.id).then(onCambio)}

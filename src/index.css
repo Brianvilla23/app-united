@@ -801,3 +801,10 @@ textarea { resize: vertical; }
 .borrar-confirma span { flex: 1 1 220px; }
 .btn.peligro { background: #b42318; border-color: #b42318; color: #fff; }
 .btn.peligro-txt { color: #b42318; }
+
+/* --- corregir el texto de una subtarea donde está (25-11-2026) --- */
+.texto-editable { display: inline-flex; align-items: flex-start; gap: 6px; cursor: text; }
+.texto-lapiz { flex: none; border: 0; background: transparent; color: var(--muted, #667085); font-size: 15px; line-height: 1; padding: 2px 4px; border-radius: 6px; cursor: pointer; }
+.texto-lapiz:hover { background: rgba(0,0,0,.06); }
+.texto-editando { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.texto-editando textarea { width: 100%; font: inherit; font-weight: 600; padding: 8px 10px; border-radius: 8px; resize: vertical; }

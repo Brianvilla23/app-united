@@ -1371,3 +1371,12 @@ Brayan no encontraba cómo borrarlas. Home de Planificación: botón visible «�
   Regla aprendida: **capturar y mirar antes de decir que está listo.**
 - Los planos de referencia están en
   `C:\Users\braya\OneDrive\Escritorio\Planificacion\`.
+
+## 47. Corregir el texto de las subtareas (25-11-2026)
+Brayan: «a las subtareas se pueda modificar lo escrito». Componente nuevo
+`src/TextoEditable.tsx`: se toca el texto o el lápiz ✎ → cuadro de texto con
+«Guardar» (o Enter) y «Cancelar» (o Escape). Está en:
+- Minuta → ficha de la tarea → Subtareas (`cambiarCampos(id, {titulo})`).
+- Secciones creadas → ficha → Subtareas (`datos.nota`).
+- Proyectos MIP → al abrir una actividad o subtarea, «Texto de la actividad/subtarea».
+Prueba simulada: `node screenshot_editar_subtarea.mjs`.

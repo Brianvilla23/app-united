@@ -2,6 +2,7 @@
 // Tachar es marcar: la completada se ve tachada, como en el papel.
 import { useCallback, useEffect, useState } from 'react'
 import Archivos from './Archivos'
+import TextoEditable from './TextoEditable'
 import { quienSoy } from './identidad'
 import { uuid } from './util'
 import {
@@ -185,6 +186,8 @@ export default function PanelProyectos() {
 
   const detalle = (t: Tarea) => (
     <li className="plan-detalle">
+      <label className="lab">{t.padreId ? 'Texto de la subtarea' : 'Texto de la actividad'}</label>
+      <TextoEditable texto={t.titulo} onGuardar={(nuevo) => cambiar(t, { titulo: nuevo })} />
       <div className="row" style={{ gap: 8 }}>
         <label className="lab" style={{ flex: 1 }}>
           Desde
