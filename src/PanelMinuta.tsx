@@ -173,9 +173,15 @@ export default function PanelMinuta() {
   }
 
   const arrastrar = async () => {
-    const n = await arrastrarPendientes(inicio, quienSoy(), uuid)
-    setAviso(n === 0 ? 'No quedó nada abierto la semana pasada.' : `Se trajeron ${n} de la semana pasada.`)
-    setTimeout(() => setAviso(''), 6000)
+    try {
+      const n = await arrastrarPendientes(inicio, quienSoy())
+      setAviso(n === 0
+        ? 'No quedó nada abierto la semana pasada.'
+        : `Se trajeron ${n} de la semana pasada, con sus subtareas y archivos.`)
+      setTimeout(() => setAviso(''), 6000)
+    } catch (e) {
+      setError(e instanceof Error ? `No se pudo traer lo pendiente: ${e.message}` : 'No se pudo traer lo pendiente.')
+    }
     await cargar(inicio)
   }
 

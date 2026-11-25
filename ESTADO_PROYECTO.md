@@ -1324,6 +1324,13 @@ Link: `https://app-united.pages.dev/#levantamiento` (el primero, `#hidrolatina`,
 - **Excel en Planificación** (home, «Descargar Excel»): hojas STATUS (por rack, con la lista de manifolds sin revisar), MANIFOLDS (480 filas) y VASIJAS (solo las marcadas).
 - Código: `src/Hidrolatina.tsx`, `src/levantamientoHidro.ts` (no `hidrolatina.ts`: Windows no distingue mayúsculas). Prueba con Supabase simulado: `node screenshot_hidrolatina.mjs` (levanta su propio Vite en :5199).
 
+## 45. «Traer lo que quedó abierto» ya no copia: mueve ✅ (25-11-2026)
+
+🔴 Brayan: al traer lo pendiente no quedaban los archivos, la información ni las subtareas, y los compromisos se repetían.
+Causa: `arrastrarPendientes` COPIABA la actividad con id nuevo y dejaba la original abierta en la semana anterior. Subtareas (`padre_id`) y archivos (`adjuntos.objeto_id`) cuelgan del id, así que quedaban en la copia vieja; y cada semana nacía otra copia (una llegó a 8).
+Arreglo: ahora MUEVE la actividad y sus subtareas, igual que «Cerrar la semana». Si en la semana ya hay una con el mismo nombre, `juntarEn` le pasa subtareas, archivos, información, cierre y correo, y borra la repetida.
+Datos: al 25-11 había 118 copias repetidas en 41 actividades (120 subtareas y 20 archivos repartidos en semanas viejas). Juntarlas no duplica ninguna subtarea (142 antes y después).
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

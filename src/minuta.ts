@@ -166,23 +166,59 @@ export async function cerrarSemana(inicio: string, quien: string): Promise<numbe
   return abiertas.length
 }
 
-export async function arrastrarPendientes(
-  inicio: string, quien: string, nuevoId: () => string,
-): Promise<number> {
+/** Pasa TODO lo de una actividad a otra: subtareas, archivos y la información.
+    Se usa cuando la misma actividad quedó repetida en dos semanas: se junta en
+    la de destino y la otra se borra, ya vacía. */
+async function juntarEn(origen: TareaMinuta, destino: TareaMinuta, quien: string): Promise<void> {
+  const { error: e1 } = await supabase.from('minuta_tareas')
+    .update({ padre_id: destino.id, inicio: destino.inicio }).eq('padre_id', origen.id)
+  if (e1) throw new Error(e1.message)
+  const { error: e2 } = await supabase.from('adjuntos')
+    .update({ objeto_id: destino.id }).eq('ambito', 'minuta').eq('objeto_id', origen.id)
+  if (e2) throw new Error(e2.message)
+  // la información no se pisa: si la vieja dice algo que la nueva no, se suma
+  const vieja = origen.nota.trim()
+  const nueva = destino.nota.trim()
+  if (vieja && !nueva.includes(vieja)) {
+    await cambiarCampos(destino.id, { nota: nueva ? `${nueva}
+
+${vieja}` : vieja }, quien)
+  }
+  if (!destino.cierre && origen.cierre) await cambiarCampos(destino.id, { cierre: origen.cierre }, quien)
+  if (!destino.correo && origen.correo) await cambiarCampos(destino.id, { correo: origen.correo }, quien)
+  await borrarTarea(origen.id)
+}
+
+/** «Traer lo que quedó abierto la semana pasada».
+ *
+ * 🔴 25-11-2026: antes esto COPIABA la actividad con un id nuevo y dejaba la
+ * original abierta en la semana anterior. Las subtareas y los archivos cuelgan
+ * del id, así que se quedaban atrás, y el mismo compromiso aparecía abierto en
+ * cada semana (uno llegó a estar 8 veces). Ahora se MUEVE, igual que «Cerrar la
+ * semana»: la actividad es una sola y viaja con todo lo suyo.
+ * Si en esta semana ya hay una con el mismo nombre, se juntan en la de acá. */
+export async function arrastrarPendientes(inicio: string, quien: string): Promise<number> {
   const anterior = sumarDias(inicio, -7)
   const [previas, actuales] = await Promise.all([traerMinuta(anterior), traerMinuta(inicio)])
   const quedaron = previas.filter((t) => t.estado !== 'lista' && !t.padreId)
-  const yaEstan = new Set(actuales.map((t) => t.titulo.trim().toLowerCase()))
-  const nuevas = quedaron.filter((t) => !yaEstan.has(t.titulo.trim().toLowerCase()))
-  let orden = actuales.length
-  for (const t of nuevas) {
+  const madres = actuales.filter((t) => !t.padreId)
+  const porTitulo = new Map(madres.map((t) => [t.titulo.trim().toLowerCase(), t]))
+  let orden = madres.length
+  for (const t of quedaron) {
+    const ya = porTitulo.get(t.titulo.trim().toLowerCase())
+    if (ya) { await juntarEn(t, ya, quien); continue }
     orden += 1
-    await guardarTarea({
-      ...t, id: nuevoId(), inicio, orden, vieneDe: anterior, estado: t.estado,
-      padreId: null,   // las subtareas se arrastran con su madre, no sueltas
-    }, quien)
+    const { error } = await supabase.from('minuta_tareas').update({
+      inicio, orden, viene_de: anterior, creado_por: quien, actualizado_en: new Date().toISOString(),
+    }).eq('id', t.id)
+    if (error) throw new Error(error.message)
+    // sus subtareas se van con ella, listas o no: son parte de la misma tarea
+    const { error: e2 } = await supabase.from('minuta_tareas').update({ inicio }).eq('padre_id', t.id)
+    if (e2) throw new Error(e2.message)
+    // si la semana pasada venía repetida, la segunda se junta en esta
+    porTitulo.set(t.titulo.trim().toLowerCase(), { ...t, inicio, orden })
   }
-  return nuevas.length
+  return quedaron.length
 }
 
 export function resumir(tareas: TareaMinuta[]): Record<EstadoMinuta, number> {
