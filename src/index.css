@@ -794,3 +794,10 @@ textarea { resize: vertical; }
 .hidro-excel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
 .hidro-excel > div { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; }
 .hidro-excel small { color: var(--muted); font-size: 12.5px; }
+
+/* --- borrar con confirmación (25-11-2026) --- */
+.secciones-barra { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.borrar-confirma { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 6px 10px; padding: 10px 12px; border-radius: 10px; background: #fdecea; border: 1px solid #f3b8b1; color: #8f1d12; font-size: 13.5px; line-height: 1.4; }
+.borrar-confirma span { flex: 1 1 220px; }
+.btn.peligro { background: #b42318; border-color: #b42318; color: #fff; }
+.btn.peligro-txt { color: #b42318; }

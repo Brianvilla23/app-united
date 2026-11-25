@@ -21,6 +21,7 @@ export default function PanelProyectos() {
   const [abierta, setAbierta] = useState<string | null>(null)
   const [nuevaSub, setNuevaSub] = useState('')
   const [editandoNombre, setEditandoNombre] = useState(false)
+  const [confirmaBorrar, setConfirmaBorrar] = useState(false)
   const [nuevaSeccion, setNuevaSeccion] = useState<string | null>(null)
   const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [nuevoComentario, setNuevoComentario] = useState('')
@@ -63,7 +64,7 @@ export default function PanelProyectos() {
       try {
         const ps = await traerProyectos()
         setProyectos(ps)
-        const primero = ps[0]?.id ?? ''
+        const primero = ps.find((p) => p.activo)?.id ?? ''
         setElegido(primero)
         if (primero) await cargarTareas(primero)
       } catch (e) {
@@ -117,6 +118,27 @@ export default function PanelProyectos() {
       await cargarTareas(id)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo crear la sección.')
+    }
+  }
+
+  /** Borrar una pestaña de Proyectos MIP (25-11, Brayan: no se podía).
+      Se saca de la lista (activo = false) y lo que tenía queda guardado en la
+      base: así un toque equivocado no se lleva actividades, archivos ni
+      comentarios, y se puede recuperar. */
+  const borrarSeccion = async () => {
+    const p = proyectos.find((x) => x.id === elegido)
+    setConfirmaBorrar(false)
+    if (!p) return
+    try {
+      await guardarProyecto({ ...p, activo: false }, quienSoy())
+      const ps = await traerProyectos()
+      setProyectos(ps)
+      const siguiente = ps.find((x) => x.activo)?.id ?? ''
+      setElegido(siguiente)
+      setAbierta(null)
+      if (siguiente) await cargarTareas(siguiente)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo borrar la sección.')
     }
   }
 
@@ -214,11 +236,11 @@ export default function PanelProyectos() {
       {error && <p className="memb-aviso">{error}</p>}
 
       <div className="rack-tabs">
-        {proyectos.map((p) => (
+        {proyectos.filter((p) => p.activo).map((p) => (
           <button
             key={p.id}
             className={'rack-tab' + (p.id === elegido ? ' on' : '')}
-            onClick={() => { setElegido(p.id); setAbierta(null); void cargarTareas(p.id) }}
+            onClick={() => { setElegido(p.id); setAbierta(null); setConfirmaBorrar(false); void cargarTareas(p.id) }}
           >
             {p.nombre}
           </button>
@@ -260,8 +282,20 @@ export default function PanelProyectos() {
               <button className="btn sm ghost" onClick={() => setEditandoNombre(true)} title="Cambiar el nombre">
                 Cambiar nombre
               </button>
+              <button className="btn sm ghost peligro-txt" onClick={() => setConfirmaBorrar(true)}>🗑 Borrar sección</button>
             </>
           )}
+        </div>
+      )}
+      {elegido && confirmaBorrar && (
+        <div className="borrar-confirma">
+          <span>
+            ¿Borrar «{proyectos.find((p) => p.id === elegido)?.nombre}»
+            {arbol.length > 0 ? ` y sus ${arbol.length} actividades` : ''}? Sale de la lista; lo que tenía queda
+            guardado por si hay que recuperarlo.
+          </span>
+          <button className="btn sm peligro" onClick={() => void borrarSeccion()}>Sí, borrar</button>
+          <button className="btn sm ghost" onClick={() => setConfirmaBorrar(false)}>No</button>
         </div>
       )}
 

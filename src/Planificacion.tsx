@@ -107,6 +107,8 @@ export default function Planificacion() {
   const [cambiando, setCambiando] = useState(false)
   const [secciones, setSecciones] = useState<Seccion[]>(SECCIONES_BASE)
   const [editando, setEditando] = useState(false)
+  /** La sección que espera el «Sí, borrar»: borrar no se hace de un toque. */
+  const [porBorrar, setPorBorrar] = useState<string | null>(null)
   const [renombrando, setRenombrando] = useState<string | null>(null)
   const [agregando, setAgregando] = useState(false)
 
@@ -125,9 +127,16 @@ export default function Planificacion() {
   }
 
   const quitarSeccion = async (s: Seccion) => {
-    await borrarSeccion(s.id)
-    if (area === s.id) setArea('home')
-    await cargarSecciones()
+    setPorBorrar(null)
+    try {
+      await borrarSeccion(s.id)
+      if (area === s.id) setArea('home')
+      await cargarSecciones()
+      setAviso(`Se borró «${s.nombre}».`)
+      setTimeout(() => setAviso(''), 5000)
+    } catch (e) {
+      setAviso(e instanceof Error ? `No se pudo borrar: ${e.message}` : 'No se pudo borrar.')
+    }
   }
   const [nuevaClave, setNuevaClave] = useState('')
   const [aviso, setAviso] = useState('')
@@ -180,6 +189,11 @@ export default function Planificacion() {
             Semana en curso: <b>{rotuloSemana(martesDe(hoyISO()))}</b>.
             Va de martes a lunes, como la trabajas tú.
           </p>
+          <div className="secciones-barra">
+            <button className={'btn sm' + (editando ? ' primary' : '')} onClick={() => { setEditando(!editando); setRenombrando(null); setPorBorrar(null) }}>
+              {editando ? '✓ Listo' : '✎ Editar o borrar secciones'}
+            </button>
+          </div>
           <div className="menu-grid">
             {secciones.map((s) => (
               <div key={s.id} className="menu-card-caja">
@@ -201,14 +215,20 @@ export default function Planificacion() {
                     <span className="mc-arrow">›</span>
                   </button>
                 )}
-                {editando && renombrando !== s.id && (
+                {editando && renombrando !== s.id && (porBorrar === s.id ? (
+                  <div className="borrar-confirma">
+                    <span>¿Borrar «{s.nombre}» con todo lo que tenga anotado? No se puede deshacer.</span>
+                    <button className="btn sm peligro" onClick={() => void quitarSeccion(s)}>Sí, borrar</button>
+                    <button className="btn sm ghost" onClick={() => setPorBorrar(null)}>No</button>
+                  </div>
+                ) : (
                   <div className="row" style={{ gap: 6, padding: '0 6px 8px' }}>
                     <button className="btn sm ghost" onClick={() => setRenombrando(s.id)}>Cambiar nombre</button>
-                    {s.tipo !== 'fija' && (
-                      <button className="btn sm ghost" onClick={() => void quitarSeccion(s)}>Borrar</button>
-                    )}
+                    {s.tipo !== 'fija'
+                      ? <button className="btn sm ghost peligro-txt" onClick={() => setPorBorrar(s.id)}>🗑 Borrar</button>
+                      : <small className="hint" style={{ alignSelf: 'center' }}>Fija: no se borra</small>}
                   </div>
-                )}
+                ))}
               </div>
             ))}
             <button className="menu-card agregar" onClick={() => setAgregando(true)}>
@@ -228,11 +248,6 @@ export default function Planificacion() {
             <button className="btn sm" onClick={() => void bajarExcelHidrolatina()}>Descargar Excel</button>
           </div>
 
-          <div className="row" style={{ gap: 8, marginTop: 10 }}>
-            <button className="btn sm ghost" onClick={() => { setEditando(!editando); setRenombrando(null) }}>
-              {editando ? 'Listo' : 'Editar las secciones'}
-            </button>
-          </div>
         </>
       )}
 

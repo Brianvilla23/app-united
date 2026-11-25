@@ -1331,6 +1331,10 @@ Causa: `arrastrarPendientes` COPIABA la actividad con id nuevo y dejaba la origi
 Arreglo: ahora MUEVE la actividad y sus subtareas, igual que «Cerrar la semana». Si en la semana ya hay una con el mismo nombre, `juntarEn` le pasa subtareas, archivos, información, cierre y correo, y borra la repetida.
 Datos: al 25-11 había 118 copias repetidas en 41 actividades (120 subtareas y 20 archivos repartidos en semanas viejas). Juntarlas no duplica ninguna subtarea (142 antes y después).
 
+## 46. Borrar secciones de Planificación y pestañas de Proyectos MIP ✅ (25-11-2026)
+
+Brayan no encontraba cómo borrarlas. Home de Planificación: botón visible «✎ Editar o borrar secciones» arriba de las tarjetas; cada sección propia tiene «🗑 Borrar» con confirmación (Sí, borrar / No); las fijas dicen «Fija: no se borra». Borrar una sección es definitivo (sus ítems se van en cascada). Proyectos MIP: «🗑 Borrar sección» junto a «Cambiar nombre», con confirmación; NO borra: deja  y la pestaña desaparece, con sus actividades, archivos y comentarios guardados para recuperarlos. La minuta tampoco muestra lo pendiente de esas pestañas. Prueba: `node screenshot_borrar_secciones.mjs`.
+
 ## 📋 Otros pendientes
 - **Entrega de turno**: que el parte del grupo de WhatsApp actualice las tapas
   (hoy se edita a mano, o Brayan pega el texto y Claude lo carga).

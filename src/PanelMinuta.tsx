@@ -78,7 +78,7 @@ export default function PanelMinuta() {
         setProyectos(ps)
         const todas = await traerTareas()
         const abiertas: { proyecto: string; tarea: Tarea }[] = []
-        for (const p of ps) {
+        for (const p of ps.filter((x) => x.activo)) {
           for (const a of armarArbol(todas.filter((t) => t.proyectoId === p.id))) {
             if (a.actividad.estado !== 'completada') abiertas.push({ proyecto: p.nombre, tarea: a.actividad })
           }
